@@ -1,0 +1,3201 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)</title>
+<meta content="Iman Schrock" name="author">
+<meta content="
+       Consequential agent actions can produce heterogeneous identity,
+      delegation, policy, permit, approval, transparency, capability, and
+      execution artifacts. Each artifact can verify under its own
+      specification while still referring to a different action, filling a
+      different evidentiary role, or failing a relying party's freshness,
+      status, or inter-artifact binding requirement. This document defines
+      the Authorization Evidence Chain (EP-AEC): a transport-agnostic
+      composition object and a fail-closed evaluation algorithm that keeps
+      native cryptographic verification separate from relying-party
+      acceptance, establishes exact material-action matching, and evaluates a
+      relying-party-pinned evidence requirement.
+       AEC produces SATISFIED or UNSATISFIED and a replayable evaluation
+      record. SATISFIED means only that the presented evidence filled the
+      relying party's named evidence requirement at the stated verification
+      time. It is not a universal authorization decision, a policy language
+      for the protected application, or proof of execution or outcome. The
+      executor makes the separate local AUTHORIZED decision and controls
+      consumption, invocation, and effect handling. Qualification evidence can
+      fill a named evidence role but cannot authorize an action by itself. AEC
+      introduces no new component receipt type and does not replace any native
+      verifier.
+    " name="description">
+<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="AI agents" name="keyword">
+<meta content="authorization" name="keyword">
+<meta content="evidence" name="keyword">
+<meta content="composition" name="keyword">
+<meta content="replay" name="keyword">
+<meta content="JCS" name="keyword">
+<meta content="draft-schrock-ep-authorization-evidence-chain-08" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.0
+    pycountry 26.2.16
+    PyYAML 6.0.3
+    requests 2.34.2
+    wcwidth 0.8.1
+-->
+<link href="draft-schrock-ep-authorization-evidence-chain-08.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/*
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">Authorization Evidence Chains</td>
+<td class="right">October 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Schrock</td>
+<td class="center">Expires 7 April 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-schrock-ep-authorization-evidence-chain-08</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-10-04" class="published">4 October 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-04-07">7 April 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">I. Schrock</div>
+<div class="org">EMILIA Protocol, Inc.</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">Consequential agent actions can produce heterogeneous identity,
+      delegation, policy, permit, approval, transparency, capability, and
+      execution artifacts. Each artifact can verify under its own
+      specification while still referring to a different action, filling a
+      different evidentiary role, or failing a relying party's freshness,
+      status, or inter-artifact binding requirement. This document defines
+      the Authorization Evidence Chain (EP-AEC): a transport-agnostic
+      composition object and a fail-closed evaluation algorithm that keeps
+      native cryptographic verification separate from relying-party
+      acceptance, establishes exact material-action matching, and evaluates a
+      relying-party-pinned evidence requirement.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-2">AEC produces SATISFIED or UNSATISFIED and a replayable evaluation
+      record. SATISFIED means only that the presented evidence filled the
+      relying party's named evidence requirement at the stated verification
+      time. It is not a universal authorization decision, a policy language
+      for the protected application, or proof of execution or outcome. The
+      executor makes the separate local AUTHORIZED decision and controls
+      consumption, invocation, and effect handling. Qualification evidence can
+      fill a named evidence role but cannot authorize an action by itself. AEC
+      introduces no new component receipt type and does not replace any native
+      verifier.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 7 April 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-scope-and-non-goals" class="internal xref">Scope and Non-Goals</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-the-authorization-evidence-" class="internal xref">The Authorization Evidence Chain Object</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-the-relying-party-evidence-" class="internal xref">The Relying-Party Evidence Requirement</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-relying-party-acceptance-in" class="internal xref">Relying-Party Acceptance Inputs</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-native-verification-and-nor" class="internal xref">Native Verification and Normalized Facts</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-material-action-matching" class="internal xref">Material-Action Matching</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-requirement-expressions" class="internal xref">Requirement Expressions</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.1">
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-grammar" class="internal xref">Grammar</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.2">
+                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="auto internal xref">8.2</a>.  <a href="#name-token-boundaries" class="internal xref">Token Boundaries</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.3">
+                <p id="section-toc.1-1.8.2.3.1"><a href="#section-8.3" class="auto internal xref">8.3</a>.  <a href="#name-grouping-validity-and-evalu" class="internal xref">Grouping, Validity, and Evaluation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.4">
+                <p id="section-toc.1-1.8.2.4.1"><a href="#section-8.4" class="auto internal xref">8.4</a>.  <a href="#name-limits" class="internal xref">Limits</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.5">
+                <p id="section-toc.1-1.8.2.5.1"><a href="#section-8.5" class="auto internal xref">8.5</a>.  <a href="#name-examples" class="internal xref">Examples</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.6">
+                <p id="section-toc.1-1.8.2.6.1"><a href="#section-8.6" class="auto internal xref">8.6</a>.  <a href="#name-canonical-parse-and-parse-i" class="internal xref">Canonical Parse and Parse Identity</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.7">
+                <p id="section-toc.1-1.8.2.7.1"><a href="#section-8.7" class="auto internal xref">8.7</a>.  <a href="#name-test-vectors" class="internal xref">Test Vectors</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-verification-algorithm" class="internal xref">Verification Algorithm</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-evidence-evaluation-replay" class="internal xref">Evidence Evaluation Replay</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-human-authorization-compone" class="internal xref">Human-Authorization Components</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-bounded-capability-operatio" class="internal xref">Bounded-Capability Operation Components</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-position-in-the-effect-boun" class="internal xref">Position in the Effect-Boundary Lifecycle</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#section-15" class="auto internal xref">15</a>. <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#section-16" class="auto internal xref">16</a>. <a href="#name-relationship-to-other-work" class="internal xref">Relationship to Other Work</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
+            <p id="section-toc.1-1.17.1"><a href="#section-17" class="auto internal xref">17</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
+            <p id="section-toc.1-1.18.1"><a href="#section-18" class="auto internal xref">18</a>. <a href="#name-changes-in-08" class="internal xref">Changes in -08</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19">
+            <p id="section-toc.1-1.19.1"><a href="#section-19" class="auto internal xref">19</a>. <a href="#name-changes-in-07" class="internal xref">Changes in -07</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20">
+            <p id="section-toc.1-1.20.1"><a href="#section-20" class="auto internal xref">20</a>. <a href="#name-changes-in-06" class="internal xref">Changes in -06</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21">
+            <p id="section-toc.1-1.21.1"><a href="#section-21" class="auto internal xref">21</a>. <a href="#name-changes-in-05" class="internal xref">Changes in -05</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22">
+            <p id="section-toc.1-1.22.1"><a href="#section-22" class="auto internal xref">22</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23">
+            <p id="section-toc.1-1.23.1"><a href="#section-23" class="auto internal xref">23</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.1">
+                <p id="section-toc.1-1.23.2.1.1"><a href="#section-23.1" class="auto internal xref">23.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.2">
+                <p id="section-toc.1-1.23.2.2.1"><a href="#section-23.2" class="auto internal xref">23.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.24">
+            <p id="section-toc.1-1.24.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.25">
+            <p id="section-toc.1-1.25.1"><a href="#appendix-B" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="intro">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">One consequential action can produce several independently useful
+      artifacts: a workload credential, a delegation record, a policy permit,
+      a named-human authorization receipt, a quorum, a bounded-capability
+      operation record, or a transparency receipt. These artifacts answer
+      different questions. A relying party may require several of them for one
+      action.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">Native verification is not sufficient for composition. A permit for
+      action A and an approval for action B, each VERIFIED and ACCEPTED, do
+      not jointly authorize either action. Likewise, two VERIFIED and ACCEPTED
+      artifacts can still be inadequate if the relying party required a
+      fresher approval, a checked revocation status, or a byte-backed relation
+      showing that one artifact explicitly references another.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">EP-AEC provides the thin composition layer. It dispatches artifacts
+      to their native verifiers, maps only integrity-protected native action
+      commitments to the relying party's expected material action, evaluates
+      an evidence requirement owned by the relying party, and records the
+      exact inputs to that evidence decision. It does not decide whether the
+      protected application should act.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<div id="scope">
+<section id="section-1.1">
+        <h3 id="name-scope-and-non-goals">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-scope-and-non-goals" class="section-name selfRef">Scope and Non-Goals</a>
+        </h3>
+<p id="section-1.1-1">This document defines:<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.1-2.1">the EP-AEC-v1 composition object;<a href="#section-1.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-2.2">the EP-AEC-REQUIREMENT-v1 relying-party evidence requirement;<a href="#section-1.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-2.3">a verifier-result contract that keeps native verification,
+          relying-party acceptance, and material-action mapping separate;<a href="#section-1.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-2.4">a fail-closed SATISFIED or UNSATISFIED evaluation; and<a href="#section-1.1-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-2.5">the EP-AEC-REPLAY-v1 evaluation record and replay digest.<a href="#section-1.1-2.5" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-1.1-3">This document does not define a universal evidence taxonomy, a
+        general authorization policy language, a component receipt format, an
+        application allow or deny decision, a signed reliance-result format,
+        a transparency service, or an execution state machine. It does not
+        require a graph wire format or make presenter-asserted graph edges
+        authoritative.<a href="#section-1.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="terminology">
+<section id="section-2">
+      <h2 id="name-terminology">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+      </h2>
+<p id="section-2-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+      NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+      "MAY", and "OPTIONAL" in this document are to be interpreted as
+      described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span>
+      when, and only when, they appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶</a></p>
+<p id="section-2-2">BCP 14 is indexed by the RFC Editor at <span>[<a href="#BCP14" class="cite xref">BCP14</a>]</span>.<a href="#section-2-2" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-2-3">
+        <dt id="section-2-3.1">Native verifier</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.2">A verifier selected by the relying party for one artifact format
+        and revision. For each artifact it reports two separate results,
+        VERIFIED and ACCEPTED (<a href="#native-contract" class="auto internal xref">Section 6</a>).<a href="#section-2-3.2" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.3">VERIFIED</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.4">The native verifier's cryptographic and structural checks passed:
+        the artifact is well formed under the native format rules the verifier
+        implements, and every signature or proof it carries verifies over the
+        bytes it covers. Except where a native procedure checks trust inputs
+        and cryptography together and cannot attribute a failure
+        (<a href="#native-contract" class="auto internal xref">Section 6</a>), VERIFIED depends only on the
+        artifact, the format specification, and the verification key. When a
+        format names its key only by reference,
+        that key is the one resolved from relying-party key material
+        (<a href="#native-contract" class="auto internal xref">Section 6</a>). VERIFIED says nothing about whether
+        the relying party trusts that key, issuer, or policy, and nothing about
+        whether the artifact denotes the expected material action.<a href="#section-2-3.4" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.5">ACCEPTED</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.6">A VERIFIED artifact also meets the relying party's pinned trust
+        inputs for its component type (<a href="#acceptance-inputs" class="auto internal xref">Section 5</a>): the
+        verification key is, or chains to, a trust anchor or directory entry
+        pinned for that component's role and is usable at the verification
+        time; the issuer, audience, key class, native policy, and format
+        revision are ones the relying party pinned; and the verification time
+        falls within the artifact's native validity period. ACCEPTED is
+        relative to one relying party's pins. With the same exception, a party
+        with different trust inputs that holds or resolves the same
+        verification key can reproduce VERIFIED for the same bytes and reach a
+        different acceptance result. ACCEPTED does not depend on the expected material action;
+        MATCH decides that.<a href="#section-2-3.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.7">MATCH</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.8">A VERIFIED and ACCEPTED artifact's integrity-protected native action
+        commitment denotes the relying party's expected material action by
+        direct exact digest equality or by an exact, relying-party-pinned CAID
+        mapping profile.<a href="#section-2-3.8" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.9">SATISFIED</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.10">Eligible evidence filled the relying party's evidence requirement
+        at the explicit verification time.<a href="#section-2-3.10" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.11">UNSATISFIED</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.12">Every evaluation result other than SATISFIED, including an
+        evaluation that could not complete. UNSATISFIED does not by itself mean
+        that evidence was shown to be missing or invalid; bounded reason codes
+        say why.<a href="#section-2-3.12" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.13">AUTHORIZED</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.14">A separate local application decision permitting an invocation.
+        AEC does not produce this state.<a href="#section-2-3.14" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.15">Evidence digest</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.16">The string "sha256:" followed by the lowercase hexadecimal
+        SHA-256 digest of an artifact's JCS <span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span>
+        serialization.<a href="#section-2-3.16" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.17">Normalized evidence fact</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.18">A verifier-produced, bounded record of the VERIFIED and ACCEPTED
+        results, material-action mapping, time and status checks, and
+        byte-backed bindings for one component. It is not supplied by the
+        presenter.<a href="#section-2-3.18" class="pilcrow">¶</a>
+</dd>
+      <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="object">
+<section id="section-3">
+      <h2 id="name-the-authorization-evidence-">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-the-authorization-evidence-" class="section-name selfRef">The Authorization Evidence Chain Object</a>
+      </h2>
+<div class="lang-json sourcecode" id="section-3-1">
+<pre>
+{
+  "@version": "EP-AEC-v1",
+  "action": { "...": "Action Object" },
+  "action_digest": "sha256:&lt;hex&gt;",
+  "action_caid": "caid:1:&lt;action-type&gt;:&lt;suite&gt;:&lt;digest-b64url&gt;",
+  "components": [
+    {
+      "type": "ep-quorum",
+      "label": "two-person human authorization",
+      "evidence_digest": "sha256:&lt;hex&gt;",
+      "evidence": { "...": "native artifact" }
+    },
+    {
+      "type": "policy-permit",
+      "evidence": { "...": "native artifact" }
+    }
+  ],
+  "requirement": "ep-quorum AND policy-permit"
+}
+</pre><a href="#section-3-1" class="pilcrow">¶</a>
+</div>
+<ul class="normal">
+<li class="normal" id="section-3-2.1">
+          <code>@version</code> (string, REQUIRED) MUST equal
+        <code>EP-AEC-v1</code>.<a href="#section-3-2.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-2.2">
+          <code>action</code> (object, REQUIRED) is the closed Action Object to
+        which the evaluation is joined.<a href="#section-3-2.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-2.3">
+          <code>action_digest</code> (string, OPTIONAL) is descriptive. When
+        present, it MUST equal the verifier's recomputation over
+        <code>action</code>.<a href="#section-3-2.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-2.4">
+          <code>action_caid</code> (string, OPTIONAL) is descriptive. It MUST NOT
+        establish its own mapping or trust. When the relying party requires a
+        CAID, the verifier recomputes or independently obtains the expected
+        CAID and compares it as specified in <a href="#matching" class="auto internal xref">Section 7</a>.<a href="#section-3-2.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-2.5">
+          <code>components</code> (array, REQUIRED and non-empty) contains
+        <code>type</code> (string), <code>evidence</code> (JSON value suitable for the
+        native format), and optional <code>label</code> and
+        <code>evidence_digest</code> strings. A label is display-only. When an
+        evidence digest is present, the verifier MUST recompute and compare
+        it before native verification.<a href="#section-3-2.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-2.6">
+          <code>requirement</code> (string, OPTIONAL) is a presenter-supplied
+        description. It MUST NOT become the relying party's sufficiency bar
+        and MUST NOT produce SATISFIED.<a href="#section-3-2.6" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-3-3">The chain is a bundle, not an authority-bearing graph. Component
+      order is preserved for reporting, but order confers no semantics. All
+      credited relations between components come from integrity-protected
+      native bytes exposed by a trusted native verifier, never from labels,
+      ordering, or presenter-supplied edges.<a href="#section-3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="rp-requirement">
+<section id="section-4">
+      <h2 id="name-the-relying-party-evidence-">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-the-relying-party-evidence-" class="section-name selfRef">The Relying-Party Evidence Requirement</a>
+      </h2>
+<p id="section-4-1">Before returning SATISFIED, a verifier MUST receive an
+      EP-AEC-REQUIREMENT-v1 object from relying-party-controlled
+      configuration. The chain document cannot supply or weaken it.<a href="#section-4-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4-2">
+<pre>
+{
+  "@version": "EP-AEC-REQUIREMENT-v1",
+  "requirement_id": "treasury-wire-evidence@7",
+  "purpose": "pre-execution evidence check",
+  "expression": "ep-quorum AND policy-permit",
+  "freshness_sec": {
+    "ep-quorum": 300,
+    "policy-permit": 600
+  },
+  "status_required": ["ep-quorum"],
+  "role_constraints": [
+    {
+      "type": "distinct-subject-quorum",
+      "component_type": "ep-human-authorization",
+      "threshold": 2,
+      "subject_id_source": "native-verifier"
+    }
+  ],
+  "required_bindings": [
+    {
+      "from_type": "policy-permit",
+      "relation": "permits",
+      "to_type": "ep-quorum"
+    }
+  ]
+}
+</pre><a href="#section-4-2" class="pilcrow">¶</a>
+</div>
+<ul class="normal">
+<li class="normal" id="section-4-3.1">
+          <code>@version</code> MUST equal
+        <code>EP-AEC-REQUIREMENT-v1</code>.<a href="#section-4-3.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-3.2">
+          <code>requirement_id</code> is a relying-party identifier for the exact
+        evidence requirement revision. It carries no authority by itself.<a href="#section-4-3.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-3.3">
+          <code>purpose</code> is descriptive and MUST NOT alter expression
+        evaluation.<a href="#section-4-3.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-3.4">
+          <code>expression</code> is REQUIRED and follows
+        <a href="#expressions" class="auto internal xref">Section 8</a>.<a href="#section-4-3.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-3.5">
+          <code>freshness_sec</code> is an OPTIONAL map from component type to a
+        non-negative maximum age in seconds.<a href="#section-4-3.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-3.6">
+          <code>status_required</code> is an OPTIONAL array of component types
+        for which a fresh authenticated status result is required.<a href="#section-4-3.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-3.7">
+          <code>role_constraints</code> is an OPTIONAL array of closed evidence
+        constraints. This revision defines only
+        <code>distinct-subject-quorum</code>. Its <code>component_type</code> names an
+        evidence role, <code>threshold</code> is an integer greater than one, and
+        <code>subject_id_source</code> MUST equal <code>native-verifier</code>. A
+        verifier counts distinct subjects only from integrity-protected native
+        subject identifiers returned by eligible native verifiers. Presenter
+        labels, signer-key encodings, and unverified subject claims MUST NOT be
+        counted.<a href="#section-4-3.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-3.8">
+          <code>required_bindings</code> is an OPTIONAL array of
+        <code>from_type</code>, <code>relation</code>, and <code>to_type</code> triples.
+        Each triple requires at least one eligible source component whose
+        native verified bytes bind, under that relation, the evidence digest
+        of an eligible target component of the named type.<a href="#section-4-3.8" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-4-4">The verifier MUST compute the requirement profile digest over the JCS
+      serialization of the complete requirement object. JCS preserves string
+      contents, and the expression enters that serialization exactly as
+      stored: a verifier MUST NOT trim it, change its case, apply Unicode
+      normalization to it, or otherwise rewrite it before computing the
+      digest. Two requirements whose expressions have the same Boolean
+      meaning, or the same parse identity (<a href="#parse-identity" class="auto internal xref">Section 8.6</a>),
+      can have different requirement profile digests. The requirement
+      object controls evidence sufficiency only. Application rules about
+      amounts, destinations, operator permissions, legal authority, risk
+      acceptance, or whether to execute remain in the separate local
+      authorization policy.<a href="#section-4-4" class="pilcrow">¶</a></p>
+<p id="section-4-5">Initiator exclusion, executor exclusion, durable one-time consumption,
+      resource ceilings, and whether to execute are boundary constraints rather
+      than evidence-sufficiency constraints. They are defined and enforced by
+      the Action Evidence Boundary <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span>. AEC MUST NOT report
+      them as satisfied merely because an evidence component asserts them.<a href="#section-4-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="acceptance-inputs">
+<section id="section-5">
+      <h2 id="name-relying-party-acceptance-in">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-relying-party-acceptance-in" class="section-name selfRef">Relying-Party Acceptance Inputs</a>
+      </h2>
+<p id="section-5-1">Internal agreement among presenter-supplied artifacts cannot satisfy
+      a relying party. The verifier MUST receive these values from trusted
+      configuration or from the protected boundary that is about to act:<a href="#section-5-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-5-2.1">the EP-AEC-REQUIREMENT-v1 object;<a href="#section-5-2.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.2">the expected Action Object or its independently computed canonical
+        action digest;<a href="#section-5-2.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.3">an expected CAID and mapping profiles when cross-format action
+        mapping is used;<a href="#section-5-2.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.4">an explicit verification time;<a href="#section-5-2.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.5">for each component type, the selected native verifier revision;
+        the key-resolution material from which the native verifier obtains a
+        verification key that a format names only by reference; the pinned
+        trust inputs that decide ACCEPTED, namely trust anchors or directory
+        entries (for each key, the principal and role it is bound to, its key
+        class, its validity period, and its compromise or revocation state),
+        accepted issuers, audiences, key classes, native policy, and format
+        revision; and the freshness inputs and status sources; and<a href="#section-5-2.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-2.6">documented resource limits for parsing, nesting, component count,
+        expression size, and verifier execution.<a href="#section-5-2.6" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-5-3">These values MUST NOT be taken from the presented chain or from an
+      untrusted caller. If any required input is absent, malformed, ambiguous,
+      or outside its configured validity, the result is UNSATISFIED.<a href="#section-5-3" class="pilcrow">¶</a></p>
+<p id="section-5-4">The pinned trust inputs decide ACCEPTED. A verifier MUST NOT report
+      an artifact as VERIFIED because its signer is pinned, or as ACCEPTED
+      because its signatures verify.<a href="#section-5-4" class="pilcrow">¶</a></p>
+<p id="section-5-5">Key-resolution material and the pinned trust inputs can live in one
+      directory. Resolution uses only the mapping from a key reference to key
+      bytes. Everything else a directory entry states about that key is a
+      pinned trust input and decides ACCEPTED, not VERIFIED.<a href="#section-5-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="native-contract">
+<section id="section-6">
+      <h2 id="name-native-verification-and-nor">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-native-verification-and-nor" class="section-name selfRef">Native Verification and Normalized Facts</a>
+      </h2>
+<p id="section-6-1">AEC does not reinterpret a native signature or token. For each
+      component, a relying-party-selected native verifier first returns a
+      bounded internal result containing:<a href="#section-6-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-6-2.1">the VERIFIED result, or an indication that VERIFIED could not be
+        evaluated, and, for a VERIFIED artifact, the ACCEPTED result, each with
+        a machine-readable reason when it is negative;<a href="#section-6-2.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-6-2.2">the integrity-protected native action commitment, if any;<a href="#section-6-2.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-6-2.3">the protected issuance and expiration instants needed by the
+        selected freshness check;<a href="#section-6-2.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-6-2.4">the protected issuer, audience, and format revision relevant to
+        the selected native profile;<a href="#section-6-2.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-6-2.5">an authenticated status result and status-snapshot digest when
+        status checking is required; and<a href="#section-6-2.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-6-2.6">zero or more relation and target-evidence-digest bindings extracted
+        from integrity-protected native fields.<a href="#section-6-2.6" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-6-3">A component reaches VERIFIED only when its native verifier's
+      cryptographic and structural checks succeed, and reaches ACCEPTED only
+      when it is VERIFIED and the pinned trust inputs for its component type
+      accept it. The native verifier MUST report the two results separately.
+      It MUST NOT report ACCEPTED for an artifact that is not VERIFIED, and
+      MUST NOT report VERIFIED for an artifact whose integrity it did not
+      check. When a native procedure checks trust inputs and cryptography
+      together and cannot attribute a failure to one of them, the verifier
+      reports the artifact as not VERIFIED. A component that is not both
+      VERIFIED and ACCEPTED is ineligible.<a href="#section-6-3" class="pilcrow">¶</a></p>
+<p id="section-6-4">When a format identifies its verification key only by reference, the
+      native verifier resolves the key from relying-party key material. If no
+      key can be resolved, VERIFIED cannot be evaluated: the artifact is not
+      VERIFIED, the normalized fact records its native verification as
+      NOT_EVALUATED with a reason such as <code>key_unresolved</code>, never as
+      FAILED, and the component is ineligible. Resolving a key does not make
+      the artifact ACCEPTED: whether that key is pinned for the component's
+      role, usable at the verification time, of an accepted class, and bound
+      to the principal the artifact names is decided by ACCEPTED. For such
+      formats VERIFIED depends on the resolved key as well as on the bytes, so
+      relying parties whose key-resolution material resolves the same
+      reference to different keys can reach different VERIFIED results for
+      the same bytes.<a href="#section-6-4" class="pilcrow">¶</a></p>
+<p id="section-6-5">AEC MUST NOT accept a presenter's <code>verified</code> or
+      <code>accepted</code> Boolean, normalized fact, mapping result, key, trust
+      anchor, status assertion, or relation as a substitute for native
+      verification or relying-party acceptance.<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-6">A deployment in which a protected boundary performs native
+      verification before calling the AEC evaluator MAY pass the verifier
+      results internally instead of repeating the cryptographic work. Such
+      results MUST carry the VERIFIED and ACCEPTED results separately and MUST
+      be integrity-bound inside the same trust boundary to the exact evidence
+      digest, native verifier profile digest, trust snapshot, and verification
+      time. Serialized results received from the presenter
+      are evidence artifacts of their own and require a native verifier; they
+      are not trusted internal results.<a href="#section-6-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="matching">
+<section id="section-7">
+      <h2 id="name-material-action-matching">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-material-action-matching" class="section-name selfRef">Material-Action Matching</a>
+      </h2>
+<p id="section-7-1">Native verification, relying-party acceptance, and material-action
+      matching are distinct and ordered. Mapping MUST NOT inspect claims from
+      an artifact that is not VERIFIED and ACCEPTED as authoritative
+      input.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-7-2">
+        <li id="section-7-2.1">The boundary computes the expected action digest from the frozen
+        action it is actually preparing to perform.<a href="#section-7-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-7-2.2">The native verifier reports the component VERIFIED and ACCEPTED
+        and exposes only its integrity-protected native action
+        commitment.<a href="#section-7-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-7-2.3">If that commitment uses the same action representation and digest
+        algorithm, exact digest equality establishes MATCH.<a href="#section-7-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-7-2.4">Otherwise, a relying-party-pinned Action-Mapping Profile from
+        <span>[<a href="#CAID" class="cite xref">CAID</a>]</span> projects the VERIFIED and ACCEPTED native
+        payload to the expected CAID action type. Only the CAID verdict
+        EQUIVALENT_UNDER_PROFILE establishes MATCH.<a href="#section-7-2.4" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-7-3">NOT_EQUIVALENT, INDETERMINATE, an unknown mapping revision, a lossy
+      projection, a presenter-selected profile, or a mismatch between the
+      projected CAID and the expected CAID is not MATCH and MUST make that
+      component ineligible. CAID carries content identity, not trust or
+      authorization semantics.<a href="#section-7-3" class="pilcrow">¶</a></p>
+<p id="section-7-4">A native verifier evaluates the pinned trust inputs against the
+      action commitment the artifact itself carries and does not compare it
+      with the expected action. An ACCEPTED artifact bound to a different
+      action is ineligible because it is not MATCH, and its record says so; it
+      is not reported as not ACCEPTED.<a href="#section-7-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="expressions">
+<section id="section-8">
+      <h2 id="name-requirement-expressions">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-requirement-expressions" class="section-name selfRef">Requirement Expressions</a>
+      </h2>
+<p id="section-8-1">A requirement expression names the evidence roles a relying party
+      requires and combines them with AND and OR. This section defines how an
+      expression is tokenized, parsed, validated, and evaluated, so that
+      every conforming evaluator gives each valid expression the same
+      reading. The JavaScript, Python, and Go reference parsers of -07
+      already read every vector of the corpus in
+      <a href="#expr-vectors" class="auto internal xref">Section 8.7</a> this way. This section makes that
+      behavior normative and testable, and it refuses readings that the -07
+      text permitted.<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-2">The expression deliberately answers only which evidence roles are
+      present. It has no variables for action parameters, principals,
+      entitlements, business risk, or effect state. Those belong to native
+      artifact verification and acceptance, CAID mapping, or local
+      authorization.<a href="#section-8-2" class="pilcrow">¶</a></p>
+<div id="expr-grammar">
+<section id="section-8.1">
+        <h3 id="name-grammar">
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-grammar" class="section-name selfRef">Grammar</a>
+        </h3>
+<p id="section-8.1-1">The grammar uses ABNF and its core rules as defined by
+        <span>[<a href="#RFC5234" class="cite xref">RFC5234</a>]</span>, with the case-sensitive string syntax of
+        <span>[<a href="#RFC7405" class="cite xref">RFC7405</a>]</span>: <code>%s"AND"</code> matches only the three
+        uppercase characters A, N, and D.<a href="#section-8.1-1" class="pilcrow">¶</a></p>
+<div class="lang-abnf sourcecode" id="section-8.1-2">
+<pre>
+expression = ows term *( ows operator ows term ) ows
+term       = identifier / "(" expression ")"
+operator   = %s"AND" / %s"OR" / "&amp;&amp;" / "||"
+identifier = 1*( ALPHA / DIGIT / "." / ":" / "-" / "_" )
+ows        = *( SP / HTAB / CR / LF )
+</pre><a href="#section-8.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-8.1-3">An expression is a JSON string. SP, HTAB, CR, and LF are its only
+        whitespace characters. Any character that is not whitespace, an
+        identifier character, a parenthesis, or part of an operator makes the
+        expression invalid. This includes NO-BREAK SPACE (U+00A0), EM SPACE
+        (U+2003), LINE SEPARATOR (U+2028), BYTE ORDER MARK (U+FEFF), ZERO
+        WIDTH SPACE (U+200B), VERTICAL TAB (U+000B), FORM FEED (U+000C), and
+        every other character outside ASCII. None of them is whitespace, and
+        none is removed before parsing.<a href="#section-8.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="expr-tokens">
+<section id="section-8.2">
+        <h3 id="name-token-boundaries">
+<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-token-boundaries" class="section-name selfRef">Token Boundaries</a>
+        </h3>
+<p id="section-8.2-1">Because <code>ows</code> can be empty, the ABNF alone admits more than
+        one division of some inputs into tokens; it would allow
+        "<code>aORb</code>" to be read as "<code>a</code>", "<code>OR</code>", "<code>b</code>".
+        The following tokenization is normative and selects the only valid
+        reading. A tokenizer scans the expression from left to right:<a href="#section-8.2-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-8.2-2">
+          <li id="section-8.2-2.1">SP, HTAB, CR, and LF separate tokens and are otherwise
+          skipped.<a href="#section-8.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-8.2-2.2">"(" and ")" are each one token.<a href="#section-8.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-8.2-2.3">"&amp;&amp;" is the operator AND and "||" is the operator OR. A
+          single "&amp;" or "|" is invalid.<a href="#section-8.2-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-8.2-2.4">At an identifier character, the tokenizer MUST take the longest
+          run of identifier characters before classifying it, and MUST then
+          classify the complete run: a run that is exactly "<code>AND</code>" or
+          exactly "<code>OR</code>" is that operator, and every other run is an
+          identifier.<a href="#section-8.2-2.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-8.2-2.5">Any other character makes the expression invalid.<a href="#section-8.2-2.5" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-8.2-3">Thus "<code>aORb</code>", "<code>ORb</code>", "<code>AND.x</code>",
+        "<code>a.OR.b</code>", and "<code>p-OR-q</code>" are each one identifier, and
+        "<code>a OR b</code>" contains an operator. Identifiers are case-sensitive.
+        Lowercase "<code>and</code>" and "<code>or</code>", and mixed-case forms such as
+        "<code>And</code>" and "<code>oR</code>", are identifiers, not operators, and
+        "<code>And</code>" does not match a component type named
+        "<code>and</code>".<a href="#section-8.2-3" class="pilcrow">¶</a></p>
+<p id="section-8.2-4">AND and OR are reserved only as expression tokens. A native
+        component type may be named "<code>AND</code>" or "<code>OR</code>", and such a
+        name stays valid in native formats and wherever this document accepts
+        a component type outside an expression. An expression cannot name such
+        a type as an identifier; this revision defines no quoting
+        mechanism.<a href="#section-8.2-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="expr-evaluation">
+<section id="section-8.3">
+        <h3 id="name-grouping-validity-and-evalu">
+<a href="#section-8.3" class="section-number selfRef">8.3. </a><a href="#name-grouping-validity-and-evalu" class="section-name selfRef">Grouping, Validity, and Evaluation</a>
+        </h3>
+<p id="section-8.3-1">The parser applies the grammar to the token sequence. AND and OR
+        have equal binding strength and group strictly from left to right:
+        "<code>a OR b AND c</code>" is "<code>((a OR b) AND c)</code>". Parentheses are
+        the only precedence mechanism. The parser produces one tree in which
+        each leaf is an identifier and each interior node is AND or OR with a
+        left and a right operand. Implementations MUST use a bounded parser
+        and MUST NOT use a general-purpose evaluator.<a href="#section-8.3-1" class="pilcrow">¶</a></p>
+<p id="section-8.3-2">The value of the tree is computed over the satisfied type set of
+        <a href="#verify" class="auto internal xref">Section 9</a>: the component types that have at least one
+        eligible component. An identifier is true if and only if it equals a
+        member of that set by exact comparison of characters, with no case
+        folding and no Unicode normalization. An AND node is true when both
+        of its operands are true, and an OR node is true when either is.<a href="#section-8.3-2" class="pilcrow">¶</a></p>
+<p id="section-8.3-3">Validity is separate from truth. An evaluator MUST validate the
+        entire expression, including every operand and parenthesized branch,
+        and consume all input before reporting SATISFIED. Boolean
+        short-circuiting MUST NOT bypass syntax or configured resource-limit
+        validation. A syntactically valid unknown identifier evaluates to
+        false; malformed syntax or an exceeded limit makes the evaluation
+        UNSATISFIED. The resource limits here are the fixed limits of
+        <a href="#expr-limits" class="auto internal xref">Section 8.4</a>.<a href="#section-8.3-3" class="pilcrow">¶</a></p>
+<p id="section-8.3-4">A valid expression that is false and an invalid expression both
+        yield UNSATISFIED, but they are different outcomes, and reason codes
+        or diagnostics SHOULD distinguish them. Test vectors for this section
+        state syntax validity separately from the Boolean value
+        (<a href="#expr-vectors" class="auto internal xref">Section 8.7</a>); otherwise a parser that refused
+        every expression would pass every test whose expected result is
+        UNSATISFIED.<a href="#section-8.3-4" class="pilcrow">¶</a></p>
+<p id="section-8.3-5">A relying party's expression is configuration. An evaluator MAY
+        validate it when the requirement is configured, before any chain is
+        presented, and refuse an invalid requirement there. Such a refusal is
+        not an evaluation and produces no replay record.<a href="#section-8.3-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="expr-limits">
+<section id="section-8.4">
+        <h3 id="name-limits">
+<a href="#section-8.4" class="section-number selfRef">8.4. </a><a href="#name-limits" class="section-name selfRef">Limits</a>
+        </h3>
+<p id="section-8.4-1">The following limits are fixed by this revision and are part of
+        the evaluator revision <code>EP-AEC-EVALUATOR-08-v1</code>
+        (<a href="#replay" class="auto internal xref">Section 10</a>):<a href="#section-8.4-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-8.4-2">
+          <dt id="section-8.4-2.1">Length</dt>
+          <dd style="margin-left: 1.5em" id="section-8.4-2.2">At most 4096 octets in the UTF-8 encoding of the expression as
+          stored, whitespace included.<a href="#section-8.4-2.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.4-2.3">Tokens</dt>
+          <dd style="margin-left: 1.5em" id="section-8.4-2.4">At most 256 tokens. Identifiers, operators (including
+          "&amp;&amp;" and "||"), and parentheses each count as one token;
+          whitespace is not a token. The limit counts tokens, not names: 128
+          identifier occurrences joined by 127 operators make 255 tokens, and
+          129 occurrences make 257, which exceeds the limit. Distinct
+          identifiers, identifier occurrences, component count, and token
+          count are different quantities.<a href="#section-8.4-2.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.4-2.5">Nesting</dt>
+          <dd style="margin-left: 1.5em" id="section-8.4-2.6">At most 32 levels of parentheses. The expression outside all
+          parentheses is at level 0, and each "(" opens the next level.<a href="#section-8.4-2.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-8.4-3">An expression that exceeds a limit is invalid. When an expression
+        is invalid for more than one reason, the reported refusal class
+        follows the order in which the input is examined: the length limit;
+        then tokenization from left to right, where an invalid character is a
+        syntax refusal and a 257th token is a limit refusal; then parsing
+        from left to right, where a 33rd nesting level is a limit refusal and
+        every other failure is a syntax refusal. The refusal class is a
+        diagnostic. Every invalid expression yields UNSATISFIED.<a href="#section-8.4-3" class="pilcrow">¶</a></p>
+<p id="section-8.4-4">An evaluator MUST NOT raise these limits. The other resource limits
+        that <a href="#acceptance-inputs" class="auto internal xref">Section 5</a> lists, such as JSON nesting,
+        component count, and verifier execution, are relying-party
+        configuration. A configured limit, including any tighter expression
+        limit, can change which inputs are accepted, so it MUST be part of the
+        identified evaluator profile. A result under a tighter expression
+        limit is not a result of the fixed profile defined here.<a href="#section-8.4-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="expr-examples">
+<section id="section-8.5">
+        <h3 id="name-examples">
+<a href="#section-8.5" class="section-number selfRef">8.5. </a><a href="#name-examples" class="section-name selfRef">Examples</a>
+        </h3>
+<p id="section-8.5-1">In <a href="#expr-example-table" class="auto internal xref">Table 1</a>, "Eligible" is the
+        satisfied type set, "Valid" is syntax validity, "n/a" marks a value
+        or canonical parse that an invalid expression does not have, and the canonical parse is defined
+        in <a href="#parse-identity" class="auto internal xref">Section 8.6</a>. Each row is also a vector of the
+        corpus in <a href="#expr-vectors" class="auto internal xref">Section 8.7</a>.<a href="#section-8.5-1" class="pilcrow">¶</a></p>
+<span id="name-requirement-expression-exam"></span><div id="expr-example-table">
+<table class="center" id="table-1">
+          <caption>
+<a href="#table-1" class="selfRef">Table 1</a>:
+<a href="#name-requirement-expression-exam" class="selfRef">Requirement Expression Examples</a>
+          </caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Expression</th>
+              <th class="text-left" rowspan="1" colspan="1">Eligible</th>
+              <th class="text-left" rowspan="1" colspan="1">Valid</th>
+              <th class="text-left" rowspan="1" colspan="1">Value</th>
+              <th class="text-left" rowspan="1" colspan="1">Canonical parse</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">aORb</td>
+              <td class="text-left" rowspan="1" colspan="1">a</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">false</td>
+              <td class="text-left" rowspan="1" colspan="1">aORb</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">aORb</td>
+              <td class="text-left" rowspan="1" colspan="1">aORb</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">true</td>
+              <td class="text-left" rowspan="1" colspan="1">aORb</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">a OR b</td>
+              <td class="text-left" rowspan="1" colspan="1">a</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">true</td>
+              <td class="text-left" rowspan="1" colspan="1">(a OR b)</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">a OR(b)</td>
+              <td class="text-left" rowspan="1" colspan="1">a</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">true</td>
+              <td class="text-left" rowspan="1" colspan="1">(a OR b)</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">(a)OR(b)</td>
+              <td class="text-left" rowspan="1" colspan="1">a</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">true</td>
+              <td class="text-left" rowspan="1" colspan="1">(a OR b)</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">aOR(b)</td>
+              <td class="text-left" rowspan="1" colspan="1">aOR</td>
+              <td class="text-left" rowspan="1" colspan="1">no</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">(a)ORb</td>
+              <td class="text-left" rowspan="1" colspan="1">a, ORb</td>
+              <td class="text-left" rowspan="1" colspan="1">no</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">a ANDb</td>
+              <td class="text-left" rowspan="1" colspan="1">a, ANDb</td>
+              <td class="text-left" rowspan="1" colspan="1">no</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">and</td>
+              <td class="text-left" rowspan="1" colspan="1">and</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">true</td>
+              <td class="text-left" rowspan="1" colspan="1">and</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">And</td>
+              <td class="text-left" rowspan="1" colspan="1">and</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">false</td>
+              <td class="text-left" rowspan="1" colspan="1">And</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">AND</td>
+              <td class="text-left" rowspan="1" colspan="1">AND</td>
+              <td class="text-left" rowspan="1" colspan="1">no</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">a or b</td>
+              <td class="text-left" rowspan="1" colspan="1">a, b</td>
+              <td class="text-left" rowspan="1" colspan="1">no</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">a OR b AND c</td>
+              <td class="text-left" rowspan="1" colspan="1">a</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">false</td>
+              <td class="text-left" rowspan="1" colspan="1">((a OR b) AND c)</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">a OR (b AND c)</td>
+              <td class="text-left" rowspan="1" colspan="1">a</td>
+              <td class="text-left" rowspan="1" colspan="1">yes</td>
+              <td class="text-left" rowspan="1" colspan="1">true</td>
+              <td class="text-left" rowspan="1" colspan="1">(a OR (b AND c))</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">a OR (b AND)</td>
+              <td class="text-left" rowspan="1" colspan="1">a</td>
+              <td class="text-left" rowspan="1" colspan="1">no</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">missing AND (b OR)</td>
+              <td class="text-left" rowspan="1" colspan="1">none</td>
+              <td class="text-left" rowspan="1" colspan="1">no</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">a OR b trailing</td>
+              <td class="text-left" rowspan="1" colspan="1">a</td>
+              <td class="text-left" rowspan="1" colspan="1">no</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+              <td class="text-left" rowspan="1" colspan="1">n/a</td>
+            </tr>
+          </tbody>
+        </table>
+</div>
+<p id="section-8.5-3">"<code>aORb</code>" is one identifier, so it is false when only
+        "<code>a</code>" is eligible and true when a component type named
+        "<code>aORb</code>" is. In "<code>aOR(b)</code>" the run "<code>aOR</code>" is an
+        identifier followed by a group with no operator between them, so the
+        expression is invalid; "<code>(a)ORb</code>" and "<code>a ANDb</code>" fail the
+        same way. "<code>a or b</code>" is invalid because lowercase "<code>or</code>" is
+        an identifier, which leaves three adjacent identifiers. Bare
+        "<code>AND</code>" is an operator with no operands, even when a component
+        type named "<code>AND</code>" is eligible.<a href="#section-8.5-3" class="pilcrow">¶</a></p>
+<p id="section-8.5-4">With only "<code>a</code>" eligible, "<code>a OR b AND c</code>" is false: it
+        groups as "<code>((a OR b) AND c)</code>", and "<code>c</code>" is not eligible.
+        "<code>a OR (b AND c)</code>" is true. In "<code>a OR (b AND)</code>" and
+        "<code>missing AND (b OR)</code>", the left operand alone would decide the
+        result if the right branch were skipped, but the right branch is
+        malformed, so both expressions are invalid.<a href="#section-8.5-4" class="pilcrow">¶</a></p>
+<p id="section-8.5-5">At the limits: "<code>r0 OR r1 OR ... OR r127</code>", with 128
+        identifiers and 255 tokens, is valid. The same expression with a
+        trailing "<code>OR</code>" has 256 tokens and is a syntax refusal.
+        "<code>r0 OR r1 OR ... OR r128</code>" has 257 tokens and is a limit
+        refusal, and so is a 257-token expression that starts with a
+        prefix that would decide the result if the rest were skipped:
+        "<code>a OR</code>" with "<code>a</code>" eligible, or "<code>missing AND</code>"
+        with no eligible types. Thirty-two nested pairs of parentheses around
+        "<code>a</code>" are valid, and thirty-three are a limit refusal, also
+        after either prefix.<a href="#section-8.5-5" class="pilcrow">¶</a></p>
+<p id="section-8.5-6">The parse identity of "<code>a OR b AND c</code>" is computed over its
+        canonical parse "<code>((a OR b) AND c)</code>". It is shown here on two
+        lines; the value is one string with no line break:<a href="#section-8.5-6" class="pilcrow">¶</a></p>
+<div class="lang-test-vectors sourcecode" id="section-8.5-7">
+<pre>
+sha256:9c533f1ef06e4240182c300bb12bcae4
+       95881c461a54898b6d1f588f83120c1e
+</pre><a href="#section-8.5-7" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="parse-identity">
+<section id="section-8.6">
+        <h3 id="name-canonical-parse-and-parse-i">
+<a href="#section-8.6" class="section-number selfRef">8.6. </a><a href="#name-canonical-parse-and-parse-i" class="section-name selfRef">Canonical Parse and Parse Identity</a>
+        </h3>
+<p id="section-8.6-1">The canonical parse of a valid expression is an ASCII rendering of
+        its tree. An identifier renders exactly as written, with its case
+        preserved. An AND or OR node renders as "(", its left operand, one
+        SP, AND or OR, one SP, its right operand, and ")". The aliases
+        "&amp;&amp;" and "||" render as AND and OR. Source parentheses that do
+        not change grouping do not appear, but grouping and operand order do:
+        operands are never commuted, reassociated, deduplicated, or
+        simplified. An invalid expression has no canonical parse.<a href="#section-8.6-1" class="pilcrow">¶</a></p>
+<p id="section-8.6-2">The parse identity is the string "sha256:" followed by the
+        lowercase hexadecimal SHA-256 digest of the concatenation of three
+        octet strings: the ASCII domain separator below, one zero octet, and
+        the ASCII canonical parse.<a href="#section-8.6-2" class="pilcrow">¶</a></p>
+<div class="lang-text sourcecode" id="section-8.6-3">
+<pre>
+parse-identity = "sha256:" lowercase-hex( SHA-256(
+                   "EP-AEC-EXPRESSION-PARSE-v1" || 0x00 ||
+                   canonical-parse ) )
+</pre><a href="#section-8.6-3" class="pilcrow">¶</a>
+</div>
+<p id="section-8.6-4">The domain separator is versioned; a different canonical form
+        would use a different separator.<a href="#section-8.6-4" class="pilcrow">¶</a></p>
+<p id="section-8.6-5">An evaluator MUST evaluate the same tree from which it computes the
+        canonical parse and parse identity. It MUST NOT compute them from one
+        parse and then evaluate the expression text by a separate procedure
+        with its own grouping rules.<a href="#section-8.6-5" class="pilcrow">¶</a></p>
+<p id="section-8.6-6">The canonical parse and parse identity are interpretation
+        diagnostics. They let two implementations, or an implementation and
+        the vector corpus, compare how each grouped an expression. A matching
+        parse identity does not guarantee matching verdicts. An evaluator can
+        compute the correct tree and still evaluate an operator incorrectly,
+        match a role without regard to case, or credit a component that is not
+        eligible, such as one whose native verification FAILED. Agreement on
+        parse identities therefore does not show that two evaluators agree,
+        and this document does not claim that every disagreement between
+        evaluators is detected.<a href="#section-8.6-6" class="pilcrow">¶</a></p>
+<p id="section-8.6-7">The parse identity is not a member of EP-AEC-REQUIREMENT-v1 or
+        EP-AEC-REPLAY-v1, and an evaluator MUST NOT add it to either object;
+        this revision leaves both member sets unchanged. It does not replace
+        the requirement profile digest (<a href="#rp-requirement" class="auto internal xref">Section 4</a>),
+        which commits to the expression exactly as stored. A parse identity
+        supplied by anyone other than the relying party carries no authority:
+        a presenter that supplies a weaker expression together with that
+        expression's parse identity has not changed the relying party's
+        requirement.<a href="#section-8.6-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="expr-vectors">
+<section id="section-8.7">
+        <h3 id="name-test-vectors">
+<a href="#section-8.7" class="section-number selfRef">8.7. </a><a href="#name-test-vectors" class="section-name selfRef">Test Vectors</a>
+        </h3>
+<p id="section-8.7-1">The frozen corpus EP-AEC-EXPRESSION-v1
+        <span>[<a href="#AEC-EXPRESSION-VECTORS" class="cite xref">AEC-EXPRESSION-VECTORS</a>]</span> is retrieved from a URL that
+        names a fixed commit and is checked against this SHA-256 digest of
+        its bytes:<a href="#section-8.7-1" class="pilcrow">¶</a></p>
+<div class="lang-test-vectors sourcecode" id="section-8.7-2">
+<pre>
+927e3663299bd6c11836d4ad22a6dd398b85d16478100921bf68cf03ed459d4b
+</pre><a href="#section-8.7-2" class="pilcrow">¶</a>
+</div>
+<p id="section-8.7-3">Each of its 104 vectors, 47 valid and 57 invalid, gives an
+        expression and the satisfied type set as inputs, and asserts
+        separately: syntax validity; for an invalid expression, the refusal
+        class (syntax or limit); for a valid expression, the Boolean value;
+        the SATISFIED or UNSATISFIED result; and, for a valid expression, the
+        canonical parse and the parse identity. The vectors cover every row of
+        <a href="#expr-example-table" class="auto internal xref">Table 1</a>; the four whitespace characters
+        and characters that are not whitespace, including those listed in
+        <a href="#expr-grammar" class="auto internal xref">Section 8.1</a>; operator-like text inside identifiers
+        with dots, colons, hyphens, and underscores; the operator aliases;
+        grouping; and each limit at, just below, and just beyond its
+        threshold, including overflowing branches behind a true OR and a
+        false AND.<a href="#section-8.7-3" class="pilcrow">¶</a></p>
+<p id="section-8.7-4">The corpus is a test input. An evaluator MUST NOT need it, or fetch
+        it, at run time. Producing every assertion in it is necessary for an
+        implementation of this section; it is not proof of correctness for
+        inputs outside the corpus.<a href="#section-8.7-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="verify">
+<section id="section-9">
+      <h2 id="name-verification-algorithm">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-verification-algorithm" class="section-name selfRef">Verification Algorithm</a>
+      </h2>
+<p id="section-9-1">Given chain C and the acceptance inputs in
+      <a href="#acceptance-inputs" class="auto internal xref">Section 5</a>, a verifier MUST proceed
+      fail-closed:<a href="#section-9-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-9-2">
+        <li id="section-9-2.1">Strictly parse C as I-JSON <span>[<a href="#RFC7493" class="cite xref">RFC7493</a>]</span> and enforce all
+        configured resource limits. Reject duplicate member names,
+        non-integer numbers, malformed Unicode, cycles in an in-memory object,
+        and unsupported versions.<a href="#section-9-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-9-2.2">Compute the canonical action digest over C.action. Compare it with
+        the executor-owned expected action digest. If C.action_digest is
+        present, compare it too. Any mismatch yields UNSATISFIED.<a href="#section-9-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-9-2.3">Validate and digest the relying-party requirement. If the only
+        available requirement came from C, yield UNSATISFIED.<a href="#section-9-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-9-2.4">Validate the entire requirement expression under
+        <a href="#expressions" class="auto internal xref">Section 8</a> and produce its one tree: tokenize all
+        input, parse every operand and parenthesized branch, consume all
+        tokens, and enforce the limits of <a href="#expr-limits" class="auto internal xref">Section 8.4</a>. An
+        invalid expression yields UNSATISFIED, and no later step can make the
+        result SATISFIED. This validation does not depend on which components
+        are eligible.<a href="#section-9-2.4" class="pilcrow">¶</a>
+</li>
+        <li id="section-9-2.5">
+          <p id="section-9-2.5.1">For each component in array order:<a href="#section-9-2.5.1" class="pilcrow">¶</a></p>
+<ol start="1" type="a" class="normal type-a" id="section-9-2.5.2">
+            <li id="section-9-2.5.2.1">Compute its evidence digest. If a presented evidence digest
+            exists and differs, mark the component ineligible.<a href="#section-9-2.5.2.1" class="pilcrow">¶</a>
+</li>
+            <li id="section-9-2.5.2.2">Invoke the selected native verifier or consume a trusted
+            internal verifier result as constrained by
+            <a href="#native-contract" class="auto internal xref">Section 6</a>, and record the VERIFIED and
+            ACCEPTED results separately. Exceptions, unknown verifier types, a
+            component whose VERIFIED result could not be evaluated, a
+            component that is not VERIFIED, and a VERIFIED component that is
+            not ACCEPTED are ineligible.<a href="#section-9-2.5.2.2" class="pilcrow">¶</a>
+</li>
+            <li id="section-9-2.5.2.3">Only after VERIFIED and ACCEPTED, establish material-action
+            MATCH under <a href="#matching" class="auto internal xref">Section 7</a>. A different or indeterminate
+            action makes the component ineligible.<a href="#section-9-2.5.2.3" class="pilcrow">¶</a>
+</li>
+            <li id="section-9-2.5.2.4">If the requirement sets a freshness bound for the component
+            type, require protected issuance time, verification time within
+            the native validity window, and age not exceeding the bound.
+            Future-issued, expired, missing, or malformed times make the
+            component ineligible.<a href="#section-9-2.5.2.4" class="pilcrow">¶</a>
+</li>
+            <li id="section-9-2.5.2.5">If status is required for the component type, require an
+            authenticated, sufficiently fresh status snapshot under the
+            selected native profile. Revoked, unknown, stale, or
+            unauthenticated status makes the component ineligible.<a href="#section-9-2.5.2.5" class="pilcrow">¶</a>
+</li>
+            <li id="section-9-2.5.2.6">Record a normalized fact including component index, type,
+            evidence digest, native verifier profile digest, trust snapshot
+            digest, the VERIFIED result, the ACCEPTED result, mapping verdict,
+            freshness and status results, and only the byte-backed bindings
+            returned by the native verifier.<a href="#section-9-2.5.2.6" class="pilcrow">¶</a>
+</li>
+          </ol>
+</li>
+        <li id="section-9-2.6">Construct the satisfied type set from eligible components only and
+        evaluate the tree produced in step 4 over it. Evaluate every
+        <code>role_constraints</code> entry over eligible normalized facts only. A
+        failed or indeterminate role constraint yields UNSATISFIED.<a href="#section-9-2.6" class="pilcrow">¶</a>
+</li>
+        <li id="section-9-2.7">For every required binding, require an eligible source and target
+        pair with matching types and a source native fact whose named relation
+        binds the target's exact evidence digest. A label, component order,
+        equal action digest, or presenter's relation claim does not satisfy a
+        required binding.<a href="#section-9-2.7" class="pilcrow">¶</a>
+</li>
+        <li id="section-9-2.8">Return SATISFIED only if the expression is true, every required
+        binding exists, and every mandatory check in this algorithm succeeded.
+        Otherwise return UNSATISFIED.<a href="#section-9-2.8" class="pilcrow">¶</a>
+</li>
+        <li id="section-9-2.9">Produce the replay record in <a href="#replay" class="auto internal xref">Section 10</a>. Any
+        unexpected error at any step yields UNSATISFIED and a bounded reason;
+        it MUST NOT yield a partial success.<a href="#section-9-2.9" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-9-3">The result MUST carry <code>satisfied</code> as a Boolean and SHOULD carry
+      bounded per-component reason codes. Each normalized fact MUST carry the
+      VERIFIED and ACCEPTED results as separate fields, and a consumer MUST
+      NOT derive one from the other. Reason codes SHOULD distinguish a
+      verification failure, a verification that could not be evaluated, an
+      acceptance refusal, and a failed material-action match from one
+      another. An implementation may
+      retain a legacy <code>allow</code> alias, but that alias MUST equal
+      <code>satisfied</code> and MUST NOT be interpreted as local AUTHORIZED.<a href="#section-9-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="replay">
+<section id="section-10">
+      <h2 id="name-evidence-evaluation-replay">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-evidence-evaluation-replay" class="section-name selfRef">Evidence Evaluation Replay</a>
+      </h2>
+<p id="section-10-1">An evaluator MUST be able to emit an EP-AEC-REPLAY-v1 record. The
+      replay record is an evaluation output, not a presenter input:<a href="#section-10-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-10-2">
+<pre>
+{
+  "@version": "EP-AEC-REPLAY-v1",
+  "algorithm_revision": "&lt;evaluator algorithm revision&gt;",
+  "aec_digest": "sha256:&lt;hex&gt;",
+  "expected_action_digest": "sha256:&lt;hex&gt;",
+  "expected_caid": "caid:1:&lt;action-type&gt;:&lt;suite&gt;:&lt;digest-b64url&gt;",
+  "requirement_profile_digest": "sha256:&lt;hex&gt;",
+  "verification_time": "2026-07-27T17:00:00Z",
+  "facts": [
+    {
+      "component_index": 0,
+      "type": "ep-quorum",
+      "evidence_digest": "sha256:&lt;hex&gt;",
+      "native_verification": "VERIFIED",
+      "acceptance": "ACCEPTED",
+      "mapping_verdict": "MATCH",
+      "...": "further normalized fact members"
+    }
+  ],
+  "satisfied": true,
+  "reasons": []
+}
+</pre><a href="#section-10-2" class="pilcrow">¶</a>
+</div>
+<p id="section-10-3">The <code>algorithm_revision</code> identifies the evaluation algorithm
+      and fact members the evaluator implements. An evaluator implementing
+      the algorithm and fact members of this revision of this document sets
+      it to the string <code>EP-AEC-EVALUATOR-08-v1</code>; a later revision that
+      changes either assigns a new value. This revision changes the
+      requirement-expression algorithm (<a href="#expressions" class="auto internal xref">Section 8</a>) and
+      keeps the fact members of -07, whose evaluators set
+      <code>EP-AEC-EVALUATOR-07-v1</code>. Records with different
+      algorithm revisions are not compared digest for digest; a record from an
+      evaluator implementing -06 of this document carries one combined
+      validity member per fact instead of <code>native_verification</code> and
+      <code>acceptance</code>. The <code>aec_digest</code> is the evidence digest of
+      the complete EP-AEC-v1 object. Facts remain in component array order. Object members
+      inside each fact use JCS ordering. The replay digest is the evidence
+      digest of the complete EP-AEC-REPLAY-v1 record.<a href="#section-10-3" class="pilcrow">¶</a></p>
+<p id="section-10-4">In each fact, <code>native_verification</code> is <code>VERIFIED</code>,
+      <code>FAILED</code>, or <code>NOT_EVALUATED</code>, and <code>acceptance</code> is
+      <code>ACCEPTED</code>, <code>REJECTED</code>, or <code>NOT_EVALUATED</code>.
+      <code>acceptance</code> is <code>NOT_EVALUATED</code> whenever
+      <code>native_verification</code> is not <code>VERIFIED</code>.
+      <code>native_verification</code> is <code>NOT_EVALUATED</code> when the native
+      verifier was not invoked, returned no usable result, or could not
+      evaluate VERIFIED because no verification key could be resolved; it is
+      <code>FAILED</code> only when the checks ran and did not pass.<a href="#section-10-4" class="pilcrow">¶</a></p>
+<p id="section-10-5">The algorithm revision is part of the record, so a new revision
+      changes the replay digest even for an expression whose Boolean meaning
+      is unchanged. Records move between revisions by re-evaluation, never
+      by relabeling:<a href="#section-10-5" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-10-6.1">A stored record MUST NOT be modified. Its
+        <code>algorithm_revision</code> MUST NOT be replaced, and its digest MUST
+        NOT be recomputed under another revision.<a href="#section-10-6.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-10-6.2">A replay that is compared with a stored record MUST re-verify the
+        original evidence under the identified pins with an evaluator of the
+        record's own revision, and MUST compare the complete record by its
+        replay digest.<a href="#section-10-6.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-10-6.3">Re-evaluating the evidence under a different revision produces a
+        new, separately identified record. It does not claim digest equality
+        with the stored record.<a href="#section-10-6.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-10-6.4">An evaluator that does not implement a record's revision MUST
+        report the comparison as unsupported or refuse it. It MUST NOT compare
+        the record as if it had been made under the evaluator's own
+        revision.<a href="#section-10-6.4" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-10-7">Given the same AEC object, expected action inputs, requirement
+      profile, explicit verification time, normalized native facts, and
+      algorithm revision, implementations MUST compute the same replay digest
+      and SATISFIED result. ACCEPTED depends on trust snapshots, and status
+      checks depend on status services; therefore the replay record MUST bind
+      the selected verifier-profile, trust-snapshot, and status-snapshot
+      digests needed to identify those inputs. A party that re-runs the
+      evaluation with the same verification keys under different trust inputs
+      can reproduce the VERIFIED results but not necessarily the ACCEPTED
+      results; the trust-snapshot digests identify whose acceptance the record
+      reports. A replay record
+      without the underlying evidence and identified trust snapshots can
+      identify a decision but cannot independently prove that every recorded
+      native fact was true.<a href="#section-10-7" class="pilcrow">¶</a></p>
+<p id="section-10-8">The replay digest is not a signature, authorization, transparency
+      receipt, or current-status proof. Another format MAY sign or log it. This
+      document intentionally defines no signed reliance-result envelope and no
+      legal meaning for a SATISFIED result.<a href="#section-10-8" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="human-leg">
+<section id="section-11">
+      <h2 id="name-human-authorization-compone">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-human-authorization-compone" class="section-name selfRef">Human-Authorization Components</a>
+      </h2>
+<p id="section-11-1">AEC does not infer that a generic operator signature, credential,
+      policy decision, or attested workload represents a named-human approval
+      ceremony. A relying party that needs an EMILIA human authorization or
+      quorum requires <code>ep-authorization-bundle</code>, <code>ep-receipt</code>, or
+      <code>ep-quorum</code> explicitly, according to the native artifact's role.<a href="#section-11-1" class="pilcrow">¶</a></p>
+<p id="section-11-2">The <code>ep-authorization-bundle</code> component carries the
+      pre-execution Authorization Bundle of <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>,
+      Section 6. Its native verifier MUST report VERIFIED only when the
+      bundle's closed structure, action and context commitments, and
+      completed signoff signatures under the keys its signoffs reference
+      verify, and MUST report ACCEPTED only when the relying-party-selected
+      policy, approver selection, approver keys, their directory status and
+      key classes, and required status and presentation evidence are accepted
+      under that profile. Whether the bundle's action is the exact expected action is
+      established by MATCH under <a href="#matching" class="auto internal xref">Section 7</a>. Distinct subjects
+      MUST come only from verified completed signoffs, not from an unsigned
+      label or the wider selected approver roster. A SATISFIED bundle is
+      approval evidence, not proof of consumption or execution.<a href="#section-11-2" class="pilcrow">¶</a></p>
+<p id="section-11-3">The <code>ep-receipt</code> built-in MUST report VERIFIED only when the
+      Trust Receipt's signoff signatures verify under the keys their approver
+      key identifiers resolve to and its log checkpoint signature verifies
+      under the relying party's pinned log key, which the offline
+      verification algorithm of <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 7.3,
+      takes as an input. The checkpoint check therefore combines a trust
+      input with cryptography: a checkpoint that does not verify under the
+      pinned log key is not VERIFIED (<a href="#native-contract" class="auto internal xref">Section 6</a>),
+      whether it was forged or signed by another log, and without a pinned
+      log key VERIFIED cannot be evaluated. The built-in MUST report ACCEPTED
+      only for a VERIFIED Trust Receipt that meets a relying-party profile
+      pinning the approver directory, accepted key class, WebAuthn RP ID and
+      signed-origin allowlist where required, policy hash, maximum evidence
+      age, verification time, and fresh registry snapshot as specified by
+      <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>. A bare
+      operator envelope is not an <code>ep-receipt</code> human leg. A terminal
+      Trust Receipt and a pre-execution Authorization Bundle MUST NOT be
+      substituted for one another. Verifying a consumed receipt does not
+      restore authority or permit another execution.<a href="#section-11-3" class="pilcrow">¶</a></p>
+<p id="section-11-4">The <code>ep-quorum</code> built-in MUST report VERIFIED only when the
+      quorum structure is intact, every member context commits to the quorum
+      <code>action_hash</code>, and every member signoff verifies under the public
+      key that member carries. The built-in MUST report ACCEPTED only when the
+      presented quorum policy equals the relying-party-pinned policy and the
+      selected approver, role, distinctness, origin, ordering, and freshness
+      rules of <span>[<a href="#EP-QUORUM" class="cite xref">EP-QUORUM</a>]</span> hold. A safety-critical profile
+      requiring human separation MUST require at least two distinct humans. A
+      quorum that is VERIFIED under presenter-selected keys or a weaker
+      presenter-selected policy is not ACCEPTED and is ineligible.<a href="#section-11-4" class="pilcrow">¶</a></p>
+<p id="section-11-5">Credential validity and human operation remain distinct. A valid
+      credential identifies a key holder under its native profile; it does not
+      establish that a human operated an agent for this action, reviewed the
+      material fields, or held legal authority.<a href="#section-11-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="bounded-capability-leg">
+<section id="section-12">
+      <h2 id="name-bounded-capability-operatio">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-bounded-capability-operatio" class="section-name selfRef">Bounded-Capability Operation Components</a>
+      </h2>
+<p id="section-12-1">A static bounded-capability receipt authorizes capability issuance
+      and MUST NOT be treated as bound to every later exercise merely because
+      the proposed action falls within its scope.<a href="#section-12-1" class="pilcrow">¶</a></p>
+<p id="section-12-2">A <code>bounded-capability-operation</code> component is eligible only
+      when its operation record is VERIFIED and ACCEPTED and binds the exact
+      action, the capability that record references and that capability's
+      issuance authorization are each VERIFIED, and ACCEPTED under the
+      relying party's pins for its own role, and the native verifier's scope
+      result places the operation within that capability. The component is
+      not VERIFIED unless the operation record and both referenced artifacts
+      are VERIFIED, and not ACCEPTED unless all three are ACCEPTED and the
+      native verifier's scope result places the operation within that
+      capability. An operation outside the capability's scope is therefore
+      not ACCEPTED even when all three artifacts are ACCEPTED. A native
+      procedure that checks a referenced artifact's trust inputs and
+      cryptography together and cannot attribute a failure falls under the
+      rule of <a href="#native-contract" class="auto internal xref">Section 6</a>. AEC does not query or
+      reserve current budget. A capability component MUST NOT satisfy
+      <code>ep-receipt</code>, <code>ep-quorum</code>, or another human role.<a href="#section-12-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="aeb-lifecycle">
+<section id="section-13">
+      <h2 id="name-position-in-the-effect-boun">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-position-in-the-effect-boun" class="section-name selfRef">Position in the Effect-Boundary Lifecycle</a>
+      </h2>
+<p id="section-13-1">AEC occupies one deliberately narrow transition in the effect-boundary
+      lifecycle described by <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span>:<a href="#section-13-1" class="pilcrow">¶</a></p>
+<div class="lang-text sourcecode" id="section-13-2">
+<pre>
+native VERIFIED
+  -&gt; relying-party ACCEPTED
+  -&gt; material-action MATCH
+  -&gt; AEC SATISFIED
+  -&gt; local AUTHORIZED
+  -&gt; atomic CONSUMED or RESERVED
+  -&gt; INVOKED
+  -&gt; EXECUTED, FAILED, or INDETERMINATE
+</pre><a href="#section-13-2" class="pilcrow">¶</a>
+</div>
+<p id="section-13-3">This document splits the VERIFIED step of that lifecycle into two
+      results. An artifact that <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span> calls VERIFIED, one
+      that passed its native verifier under relying-party-selected trust
+      inputs, is VERIFIED and ACCEPTED here. FAILED and INDETERMINATE in the
+      last line are execution outcomes of <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span>; they are
+      distinct from the <code>native_verification</code> value FAILED
+      (<a href="#replay" class="auto internal xref">Section 10</a>) and the CAID verdict INDETERMINATE
+      (<a href="#matching" class="auto internal xref">Section 7</a>).<a href="#section-13-3" class="pilcrow">¶</a></p>
+<p id="section-13-4">AEC can orchestrate native verification, acceptance, and mapping
+      itself or consume trusted internal results from the same protected
+      boundary. In both arrangements, VERIFIED precedes ACCEPTED, ACCEPTED
+      precedes MATCH, and all three precede SATISFIED. AEC MUST NOT collapse
+      ACCEPTED into VERIFIED or SATISFIED into AUTHORIZED, consume an
+      authorization, invoke an effect, classify an outcome, or reconcile an
+      indeterminate effect.<a href="#section-13-4" class="pilcrow">¶</a></p>
+<p id="section-13-5">One-time consumption is stateful and remains at the effect boundary.
+      An offline SATISFIED result cannot prove that another executor has not
+      already acted. A consequential executor uses shared atomic state keyed
+      by an executor-derived action instance and preserves an uncertain
+      operation instead of blindly replaying it.<a href="#section-13-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security">
+<section id="section-14">
+      <h2 id="name-security-considerations">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-14-1"><strong>Presenter-selected sufficiency.</strong> A presenter can
+      construct a weak requirement that its own evidence satisfies. The
+      EP-AEC-REQUIREMENT-v1 object MUST come from relying-party configuration.
+      C.requirement is descriptive only.<a href="#section-14-1" class="pilcrow">¶</a></p>
+<p id="section-14-2"><strong>Presenter-selected action.</strong> Agreement among components
+      proves only internal agreement. The expected action digest and CAID must
+      be computed or selected by the protected boundary from the action it is
+      actually preparing to perform.<a href="#section-14-2" class="pilcrow">¶</a></p>
+<p id="section-14-3"><strong>Cross-binding.</strong> An attacker can splice individually
+      VERIFIED and ACCEPTED artifacts for different actions. Native verification and
+      acceptance before mapping and exact MATCH for each eligible component
+      are required. A
+      label, shared principal, shared session, or similar-looking parameter is
+      not a match.<a href="#section-14-3" class="pilcrow">¶</a></p>
+<p id="section-14-4"><strong>Unbacked relations.</strong> A presenter can claim that one
+      artifact permits, delegates to, records, or supersedes another. AEC
+      credits a relation only when the trusted native verifier extracts the
+      target evidence digest and relation from integrity-protected native
+      bytes. An unbacked relation never satisfies a required binding.<a href="#section-14-4" class="pilcrow">¶</a></p>
+<p id="section-14-5"><strong>Verifier and key-role confusion.</strong> Native verifiers,
+      revisions, trust anchors, mapping profiles, and human directories are
+      relying-party pins. They MUST NOT be accepted in the same transaction as
+      presenter-controlled evidence. A key trusted for one component role
+      does not automatically satisfy another role. An artifact signed by a key
+      that is not pinned for its role can be VERIFIED; it is never ACCEPTED for
+      that role.<a href="#section-14-5" class="pilcrow">¶</a></p>
+<p id="section-14-6"><strong>Verification and acceptance.</strong> If trust decisions are
+      folded into VERIFIED, a forged or malformed artifact and an intact
+      artifact from a signer the relying party does not trust produce the same
+      result, and a replay record states more than the relying party's pins
+      support. Keeping the results separate lets a later reader who holds the
+      evidence and the same verification keys re-derive VERIFIED without
+      adopting the original relying party's trust decisions, and keeps
+      ACCEPTED attributable to identified trust snapshots. Neither result
+      alone makes a component eligible. The separation has limits. An
+      unresolvable key reference is recorded as NOT_EVALUATED, not FAILED.
+      Where a format does not identify its verification key at all, or a
+      native procedure cannot attribute a failure, FAILED does not distinguish
+      a forgery from an intact artifact signed under a key the relying party
+      does not hold. An artifact bound to a different action is a failed
+      MATCH, not a refused acceptance.<a href="#section-14-6" class="pilcrow">¶</a></p>
+<p id="section-14-7"><strong>Freshness and status.</strong> Message freshness, artifact
+      age, credential validity, credential revocation, authority revocation,
+      and policy revision are separate checks. A current credential does not
+      make old per-action evidence fresh. A replay record captures the checked
+      instant and snapshots; it does not establish current status later.<a href="#section-14-7" class="pilcrow">¶</a></p>
+<p id="section-14-8"><strong>Replay overclaiming.</strong> Deterministic replay shows that
+      the same normalized inputs produce the same evidence result. It is not a
+      refinement proof, a guarantee that a native verifier was correctly
+      implemented, or proof that the recorded external status snapshot was
+      honest.<a href="#section-14-8" class="pilcrow">¶</a></p>
+<p id="section-14-9"><strong>Parser differentials.</strong> Two evaluators that read one
+      requirement expression differently can return different results for
+      the same evidence. A party that can choose component type names, or
+      influence how a relying party writes its expression, can try to use
+      such a difference, for example with a type name that one parser keeps
+      whole and another splits into an operator and operands, or with a
+      character that one parser treats as whitespace and another refuses.
+      <a href="#expressions" class="auto internal xref">Section 8</a> fixes token boundaries, operator case,
+      the whitespace set, grouping, whole-input validation, and the limits,
+      so that the grammar gives each valid expression one reading, and its
+      vector corpus and parse identity let an implementer compare a parser
+      with that reading. These measures have limits. A finite corpus can show
+      that an implementation is wrong on its vectors, not that it is right
+      on every input. A matching parse identity says nothing about how the
+      tree was evaluated, how roles were matched, or which components were
+      eligible, and it does not detect every disagreement between
+      evaluators. Native verifiers, which decide eligibility, remain trusted
+      configuration (<a href="#native-contract" class="auto internal xref">Section 6</a>) and are outside what
+      the corpus tests.<a href="#section-14-9" class="pilcrow">¶</a></p>
+<p id="section-14-10"><strong>Resource exhaustion.</strong> Implementations MUST bound JSON
+      depth, node count, component count, string bytes, expression tokens and
+      depth, binding count, native verifier work, and diagnostic output. Any
+      bound exceeded is UNSATISFIED.<a href="#section-14-10" class="pilcrow">¶</a></p>
+<p id="section-14-11"><strong>Host-language and transport boundaries.</strong> Strict JSON
+      parsing must reject duplicate member names before ordinary object
+      construction can hide them. AEC inherits the confidentiality and
+      integrity properties of its transport. The evidence and frozen action
+      passed to later stages must not be mutable after evaluation.<a href="#section-14-11" class="pilcrow">¶</a></p>
+<p id="section-14-12"><strong>Signature overclaiming.</strong> A valid signature establishes
+      only the signer and statement semantics of the selected native profile.
+      It does not inherently prove a natural person's identity, human
+      operation, comprehension, legal authority, safety, execution, or
+      outcome.<a href="#section-14-12" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="privacy">
+<section id="section-15">
+      <h2 id="name-privacy-considerations">
+<a href="#section-15" class="section-number selfRef">15. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
+      </h2>
+<p id="section-15-1">An AEC bundle can reveal identities, organizational roles,
+      destinations, resources, policy choices, and timing. Presenters and
+      relying parties SHOULD disclose and retain only evidence needed by the
+      selected requirement. A plain digest of low-entropy personal data is not
+      anonymization.<a href="#section-15-1" class="pilcrow">¶</a></p>
+<p id="section-15-2">The replay record SHOULD contain normalized facts and content digests,
+      not unnecessary raw evidence. Even those facts can reveal relationships
+      and decision timing. Access, retention, and correlation controls remain
+      deployment responsibilities.<a href="#section-15-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="relationship">
+<section id="section-16">
+      <h2 id="name-relationship-to-other-work">
+<a href="#section-16" class="section-number selfRef">16. </a><a href="#name-relationship-to-other-work" class="section-name selfRef">Relationship to Other Work</a>
+      </h2>
+<p id="section-16-1">CAID <span>[<a href="#CAID" class="cite xref">CAID</a>]</span> owns typed material-action identity and
+      exact, relying-party-pinned cross-format mapping. AEC uses CAID only
+      after native verification and acceptance and does not add trust
+      semantics to a CAID.<a href="#section-16-1" class="pilcrow">¶</a></p>
+<p id="section-16-2">Authorization Receipts <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span> and Quorum
+      <span>[<a href="#EP-QUORUM" class="cite xref">EP-QUORUM</a>]</span> define native human-authorization
+      profiles. AEC composes them without generalizing all evidence into
+      those formats.<a href="#section-16-2" class="pilcrow">¶</a></p>
+<p id="section-16-3">The earlier Action Evidence Graph draft
+      (draft-schrock-ep-action-evidence-graph-00)
+      described content-addressed graph references, relying-party evidence
+      policy replay, a five-verdict classification, policy packs, and a signed
+      reliance result. This revision incorporates the useful composition
+      substance into AEC: relying-party-owned evidence requirements,
+      content-digested components, byte-backed relations, normalized facts,
+      and a replay digest. It intentionally does not adopt the EP-AEG-v1 graph
+      envelope, five-verdict taxonomy, policy packs, or signed reliance-result
+      format.<a href="#section-16-3" class="pilcrow">¶</a></p>
+<p id="section-16-4">Revision -04 superseded draft-schrock-ep-action-evidence-graph-00 for
+      this evidence-composition and replay scope. This revision preserves that
+      consolidation.<a href="#section-16-4" class="pilcrow">¶</a></p>
+<p id="section-16-5">Agent Qualification Statements <span>[<a href="#EP-QUALIFICATION" class="cite xref">EP-QUALIFICATION</a>]</span> can be verified as native components
+      and can fill a relying-party-named qualification role. Their observation
+      and policy-satisfaction claims remain bounded by their native profile;
+      qualification MUST NOT be converted into AUTHORIZED without the separate
+      boundary decision and controls described by AEB.<a href="#section-16-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana">
+<section id="section-17">
+      <h2 id="name-iana-considerations">
+<a href="#section-17" class="section-number selfRef">17. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-17-1">This document has no IANA actions. It creates no universal component,
+      relation, verifier, action-mapping, requirement, reason-code, or policy
+      registry.<a href="#section-17-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="changes-08">
+<section id="section-18">
+      <h2 id="name-changes-in-08">
+<a href="#section-18" class="section-number selfRef">18. </a><a href="#name-changes-in-08" class="section-name selfRef">Changes in -08</a>
+      </h2>
+<ul class="normal">
+<li class="normal" id="section-18-1.1">Rewrote Section 8 to make the requirement-expression behavior of
+        the -07 reference parsers normative: the longest run of identifier
+        characters is taken before the complete run is classified; exact
+        uppercase AND and OR are the only word operators and are reserved
+        only inside expressions; identifiers and role matching are
+        case-sensitive; SP, HTAB, CR, and LF are the only whitespace; the
+        ABNF uses case-sensitive strings <span>[<a href="#RFC7405" class="cite xref">RFC7405</a>]</span>. The
+        JavaScript, Python, and Go reference parsers of -07 already read
+        every vector of the new corpus this way. The -07 text permitted
+        readings that -08 refuses.<a href="#section-18-1.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.2">Separated validity from truth and required validation of the
+        entire expression before SATISFIED, so that short-circuiting cannot
+        skip a malformed or over-limit branch (Sections 8.3 and 9).<a href="#section-18-1.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.3">Stated the fixed limits and what they count: 4096 UTF-8 octets,
+        256 tokens counting identifiers, operators, and parentheses, and 32
+        levels of nesting, with a deterministic refusal class (Section 8.4).
+        Any configured limit belongs to the identified evaluator
+        profile.<a href="#section-18-1.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.4">Added worked examples (Section 8.5) and a frozen vector corpus
+        identified by a commit-pinned URL and a SHA-256 digest
+        (Section 8.7).<a href="#section-18-1.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.5">Added the canonical parse and parse identity as interpretation
+        diagnostics computed from the tree that is evaluated, and stated that
+        a matching parse identity does not guarantee matching verdicts
+        (Section 8.6).<a href="#section-18-1.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.6">Assigned the evaluator revision
+        <code>EP-AEC-EVALUATOR-08-v1</code>, as Section 10 of -07 requires for an
+        algorithm change, and added replay migration rules: stored records are
+        never relabeled, a same-revision replay compares the complete record,
+        re-evaluation under -08 produces a new record, and an unsupported
+        revision is reported or refused (Section 10).<a href="#section-18-1.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.7">No wire-format change. EP-AEC-v1, EP-AEC-REQUIREMENT-v1, and
+        EP-AEC-REPLAY-v1 keep their versions and member sets; the parse
+        identity travels in neither object. Replay digests of -08 records
+        differ from those of -07 records because the algorithm revision
+        differs.<a href="#section-18-1.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.8">Section 4 states that the requirement profile digest covers the
+        expression exactly as stored. Section 14 adds parser
+        differentials.<a href="#section-18-1.8" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.9">Updated the implementation status, cited CAID -05, and added
+        RFC 7405.<a href="#section-18-1.9" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="changes-07">
+<section id="section-19">
+      <h2 id="name-changes-in-07">
+<a href="#section-19" class="section-number selfRef">19. </a><a href="#name-changes-in-07" class="section-name selfRef">Changes in -07</a>
+      </h2>
+<ul class="normal">
+<li class="normal" id="section-19-1.1">Separated VERIFIED from ACCEPTED. In -06, VERIFIED meant that the
+        native verifier accepted an artifact under pinned trust inputs, which
+        merged the cryptographic result with the relying party's trust
+        decision. VERIFIED now means only that the artifact's cryptographic
+        and structural checks passed. ACCEPTED is a new, separate result: the
+        relying party's pinned trust inputs accept a VERIFIED artifact.<a href="#section-19-1.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.2">Native verifiers report both results, never ACCEPTED without
+        VERIFIED, and report the artifact as not VERIFIED when a combined
+        native procedure cannot attribute a failure. A key resolved from
+        relying-party key material makes an artifact checkable, not ACCEPTED;
+        a key reference that cannot be resolved is recorded as NOT_EVALUATED,
+        not FAILED (Section 6).<a href="#section-19-1.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.3">Section 5 lists key-resolution material as its own input and adds
+        the key directory and the status of each entry, accepted issuers, key
+        classes, native policy, and format revision to the pinned trust inputs
+        that decide ACCEPTED.<a href="#section-19-1.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.4">Mapping runs only after both results are positive, and eligibility
+        requires both. Native verifiers evaluate pins against the action the
+        artifact carries, and only MATCH compares it with the expected action
+        (Section 7).<a href="#section-19-1.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.5">Each normalized fact and replay record carries the two results as
+        separate <code>native_verification</code> and <code>acceptance</code> members,
+        the replay record gains <code>algorithm_revision</code> (value
+        <code>EP-AEC-EVALUATOR-07-v1</code> for this revision) and binds
+        trust-snapshot digests, and reason codes SHOULD distinguish a
+        verification failure, a verification not evaluated, an acceptance
+        refusal, and a failed match (Sections 9 and 10).<a href="#section-19-1.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.6">Section 11 assigns the built-in checks to the two results and
+        states each as a requirement on the result it decides: ep-quorum is
+        VERIFIED under the keys its members carry and ACCEPTED under the pinned
+        policy; the Authorization Bundle is
+        VERIFIED under the keys its signoffs reference; the Trust Receipt is
+        VERIFIED under the keys its signoffs reference and, for its log
+        checkpoint, under the pinned log key, a combined check under
+        Section 6; the Authorization Bundle and Trust Receipt are ACCEPTED
+        under the pinned policy, directory, and key classes; the bundle's
+        exact action moves from acceptance to MATCH.<a href="#section-19-1.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.7">Section 12 requires the capability a bounded-capability operation
+        references, and that capability's issuance authorization, each to be
+        VERIFIED, and ACCEPTED under the relying party's pins for its own
+        role; makes the native verifier's scope result a condition of the
+        component's ACCEPTED, so an operation outside the capability is not
+        ACCEPTED; and applies the Section 6 rule to a combined check.<a href="#section-19-1.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.8">Section 13 adds the relying-party ACCEPTED step to the lifecycle
+        and maps the VERIFIED of <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span> to VERIFIED and
+        ACCEPTED here, and distinguishes the lifecycle's execution outcomes
+        FAILED and INDETERMINATE from the native verification value and the
+        CAID verdict of the same names. Section 14 adds the verification and
+        acceptance consideration, including where the separation stops.<a href="#section-19-1.8" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.9">Defined UNSATISFIED explicitly as every result other than
+        SATISFIED, including an evaluation that could not complete.<a href="#section-19-1.9" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-19-1.10">Updated the implementation status and references.<a href="#section-19-1.10" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="changes-06">
+<section id="section-20">
+      <h2 id="name-changes-in-06">
+<a href="#section-20" class="section-number selfRef">20. </a><a href="#name-changes-in-06" class="section-name selfRef">Changes in -06</a>
+      </h2>
+<ul class="normal">
+<li class="normal" id="section-20-1.1">Added an explicit pre-execution Authorization Bundle component,
+        kept separate from the terminal Trust Receipt component.<a href="#section-20-1.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-20-1.2">Updated implementation status for the structured requirement,
+        native facts, role constraints, required bindings, and replay contract.<a href="#section-20-1.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-20-1.3">Updated references without changing the EP-AEC-v1 envelope or
+        converting evidence satisfaction into execution authority.<a href="#section-20-1.3" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="changes-05">
+<section id="section-21">
+      <h2 id="name-changes-in-05">
+<a href="#section-21" class="section-number selfRef">21. </a><a href="#name-changes-in-05" class="section-name selfRef">Changes in -05</a>
+      </h2>
+<ul class="normal">
+<li class="normal" id="section-21-1.1">Added a closed <code>distinct-subject-quorum</code> role constraint that
+        counts only native-verifier-derived subject identities.<a href="#section-21-1.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-21-1.2">Made the boundary between evidence sufficiency and AEB authority
+        constraints explicit: initiator exclusion, executor exclusion,
+        one-time consumption, and execution remain outside AEC.<a href="#section-21-1.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-21-1.3">Clarified that qualification statements can fill a named evidence
+        role but never authorize an action by themselves.<a href="#section-21-1.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-21-1.4">Updated implementation status and successor references without
+        changing the EP-AEC-v1 component envelope.<a href="#section-21-1.4" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="impl">
+<section id="section-22">
+      <h2 id="name-implementation-status">
+<a href="#section-22" class="section-number selfRef">22. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
+      </h2>
+<p id="section-22-1">The Apache-2.0 JavaScript reference implementation provides
+      <code>createAuthorizationChainEvaluator</code> for the structured
+      EP-AEC-REQUIREMENT-v1 contract. Configuration captures the relying
+      party's requirement, native-verifier profiles, trust snapshots, and
+      optional action mappings before evaluation. The evaluator implements
+      exact expected-action matching, native-derived subject constraints,
+      required byte-backed bindings, required freshness and authenticated
+      status checks, and EP-AEC-REPLAY-v1 records. Replay re-verifies the
+      original evidence under those configuration pins; serialized facts
+      are not trusted merely because their digest matches.<a href="#section-22-1" class="pilcrow">¶</a></p>
+<p id="section-22-2">At the time of writing, the latest published release of the
+      JavaScript package, @emilia-protocol/verify 6.0.0, implements
+      <code>EP-AEC-EVALUATOR-07-v1</code>. <code>EP-AEC-EVALUATOR-08-v1</code> is
+      implemented in the reference repository and is not yet in a published
+      release; this draft revision does not by itself imply a released
+      package.<a href="#section-22-2" class="pilcrow">¶</a></p>
+<p id="section-22-3">The -08 evaluator parses the relying party's expression once, when
+      the evaluator is constructed, and evaluates that tree. It exposes the
+      canonical parse, parse identity, and token count as diagnostics outside
+      the requirement and replay objects. A malformed expression refuses
+      construction with the error <code>aec_requirement_invalid</code>, so no
+      replay record is produced for it; a valid expression that is false is
+      accepted at construction and evaluates to UNSATISFIED. Replay compares
+      a stored record only when the record carries
+      <code>EP-AEC-EVALUATOR-08-v1</code>, by its complete replay digest. It
+      reports a record of another revision, including -07, as unsupported
+      without modifying it, and always returns a new -08 record. The
+      structured result reports <code>authorization_decision</code> as false.<a href="#section-22-3" class="pilcrow">¶</a></p>
+<p id="section-22-4">The Python and Go verifier packages implement the Section 8
+      expression algorithm and its diagnostics in their legacy chain
+      interfaces, also in the reference repository and not yet released. They
+      do not implement the structured EP-AEC-REQUIREMENT-v1 and
+      EP-AEC-REPLAY-v1 contract, and their agreement with the JavaScript
+      implementation on the corpus is agreement on expression evaluation
+      only. Before this revision, the Go legacy interface trimmed Unicode
+      whitespace from a pinned requirement before evaluating it, so a
+      requirement made of NO-BREAK SPACE followed by "<code>a</code>" was
+      evaluated as "<code>a</code>"; that is corrected, and the three ports now measure the
+      length limit in UTF-8 octets. All three run the corpus of
+      <a href="#expr-vectors" class="auto internal xref">Section 8.7</a> and agree on every assertion. The
+      JavaScript tests also inject faults that keep the parse identity
+      unchanged while evaluating an operator wrongly, matching roles without
+      regard to case, or crediting a component whose native verification
+      FAILED, and reject the resulting wrong verdicts.<a href="#section-22-4" class="pilcrow">¶</a></p>
+<p id="section-22-5">The structured evaluator separates the two results. Native verifier callbacks return separate verified and
+      accepted results; every replay fact records native_verification and
+      acceptance; a callback result that reports ACCEPTED without VERIFIED, or
+      that carries only the earlier combined validity flag, is refused. The
+      built-in ep-quorum verifier checks integrity under the public keys a
+      quorum carries. The built-in ep-receipt, ep-authorization-bundle, and
+      platform-attestation verifiers resolve each key reference from pinned
+      key material and check signatures under the resolved key only; a
+      reference that cannot be resolved is recorded as NOT_EVALUATED, and the
+      directory entry's approver binding, key class, validity period, and
+      compromise marker are acceptance inputs. The Trust Receipt checkpoint
+      signature is checked under the relying party's log key, so a checkpoint
+      that does not verify under that key is FAILED whether it was forged or
+      signed by another log. The built-ins evaluate pins against the action
+      the artifact carries and leave the expected action to MATCH.<a href="#section-22-5" class="pilcrow">¶</a></p>
+<p id="section-22-6">The older string-requirement API remains a separate legacy interface.
+      It does not implement the complete structured contract and keeps one
+      combined validity flag per component. The new
+      evaluator also dispatches the explicit pre-execution
+      <code>ep-authorization-bundle</code> component. Evidence satisfaction neither
+      authorizes execution nor reserves, consumes, or reconciles authority.<a href="#section-22-6" class="pilcrow">¶</a></p>
+<p id="section-22-7">The associated tests are same-team reference evidence, not an
+      independent implementation, a proof of all native verifier profiles, or
+      complete deployment mediation. The JavaScript, Python, and Go ports are
+      maintained by one team in one repository; their agreement is a
+      consistency check, not independent implementation. Custom native verifiers and mapping
+      callbacks remain trusted configuration. Input sizes and asynchronous
+      verifier work are bounded; untrusted synchronous callback code requires
+      separate process or worker isolation.<a href="#section-22-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-23">
+      <h2 id="name-references">
+<a href="#section-23" class="section-number selfRef">23. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-23.1">
+        <h3 id="name-normative-references">
+<a href="#section-23.1" class="section-number selfRef">23.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="BCP14">[BCP14]</dt>
+        <dd>
+<span class="refAuthor">Internet Engineering Task Force</span>, <span class="refTitle">"Key Words for Use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <time datetime="2017" class="refDate">2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/bcp14">https://www.rfc-editor.org/info/bcp14</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="CAID">[CAID]</dt>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Canonical Action Identifier (CAID)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-canonical-action-identifier-05</span>, <time datetime="2026-10-02" class="refDate">2 October 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EP-QUORUM">[EP-QUORUM]</dt>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-quorum-04</span>, <time datetime="2026-09-06" class="refDate">6 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EP-RECEIPTS">[EP-RECEIPTS]</dt>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-13</span>, <time datetime="2026-09-11" class="refDate">11 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC5234">[RFC5234]</dt>
+        <dd>
+<span class="refAuthor">Crocker, D., Ed.</span> and <span class="refAuthor">P. Overell</span>, <span class="refTitle">"Augmented BNF for Syntax Specifications: ABNF"</span>, <span class="seriesInfo">STD 68</span>, <span class="seriesInfo">RFC 5234</span>, <span class="seriesInfo">DOI 10.17487/RFC5234</span>, <time datetime="2008-01" class="refDate">January 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5234">https://www.rfc-editor.org/info/rfc5234</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7405">[RFC7405]</dt>
+        <dd>
+<span class="refAuthor">Kyzivat, P.</span>, <span class="refTitle">"Case-Sensitive String Support in ABNF"</span>, <span class="seriesInfo">RFC 7405</span>, <span class="seriesInfo">DOI 10.17487/RFC7405</span>, <time datetime="2014-12" class="refDate">December 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7405">https://www.rfc-editor.org/info/rfc7405</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7493">[RFC7493]</dt>
+        <dd>
+<span class="refAuthor">Bray, T., Ed.</span>, <span class="refTitle">"The I-JSON Message Format"</span>, <span class="seriesInfo">RFC 7493</span>, <span class="seriesInfo">DOI 10.17487/RFC7493</span>, <time datetime="2015-03" class="refDate">March 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7493">https://www.rfc-editor.org/info/rfc7493</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8785">[RFC8785]</dt>
+      <dd>
+<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <span class="seriesInfo">DOI 10.17487/RFC8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-23.2">
+        <h3 id="name-informative-references">
+<a href="#section-23.2" class="section-number selfRef">23.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="AEC-EXPRESSION-VECTORS">[AEC-EXPRESSION-VECTORS]</dt>
+        <dd>
+<span class="refAuthor">EMILIA Protocol, Inc.</span>, <span class="refTitle">"EP-AEC-EXPRESSION-v1 Requirement-Expression Test Vectors"</span>, <time datetime="2026-10" class="refDate">October 2026</time>, <span>&lt;<a href="https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/2ebba2d8439b8e268ba6c3bc2fbbfdd42d2fb318/conformance/vectors/aec-expression.v1.json">https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/2ebba2d8439b8e268ba6c3bc2fbbfdd42d2fb318/conformance/vectors/aec-expression.v1.json</a>&gt;</span>. <span class="annotation">Frozen corpus at a fixed commit. Its bytes are checked
+        against the SHA-256 digest given in Section 8.7, not against the
+        URL.</span>
+        </dd>
+<dd class="break"></dd>
+<dt id="EP-AEB">[EP-AEB]</dt>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Action Evidence Boundary for Consequential Agent Effects"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-action-evidence-boundary-07</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EP-QUALIFICATION">[EP-QUALIFICATION]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Portable Agent Qualification Statements for Consequential Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-agent-qualification-statements-00</span>, <time datetime="2026-07-27" class="refDate">27 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-agent-qualification-statements/">https://datatracker.ietf.org/doc/draft-schrock-agent-qualification-statements/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</section>
+<div id="acknowledgments">
+<section id="appendix-A">
+      <h2 id="name-acknowledgments">
+<a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="appendix-A-1">Review of adjacent work sharpened the separation among native
+      verification, relying-party acceptance, cross-format action mapping, evidence satisfaction, local
+      authorization, credential status, human operation, and effect truth.
+      Acknowledgment does not imply endorsement.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-B">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Iman Schrock</span></div>
+<div dir="auto" class="left"><span class="org">EMILIA Protocol, Inc.</span></div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:team@emiliaprotocol.ai" class="email">team@emiliaprotocol.ai</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

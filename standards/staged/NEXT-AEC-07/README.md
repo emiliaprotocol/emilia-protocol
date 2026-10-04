@@ -1,7 +1,9 @@
 # AEC revision 07 working packet
 
 This directory stages `draft-schrock-ep-authorization-evidence-chain-07`.
-It is not published. The last posted revision is -06 (Datatracker posting
+Posted 2026-09-28T13:23:04Z: the IETF archive copy of the -07 XML has the
+SHA-256 that `SHA256SUMS.txt` pins for `UPLOAD-THIS/`. -08 is staged in
+`../NEXT-AEC-08/`. The rest of this file is the pre-posting record. The last posted revision is -06 (Datatracker posting
 2026-09-06T17:33:02Z), whose exact source is kept in `../NEXT-AEC-06/` and
 `../../posted/`. This packet started from that source byte for byte.
 
