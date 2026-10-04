@@ -62,11 +62,11 @@
       "registry_dependency_tarballs": [
         {
           "spec": "@emilia-protocol/require-receipt@0.8.2",
-          "sha256": "95583e0ec6d2d7b77410abed44ae88ea866cd5ba38749129754145df218ae938"
+          "sha256": "729285f38f4224b7c3d6ac32f8adae7243223bca4f14b0d211adafe77dc4849e"
         },
         {
           "spec": "@emilia-protocol/verify@7.0.0",
-          "sha256": "131ac4af85eaa5f10106ee244128c61f417612ea706ec17233382aff86f6373f"
+          "sha256": "0e12fc69151f2e50ba49b1e3bac5ce77cf186adfba415e8d8632446e47fb0532"
         }
       ]
     },
