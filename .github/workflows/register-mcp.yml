@@ -1,0 +1,109 @@
+name: Publish verified MCP Registry metadata
+
+# Metadata registration is separate from package publishers. No PAT or npm publication here.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact published MCP npm release tag, for example mcp-v2.1.4
+        required: true
+        type: string
+      confirmation:
+        description: Type REGISTER io.github.emiliaprotocol/mcp-server@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-registry-publishing
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact dispatched main source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+      - name: Recheck owner, immutable tag, source bytes and public npm artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: node scripts/ci/mcp-registry-release.mjs preflight
+
+  publisher:
+    needs: preflight
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: registry-publishing-approval
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout exact owner-approved main source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+      - name: Recheck owner, immutable tag, source bytes and public npm artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: node scripts/ci/mcp-registry-release.mjs preflight
+      - name: Install the checksum-pinned official publisher
+        run: |
+          mkdir "$RUNNER_TEMP/emilia-mcp-registry-bin"
+          curl --proto '=https' --proto-redir '=https' --fail --location --silent --show-error \
+            --connect-timeout 20 --max-time 120 \
+            --output "$RUNNER_TEMP/emilia-mcp-registry-bin/publisher.tgz" \
+            'https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz'
+          printf '%s  %s\n' \
+            'a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc' \
+            "$RUNNER_TEMP/emilia-mcp-registry-bin/publisher.tgz" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/emilia-mcp-registry-bin/publisher.tgz" \
+            -C "$RUNNER_TEMP/emilia-mcp-registry-bin" mcp-publisher
+      - name: Confine the CLI auth cache to a fresh runner temporary directory
+        run: node scripts/ci/mcp-registry-release.mjs auth-cache
+      - name: Validate the exact release manifest before requesting a Registry token
+        working-directory: ${{ runner.temp }}
+        run: '"$RUNNER_TEMP/emilia-mcp-registry-bin/mcp-publisher" validate "$GITHUB_WORKSPACE/server.json"'
+      - name: Authenticate with the owner-approved repository OIDC identity
+        working-directory: ${{ runner.temp }}
+        run: '"$RUNNER_TEMP/emilia-mcp-registry-bin/mcp-publisher" login github-oidc'
+      - name: Publish the exact verified manifest without npm or PAT credentials
+        working-directory: ${{ runner.temp }}
+        run: '"$RUNNER_TEMP/emilia-mcp-registry-bin/mcp-publisher" publish "$GITHUB_WORKSPACE/server.json"'
+      - name: Verify the published official Registry version and latest marker
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: node scripts/ci/mcp-registry-release.mjs verify
+      - name: Save only the public Registry receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: mcp-registry-public-receipt
+          path: ${{ runner.temp }}/emilia-mcp-registry-receipt.json
+          if-no-files-found: error
+          retention-days: 90

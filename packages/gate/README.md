@@ -20,6 +20,32 @@ Gate is not an identity provider, a replacement PDP, or proof of a provider's
 physical effect. Its prevention claim covers only configured paths the
 deployment completely mediates.
 
+Gate 0.29.0 pins `@emilia-protocol/verify@7.0.0` and
+`@emilia-protocol/require-receipt@0.8.2`; published Gate 0.28.0 pinned Verify
+5.0.0. Its authorization-chain adapters use Verify's legacy string API and
+refuse malformed or unsupported whitespace in configured expressions.
+
+This upgrade also takes Verify 6's CAID -04 and AEB mapping changes. Regenerate
+mapping profiles made by Verify 5's adapter helpers: their definitions declare
+`action_type` as a field, which CAID -04 refuses. For a profile with an open
+enum or bare external enum reference, explicitly list the accepted values;
+these adapters do not resolve external snapshots. Review the new definitions,
+regenerate their profile and registry digests, and re-pin the relying-party
+configuration before creating fresh evaluations. Gate re-derives AEB
+evaluations at admission, so an affected old profile or evaluation fails
+closed. Preserve the old artifacts and verifier pins for historical
+reproduction. Native adapters also tighten action-bearing JSON decoding,
+including malformed UTF-8 and selected byte order mark and Unicode
+noncharacter refusals; the [Verify 6 migration
+details](../verify/CHANGELOG.md#600-2026-09-28) name the exact affected paths.
+
+If you separately use Verify's structured evaluator, keep the original pinned
+evaluator for historical `EP-AEC-EVALUATOR-05-v1` and
+`EP-AEC-EVALUATOR-07-v1` replay records: Verify 7's
+`EP-AEC-EVALUATOR-08-v1` returns `UNSUPPORTED_REVISION` for those records.
+A fresh evaluation creates a new record; do not relabel an old record. Gate
+does not itself add structured replay conformance.
+
 For the native-evidence path, import the stable facade:
 
 ```js
@@ -489,7 +515,7 @@ Build and download a plan at `https://www.emiliaprotocol.ai/protect`, then sign
 that exact plan locally with a customer-owned Ed25519 key:
 
 ```bash
-npx --package @emilia-protocol/gate@0.28.0 ep-protect activate plan.json \
+npx --package @emilia-protocol/gate@0.29.0 ep-protect activate plan.json \
   --private-key owner.pem \
   --tenant my-tenant \
   --gateway my-mcp-gateway \
@@ -860,13 +886,13 @@ compliance, external effect truth, program safety, or complete mediation. See
 
 ### Install the Gate Qualification v2 SQL artifact
 
-Pin the package artifact to `@emilia-protocol/gate@0.28.0` and verify the exact
+Pin the package artifact to `@emilia-protocol/gate@0.29.0` and verify the exact
 shipped migration before applying it. The SHA-256 below identifies this source
 artifact; it is not a statement that the migration is already deployed:
 
 ```bash
 GATE_SQL_PATH=node_modules/@emilia-protocol/gate/sql/gate-qualification-v2.sql
-test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.28.0"
+test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.29.0"
 printf '%s  %s\n' \
   'e9b55e29c90cf7061bd62a8afd7c97402927e1eeb87649d4a38952a4b08df6b3' \
   "$GATE_SQL_PATH" | shasum -a 256 -c -
@@ -1241,7 +1267,7 @@ await guardStripeMutation(gate, stripe, { op: 'payout.create', params: { amount:
 // AWS:      guardAwsMutation(gate, client, { op: 'iam.attach_policy', params: { user, policy_arn }, receipt })
 ```
 
-For `refund.create` in 0.28.0, the approval and call parameters must both bind
+For `refund.create` since 0.28.0, the approval and call parameters must both bind
 the same `payment_intent`, `amount`, and `operation_id`. Assign that ID in your
 business system and keep it stable across retries; older refund receipts without
 it will refuse before Stripe. Gate checks the supplied ID's shape and binding,
