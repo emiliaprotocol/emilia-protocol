@@ -292,6 +292,9 @@ if (observed.has(BRACES_ADVISORY)) {
   for (const node of installed) {
     const repoPath = node.location;
     const pinned = REVIEWED_BRACES_COPIES.get(repoPath);
+    if (!pinned) {
+      throw new Error(`braces copy at ${JSON.stringify(repoPath)} has no reviewed pin`);
+    }
     const packagePath = join(root, ...repoPath.split('/'));
     const manifest = JSON.parse(readFileSync(join(packagePath, 'package.json'), 'utf8'));
     if (manifest.name !== 'braces' || manifest.version !== pinned.version || node.version !== pinned.version) {
