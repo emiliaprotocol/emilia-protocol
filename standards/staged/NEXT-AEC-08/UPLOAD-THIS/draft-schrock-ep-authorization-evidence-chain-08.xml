@@ -270,8 +270,10 @@
         native verified bytes bind, under that relation, the evidence digest
         of an eligible target component of the named type.</li>
       </ul>
-      <t>The verifier MUST compute the requirement profile digest over the JCS
-      serialization of the complete requirement object. JCS preserves string
+      <t>The verifier MUST compute the requirement profile digest, which is
+      the evidence digest (<xref target="terminology"/>) of the complete
+      requirement object: "sha256:" followed by the lowercase hexadecimal
+      SHA-256 digest of its JCS serialization. JCS preserves string
       contents, and the expression enters that serialization exactly as
       stored: a verifier MUST NOT trim it, change its case, apply Unicode
       normalization to it, or otherwise rewrite it before computing the
@@ -310,7 +312,8 @@
         accepted issuers, audiences, key classes, native policy, and format
         revision; and the freshness inputs and status sources; and</li>
         <li>documented resource limits for parsing, nesting, component count,
-        expression size, and verifier execution.</li>
+        and verifier execution. The limits on a requirement expression are not
+        configuration; <xref target="expr-limits"/> fixes them.</li>
       </ul>
       <t>These values MUST NOT be taken from the presented chain or from an
       untrusted caller. If any required input is absent, malformed, ambiguous,
@@ -418,11 +421,11 @@
       requires and combines them with AND and OR. This section defines how an
       expression is tokenized, parsed, validated, and evaluated, so that
       every conforming evaluator gives each valid expression the same
-      reading. The JavaScript, Python, and Go reference parsers of -07
-      already read every vector of the corpus in
-      <xref target="expr-vectors"/> this way. This section makes that
-      behavior normative and testable, and it refuses readings that the -07
-      text permitted.</t>
+      reading. The JavaScript reference parser that accompanied -07 and its
+      Python and Go ports already agree with every vector of the corpus in
+      <xref target="expr-vectors"/> on syntax validity and Boolean value.
+      This section makes that behavior normative and testable, and it
+      refuses readings that the -07 text permitted.</t>
       <t>The expression deliberately answers only which evidence roles are
       present. It has no variables for action parameters, principals,
       entitlements, business risk, or effect state. Those belong to native
@@ -444,8 +447,9 @@ ows        = *( SP / HTAB / CR / LF )
 ]]></sourcecode>
         <t>An expression is a JSON string. SP, HTAB, CR, and LF are its only
         whitespace characters. Any character that is not whitespace, an
-        identifier character, a parenthesis, or part of an operator makes the
-        expression invalid. This includes NO-BREAK SPACE (U+00A0), EM SPACE
+        identifier character, a parenthesis, or part of an "&amp;&amp;" or
+        "||" operator makes the expression invalid, so a single "&amp;" or
+        "|" does. This includes NO-BREAK SPACE (U+00A0), EM SPACE
         (U+2003), LINE SEPARATOR (U+2028), BYTE ORDER MARK (U+FEFF), ZERO
         WIDTH SPACE (U+200B), VERTICAL TAB (U+000B), FORM FEED (U+000C), and
         every other character outside ASCII. None of them is whitespace, and
@@ -530,8 +534,12 @@ ows        = *( SP / HTAB / CR / LF )
         (<xref target="replay"/>):</t>
         <dl>
           <dt>Length</dt>
-          <dd>At most 4096 octets in the UTF-8 encoding of the expression as
-          stored, whitespace included.</dd>
+          <dd>At most 4096 octets in the UTF-8 encoding of the expression's
+          string value after JSON decoding, whitespace included, so a JSON
+          escape sequence counts as the octets of the character it denotes.
+          A lone surrogate, which some host languages can hold in a string
+          although it is not Unicode text, counts as three octets and is an
+          invalid character.</dd>
           <dt>Tokens</dt>
           <dd>At most 256 tokens. Identifiers, operators (including
           "&amp;&amp;" and "||"), and parentheses each count as one token;
@@ -547,18 +555,22 @@ ows        = *( SP / HTAB / CR / LF )
         <t>An expression that exceeds a limit is invalid. When an expression
         is invalid for more than one reason, the reported refusal class
         follows the order in which the input is examined: the length limit;
-        then tokenization from left to right, where an invalid character is a
-        syntax refusal and a 257th token is a limit refusal; then parsing
-        from left to right, where a 33rd nesting level is a limit refusal and
-        every other failure is a syntax refusal. The refusal class is a
-        diagnostic. Every invalid expression yields UNSATISFIED.</t>
-        <t>An evaluator MUST NOT raise these limits. The other resource limits
-        that <xref target="acceptance-inputs"/> lists, such as JSON nesting,
-        component count, and verifier execution, are relying-party
-        configuration. A configured limit, including any tighter expression
-        limit, can change which inputs are accepted, so it MUST be part of the
-        identified evaluator profile. A result under a tighter expression
-        limit is not a result of the fixed profile defined here.</t>
+        then tokenization from left to right, where an invalid character,
+        including a single "&amp;" or "|", is a syntax refusal where it is
+        met, and a token counts only once it is complete, so that completing
+        a 257th token is a limit refusal; then parsing from left to right,
+        where a 33rd nesting level is a limit refusal and every other failure
+        is a syntax refusal. The refusal class is a diagnostic. Every invalid
+        expression yields UNSATISFIED.</t>
+        <t>An evaluator MUST apply exactly these limits, neither raising nor
+        lowering them. The other resource limits that
+        <xref target="acceptance-inputs"/> lists, such as limits on parsing,
+        nesting, component count, and verifier execution, are relying-party
+        configuration. Such a limit can refuse a requirement or a chain
+        regardless of the expression, so it can change which inputs are
+        accepted; it MUST therefore be part of the evaluator profile that a
+        replay record identifies by its <tt>evaluator_profile_digest</tt>
+        (<xref target="replay"/>).</t>
       </section>
 
       <section anchor="expr-examples">
@@ -789,6 +801,7 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
 {
   "@version": "EP-AEC-REPLAY-v1",
   "algorithm_revision": "<evaluator algorithm revision>",
+  "evaluator_profile_digest": "sha256:<hex>",
   "aec_digest": "sha256:<hex>",
   "expected_action_digest": "sha256:<hex>",
   "expected_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
@@ -824,6 +837,18 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
       the complete EP-AEC-v1 object. Facts remain in component array order. Object members
       inside each fact use JCS ordering. The replay digest is the evidence
       digest of the complete EP-AEC-REPLAY-v1 record.</t>
+      <t>The <tt>evaluator_profile_digest</tt> identifies the evaluator
+      profile that produced the record. It is the evidence digest of a
+      description of that profile: the algorithm revision, which fixes the
+      expression limits of <xref target="expr-limits"/>; the value of every
+      other resource limit it enforces (<xref target="acceptance-inputs"/>);
+      and, for each component type with a configured native verifier, the
+      native verifier profile, trust snapshot, and mapping profile digests
+      and the maximum
+      status age the evaluator applies. This document defines neither a
+      portable serialization of that description nor a closed list of the
+      further normalized fact members, so two implementations compute equal
+      replay digests only when they also agree on those.</t>
       <t>In each fact, <tt>native_verification</tt> is <tt>VERIFIED</tt>,
       <tt>FAILED</tt>, or <tt>NOT_EVALUATED</tt>, and <tt>acceptance</tt> is
       <tt>ACCEPTED</tt>, <tt>REJECTED</tt>, or <tt>NOT_EVALUATED</tt>.
@@ -854,8 +879,9 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
         revision.</li>
       </ul>
       <t>Given the same AEC object, expected action inputs, requirement
-      profile, explicit verification time, normalized native facts, and
-      algorithm revision, implementations MUST compute the same replay digest
+      profile, evaluator profile, explicit verification time, normalized
+      native facts, and algorithm revision, implementations MUST compute the
+      same replay digest
       and SATISFIED result. ACCEPTED depends on trust snapshots, and status
       checks depend on status services; therefore the replay record MUST bind
       the selected verifier-profile, trust-snapshot, and status-snapshot
@@ -1135,17 +1161,19 @@ native VERIFIED
         only inside expressions; identifiers and role matching are
         case-sensitive; SP, HTAB, CR, and LF are the only whitespace; the
         ABNF uses case-sensitive strings <xref target="RFC7405"/>. The
-        JavaScript, Python, and Go reference parsers of -07 already read
-        every vector of the new corpus this way. The -07 text permitted
-        readings that -08 refuses.</li>
+        JavaScript reference parser that accompanied -07 and its Python and
+        Go ports already agree with every vector of the new corpus on syntax
+        validity and Boolean value. The -07 text permitted readings that -08
+        refuses.</li>
         <li>Separated validity from truth and required validation of the
         entire expression before SATISFIED, so that short-circuiting cannot
         skip a malformed or over-limit branch (Sections 8.3 and 9).</li>
         <li>Stated the fixed limits and what they count: 4096 UTF-8 octets,
         256 tokens counting identifiers, operators, and parentheses, and 32
         levels of nesting, with a deterministic refusal class (Section 8.4).
-        Any configured limit belongs to the identified evaluator
-        profile.</li>
+        An evaluator applies exactly these limits; the expression size is no
+        longer a relying-party resource limit (Section 5). Configured limits
+        belong to the evaluator profile.</li>
         <li>Added worked examples (Section 8.5) and a frozen vector corpus
         identified by a commit-pinned URL and a SHA-256 digest
         (Section 8.7).</li>
@@ -1164,7 +1192,14 @@ native VERIFIED
         identity travels in neither object. Replay digests of -08 records
         differ from those of -07 records because the algorithm revision
         differs.</li>
-        <li>Section 4 states that the requirement profile digest covers the
+        <li>The Section 10 record template now shows
+        <tt>evaluator_profile_digest</tt>, which the -07 reference evaluator
+        already emitted and the -07 template omitted, and says what it
+        identifies. Section 10 also states that this document does not define
+        a portable serialization of the evaluator profile or a closed list of
+        further fact members.</li>
+        <li>Section 4 defines the requirement profile digest as the evidence
+        digest of the requirement object and states that it covers the
         expression exactly as stored. Section 14 adds parser
         differentials.</li>
         <li>Updated the implementation status, cited CAID -05, and added
@@ -1279,17 +1314,20 @@ native VERIFIED
       the evaluator is constructed, and evaluates that tree. It exposes the
       canonical parse, parse identity, and token count as diagnostics outside
       the requirement and replay objects. A malformed expression refuses
-      construction with the error <tt>aec_requirement_invalid</tt>, so no
-      replay record is produced for it; a valid expression that is false is
-      accepted at construction and evaluates to UNSATISFIED. Replay compares
+      construction, so no replay record is produced for it; the error is
+      <tt>aec_requirement_invalid</tt>, or the strict JSON error when the
+      requirement is not I-JSON, as with a lone surrogate. A valid
+      expression that is false is accepted at construction and evaluates to
+      UNSATISFIED. Replay compares
       a stored record only when the record carries
       <tt>EP-AEC-EVALUATOR-08-v1</tt>, by its complete replay digest. It
       reports a record of another revision, including -07, as unsupported
       without modifying it, and always returns a new -08 record. The
       structured result reports <tt>authorization_decision</tt> as false.</t>
       <t>The Python and Go verifier packages implement the Section 8
-      expression algorithm and its diagnostics in their legacy chain
-      interfaces, also in the reference repository and not yet released. They
+      expression algorithm and its diagnostics and use it in their legacy
+      chain interfaces, also in the reference repository and not yet
+      released. They
       do not implement the structured EP-AEC-REQUIREMENT-v1 and
       EP-AEC-REPLAY-v1 contract, and their agreement with the JavaScript
       implementation on the corpus is agreement on expression evaluation

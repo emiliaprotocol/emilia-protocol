@@ -7,9 +7,11 @@ IETF archive copy of that source has the same SHA-256
 (`bfcf111687d6b48cd6b32b829144673c6b70cb340209316dc5a1945a1a62d1e6`). This
 packet started from that source byte for byte.
 
--08 is a focused revision of the requirement expression (Section 8). It
-makes the behavior the -07 reference parsers already had normative and
-testable, and refuses readings the -07 text permitted:
+-08 is a focused revision of the requirement expression (Section 8). The
+JavaScript parser that accompanied -07 (the one published in
+`@emilia-protocol/verify` 6.0.0) and its Python and Go ports already agree
+with every corpus vector on syntax validity and Boolean value; -08 makes that
+behavior normative and testable, and refuses readings the -07 text permitted:
 
 - token boundaries: the longest run of identifier characters is taken before
   the complete run is classified, so `aORb` is one identifier and `a OR b`
@@ -21,9 +23,12 @@ testable, and refuses readings the -07 text permitted:
   malformed syntax or an exceeded limit is invalid, both are UNSATISFIED,
   and the whole expression is validated before SATISFIED (the review's
   normative text, Section 8.3, and a new step 4 in Section 9);
-- the limits as they are: 4096 UTF-8 octets, 256 tokens counting
-  identifiers, operators and parentheses, 32 levels of nesting, with a
-  deterministic refusal class (Section 8.4);
+- the limits as they are: 4096 UTF-8 octets of the decoded string (a lone
+  surrogate counts three octets and is an invalid character), 256 tokens
+  counting identifiers, operators and parentheses (a token counts once it is
+  complete), 32 levels of nesting, with a deterministic refusal class; an
+  evaluator applies exactly these limits, and the expression size is no
+  longer a relying-party limit (Sections 8.4 and 5);
 - worked examples, including every row of the review's table (Section 8.5);
 - a canonical parse and parse identity computed from the tree that is
   evaluated, stated as an interpretation diagnostic: a matching parse
@@ -32,11 +37,18 @@ testable, and refuses readings the -07 text permitted:
 - the frozen corpus `EP-AEC-EXPRESSION-v1` by commit-pinned URL and
   SHA-256 (Section 8.7);
 - evaluator revision `EP-AEC-EVALUATOR-08-v1` and replay migration rules
-  (Section 10); a requirement profile digest over the expression exactly as
-  stored (Section 4); parser differentials in Security Considerations
+  (Section 10); the requirement profile digest named as the evidence digest
+  of the requirement object, over the expression exactly as stored
+  (Section 4); parser differentials in Security Considerations
   (Section 14);
+- the Section 10 record template shows `evaluator_profile_digest`, which the
+  -07 reference evaluator already emitted and the -07 template omitted; it
+  identifies the evaluator profile, which carries the configured limits, and
+  Section 10 says the document defines neither a portable serialization of
+  that profile nor a closed list of further fact members;
 - no wire-format change: EP-AEC-v1, EP-AEC-REQUIREMENT-v1 and
-  EP-AEC-REPLAY-v1 keep their versions and member sets.
+  EP-AEC-REPLAY-v1 keep their versions and the member sets the reference
+  evaluator emits.
 
 "Changes in -08" (Section 18) lists the changes.
 
@@ -90,7 +102,10 @@ Upload is the editor's decision. Before it:
    carrying `EP-AEC-EVALUATOR-08-v1` ships first, revise that paragraph.
 3. Section 8.7 cites the corpus at commit `2ebba2d84` on
    `aec-08-expression-integrity`. That commit must stay reachable on the
-   public repository (merge the branch with a merge commit, not a squash or
-   rebase that drops it) or the URL may stop resolving; the SHA-256 remains the identity either way.
+   public repository or the URL may stop resolving; the SHA-256 remains the
+   identity either way. The `main merge queue` ruleset merges with
+   `merge_method: MERGE`, which keeps the branch commits, and so the commit,
+   reachable from `main`; do not squash or rebase this branch around the
+   queue.
 4. Post one reviewed XML, then verify the archived bytes against
    `SHA256SUMS.txt` before marking -08 published.

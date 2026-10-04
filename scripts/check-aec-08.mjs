@@ -111,11 +111,13 @@ for (const required of [
 ]) invariant(flatXml.includes(required), `XML is missing required -08 text: ${required}`);
 
 for (const required of [
-  // Section 4: the stored expression is digested as stored.
+  // Section 4: the stored expression is digested as stored, under the named digest.
+  'which is the evidence digest (Section 2) of the complete requirement object',
   'a verifier MUST NOT trim it, change its case, apply Unicode normalization to it, or otherwise rewrite it before computing the digest',
   // Section 8.1 and 8.2: grammar, whitespace and token boundaries.
   'with the case-sensitive string syntax of [RFC7405]',
   'SP, HTAB, CR, and LF are its only whitespace characters',
+  'part of an "&&" or "||" operator makes the expression invalid, so a single "&" or "|" does',
   'NO-BREAK SPACE (U+00A0), EM SPACE (U+2003), LINE SEPARATOR (U+2028), BYTE ORDER MARK (U+FEFF), ZERO WIDTH SPACE (U+200B), VERTICAL TAB (U+000B), FORM FEED (U+000C)',
   'the tokenizer MUST take the longest run of identifier characters before classifying it, and MUST then classify the complete run',
   'a run that is exactly "AND" or exactly "OR" is that operator, and every other run is an identifier',
@@ -129,12 +131,15 @@ for (const required of [
   'group strictly from left to right: "a OR b AND c" is "((a OR b) AND c)"',
   'Such a refusal is not an evaluation and produces no replay record.',
   // Section 8.4: limits as they are.
-  'At most 4096 octets in the UTF-8 encoding of the expression as stored',
+  'At most 4096 octets in the UTF-8 encoding of the expression\'s string value after JSON decoding',
+  'A lone surrogate, which some host languages can hold in a string although it is not Unicode text, counts as three octets and is an invalid character.',
   'At most 256 tokens. Identifiers, operators (including "&&" and "||"), and parentheses each count as one token',
   'The limit counts tokens, not names',
   'At most 32 levels of parentheses',
-  'An evaluator MUST NOT raise these limits.',
-  'so it MUST be part of the identified evaluator profile',
+  'An evaluator MUST apply exactly these limits, neither raising nor lowering them.',
+  'it MUST therefore be part of the evaluator profile that a replay record identifies by its evaluator_profile_digest',
+  // Section 8.4 refusal order: a token counts once complete; a lone & or | is a syntax refusal.
+  'an invalid character, including a single "&" or "|", is a syntax refusal where it is met, and a token counts only once it is complete, so that completing a 257th token is a limit refusal',
   // Section 8.6: the parse identity is a diagnostic only.
   'An evaluator MUST evaluate the same tree from which it computes the canonical parse and parse identity.',
   'A matching parse identity does not guarantee matching verdicts.',
@@ -151,12 +156,19 @@ for (const required of [
   'Records move between revisions by re-evaluation, never by relabeling',
   'A stored record MUST NOT be modified.',
   'with an evaluator of the record\'s own revision, and MUST compare the complete record by its replay digest',
+  // Section 10: the evaluator profile digest the -07 template omitted, and its scope.
+  'The evaluator_profile_digest identifies the evaluator profile that produced the record.',
+  'This document defines neither a portable serialization of that description nor a closed list of the further normalized fact members',
+  'expected action inputs, requirement profile, evaluator profile, explicit verification time',
   'Re-evaluating the evidence under a different revision produces a new, separately identified record.',
   'MUST report the comparison as unsupported or refuse it',
   // Section 14.
   'Parser differentials.',
   'A finite corpus can show that an implementation is wrong on its vectors, not that it is right on every input.',
   // Changes and Implementation Status.
+  'already agree with every vector of the corpus in Section 8.7 on syntax validity and Boolean value',
+  'already agree with every vector of the new corpus on syntax validity and Boolean value',
+  'or the strict JSON error when the requirement is not I-JSON',
   'No wire-format change.',
   '@emilia-protocol/verify 6.0.0, implements EP-AEC-EVALUATOR-07-v1',
   'is not yet in a published release',
@@ -185,6 +197,12 @@ for (const forbidden of [
   'guarantees matching',
   'proves the verdict',
   'backward compatible',
+  // Superseded -08 drafting the clean-room review found ambiguous or too broad.
+  'reference parsers of -07 already read every vector',
+  'An evaluator MUST NOT raise these limits.',
+  'tighter expression limit',
+  'or part of an operator makes',
+  'expression size, and verifier execution',
 ]) {
   invariant(!flatXml.includes(forbidden), `XML contains rejected text: ${forbidden}`);
   invariant(!flatTxt.includes(forbidden), `TXT contains rejected text: ${forbidden}`);

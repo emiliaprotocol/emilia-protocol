@@ -94,18 +94,18 @@ Table of Contents
      8.2.  Token Boundaries  . . . . . . . . . . . . . . . . . . . .  12
      8.3.  Grouping, Validity, and Evaluation  . . . . . . . . . . .  13
      8.4.  Limits  . . . . . . . . . . . . . . . . . . . . . . . . .  14
-     8.5.  Examples  . . . . . . . . . . . . . . . . . . . . . . . .  14
+     8.5.  Examples  . . . . . . . . . . . . . . . . . . . . . . . .  15
      8.6.  Canonical Parse and Parse Identity  . . . . . . . . . . .  16
      8.7.  Test Vectors  . . . . . . . . . . . . . . . . . . . . . .  17
    9.  Verification Algorithm  . . . . . . . . . . . . . . . . . . .  18
    10. Evidence Evaluation Replay  . . . . . . . . . . . . . . . . .  20
    11. Human-Authorization Components  . . . . . . . . . . . . . . .  22
    12. Bounded-Capability Operation Components . . . . . . . . . . .  23
-   13. Position in the Effect-Boundary Lifecycle . . . . . . . . . .  23
-   14. Security Considerations . . . . . . . . . . . . . . . . . . .  24
-   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  26
-   16. Relationship to Other Work  . . . . . . . . . . . . . . . . .  26
-   17. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  27
+   13. Position in the Effect-Boundary Lifecycle . . . . . . . . . .  24
+   14. Security Considerations . . . . . . . . . . . . . . . . . . .  25
+   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  27
+   16. Relationship to Other Work  . . . . . . . . . . . . . . . . .  27
+   17. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  28
 
 
 
@@ -114,16 +114,16 @@ Schrock                   Expires 7 April 2027                  [Page 2]
 Internet-Draft        Authorization Evidence Chains         October 2026
 
 
-   18. Changes in -08  . . . . . . . . . . . . . . . . . . . . . . .  27
-   19. Changes in -07  . . . . . . . . . . . . . . . . . . . . . . .  28
+   18. Changes in -08  . . . . . . . . . . . . . . . . . . . . . . .  28
+   19. Changes in -07  . . . . . . . . . . . . . . . . . . . . . . .  29
    20. Changes in -06  . . . . . . . . . . . . . . . . . . . . . . .  30
-   21. Changes in -05  . . . . . . . . . . . . . . . . . . . . . . .  30
-   22. Implementation Status . . . . . . . . . . . . . . . . . . . .  30
-   23. References  . . . . . . . . . . . . . . . . . . . . . . . . .  32
-     23.1.  Normative References . . . . . . . . . . . . . . . . . .  32
-     23.2.  Informative References . . . . . . . . . . . . . . . . .  33
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  34
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  34
+   21. Changes in -05  . . . . . . . . . . . . . . . . . . . . . . .  31
+   22. Implementation Status . . . . . . . . . . . . . . . . . . . .  31
+   23. References  . . . . . . . . . . . . . . . . . . . . . . . . .  33
+     23.1.  Normative References . . . . . . . . . . . . . . . . . .  33
+     23.2.  Informative References . . . . . . . . . . . . . . . . .  34
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  35
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  35
 
 1.  Introduction
 
@@ -409,18 +409,19 @@ Internet-Draft        Authorization Evidence Chains         October 2026
       relation, the evidence digest of an eligible target component of
       the named type.
 
-   The verifier MUST compute the requirement profile digest over the JCS
-   serialization of the complete requirement object.  JCS preserves
-   string contents, and the expression enters that serialization exactly
-   as stored: a verifier MUST NOT trim it, change its case, apply
-   Unicode normalization to it, or otherwise rewrite it before computing
-   the digest.  Two requirements whose expressions have the same Boolean
-   meaning, or the same parse identity (Section 8.6), can have different
-   requirement profile digests.  The requirement object controls
-   evidence sufficiency only.  Application rules about amounts,
-   destinations, operator permissions, legal authority, risk acceptance,
-   or whether to execute remain in the separate local authorization
-   policy.
+   The verifier MUST compute the requirement profile digest, which is
+   the evidence digest (Section 2) of the complete requirement object:
+   "sha256:" followed by the lowercase hexadecimal SHA-256 digest of its
+   JCS serialization.  JCS preserves string contents, and the expression
+   enters that serialization exactly as stored: a verifier MUST NOT trim
+   it, change its case, apply Unicode normalization to it, or otherwise
+   rewrite it before computing the digest.  Two requirements whose
+   expressions have the same Boolean meaning, or the same parse identity
+   (Section 8.6), can have different requirement profile digests.  The
+   requirement object controls evidence sufficiency only.  Application
+   rules about amounts, destinations, operator permissions, legal
+   authority, risk acceptance, or whether to execute remain in the
+   separate local authorization policy.
 
    Initiator exclusion, executor exclusion, durable one-time
    consumption, resource ceilings, and whether to execute are boundary
@@ -440,8 +441,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    *  the expected Action Object or its independently computed canonical
       action digest;
 
-   *  an expected CAID and mapping profiles when cross-format action
-      mapping is used;
+
 
 
 
@@ -449,6 +449,9 @@ Schrock                   Expires 7 April 2027                  [Page 8]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
+
+   *  an expected CAID and mapping profiles when cross-format action
+      mapping is used;
 
    *  an explicit verification time;
 
@@ -463,7 +466,8 @@ Internet-Draft        Authorization Evidence Chains         October 2026
       status sources; and
 
    *  documented resource limits for parsing, nesting, component count,
-      expression size, and verifier execution.
+      and verifier execution.  The limits on a requirement expression
+      are not configuration; Section 8.4 fixes them.
 
    These values MUST NOT be taken from the presented chain or from an
    untrusted caller.  If any required input is absent, malformed,
@@ -494,10 +498,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    *  the protected issuance and expiration instants needed by the
       selected freshness check;
 
-   *  the protected issuer, audience, and format revision relevant to
-      the selected native profile;
-
-
 
 
 
@@ -505,6 +505,9 @@ Schrock                   Expires 7 April 2027                  [Page 9]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
+
+   *  the protected issuer, audience, and format revision relevant to
+      the selected native profile;
 
    *  an authenticated status result and status-snapshot digest when
       status checking is required; and
@@ -554,9 +557,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-
-
-
 Schrock                   Expires 7 April 2027                 [Page 10]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
@@ -602,11 +602,11 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    requires and combines them with AND and OR.  This section defines how
    an expression is tokenized, parsed, validated, and evaluated, so that
    every conforming evaluator gives each valid expression the same
-   reading.  The JavaScript, Python, and Go reference parsers of -07
-   already read every vector of the corpus in Section 8.7 this way.
-   This section makes that behavior normative and testable, and it
-   refuses readings that the -07 text permitted.
-
+   reading.  The JavaScript reference parser that accompanied -07 and
+   its Python and Go ports already agree with every vector of the corpus
+   in Section 8.7 on syntax validity and Boolean value.  This section
+   makes that behavior normative and testable, and it refuses readings
+   that the -07 text permitted.
 
 
 
@@ -638,12 +638,13 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
    An expression is a JSON string.  SP, HTAB, CR, and LF are its only
    whitespace characters.  Any character that is not whitespace, an
-   identifier character, a parenthesis, or part of an operator makes the
-   expression invalid.  This includes NO-BREAK SPACE (U+00A0), EM SPACE
-   (U+2003), LINE SEPARATOR (U+2028), BYTE ORDER MARK (U+FEFF), ZERO
-   WIDTH SPACE (U+200B), VERTICAL TAB (U+000B), FORM FEED (U+000C), and
-   every other character outside ASCII.  None of them is whitespace, and
-   none is removed before parsing.
+   identifier character, a parenthesis, or part of an "&&" or "||"
+   operator makes the expression invalid, so a single "&" or "|" does.
+   This includes NO-BREAK SPACE (U+00A0), EM SPACE (U+2003), LINE
+   SEPARATOR (U+2028), BYTE ORDER MARK (U+FEFF), ZERO WIDTH SPACE
+   (U+200B), VERTICAL TAB (U+000B), FORM FEED (U+000C), and every other
+   character outside ASCII.  None of them is whitespace, and none is
+   removed before parsing.
 
 8.2.  Token Boundaries
 
@@ -665,7 +666,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
        classify the complete run: a run that is exactly "AND" or exactly
        "OR" is that operator, and every other run is an identifier.
 
-   5.  Any other character makes the expression invalid.
 
 
 
@@ -673,6 +673,8 @@ Schrock                   Expires 7 April 2027                 [Page 12]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
+
+   5.  Any other character makes the expression invalid.
 
    Thus "aORb", "ORb", "AND.x", "a.OR.b", and "p-OR-q" are each one
    identifier, and "a OR b" contains an operator.  Identifiers are case-
@@ -723,8 +725,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-
-
 Schrock                   Expires 7 April 2027                 [Page 13]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
@@ -740,8 +740,12 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    The following limits are fixed by this revision and are part of the
    evaluator revision EP-AEC-EVALUATOR-08-v1 (Section 10):
 
-   Length  At most 4096 octets in the UTF-8 encoding of the expression
-      as stored, whitespace included.
+   Length  At most 4096 octets in the UTF-8 encoding of the expression's
+      string value after JSON decoding, whitespace included, so a JSON
+      escape sequence counts as the octets of the character it denotes.
+      A lone surrogate, which some host languages can hold in a string
+      although it is not Unicode text, counts as three octets and is an
+      invalid character.
 
    Tokens  At most 256 tokens.  Identifiers, operators (including "&&"
       and "||"), and parentheses each count as one token; whitespace is
@@ -757,26 +761,22 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    An expression that exceeds a limit is invalid.  When an expression is
    invalid for more than one reason, the reported refusal class follows
    the order in which the input is examined: the length limit; then
-   tokenization from left to right, where an invalid character is a
-   syntax refusal and a 257th token is a limit refusal; then parsing
-   from left to right, where a 33rd nesting level is a limit refusal and
-   every other failure is a syntax refusal.  The refusal class is a
-   diagnostic.  Every invalid expression yields UNSATISFIED.
+   tokenization from left to right, where an invalid character,
+   including a single "&" or "|", is a syntax refusal where it is met,
+   and a token counts only once it is complete, so that completing a
+   257th token is a limit refusal; then parsing from left to right,
+   where a 33rd nesting level is a limit refusal and every other failure
+   is a syntax refusal.  The refusal class is a diagnostic.  Every
+   invalid expression yields UNSATISFIED.
 
-   An evaluator MUST NOT raise these limits.  The other resource limits
-   that Section 5 lists, such as JSON nesting, component count, and
-   verifier execution, are relying-party configuration.  A configured
-   limit, including any tighter expression limit, can change which
-   inputs are accepted, so it MUST be part of the identified evaluator
-   profile.  A result under a tighter expression limit is not a result
-   of the fixed profile defined here.
-
-8.5.  Examples
-
-   In Table 1, "Eligible" is the satisfied type set, "Valid" is syntax
-   validity, "n/a" marks a value or canonical parse that an invalid
-   expression does not have, and the canonical parse is defined in
-   Section 8.6.  Each row is also a vector of the corpus in Section 8.7.
+   An evaluator MUST apply exactly these limits, neither raising nor
+   lowering them.  The other resource limits that Section 5 lists, such
+   as limits on parsing, nesting, component count, and verifier
+   execution, are relying-party configuration.  Such a limit can refuse
+   a requirement or a chain regardless of the expression, so it can
+   change which inputs are accepted; it MUST therefore be part of the
+   evaluator profile that a replay record identifies by its
+   evaluator_profile_digest (Section 10).
 
 
 
@@ -785,6 +785,13 @@ Schrock                   Expires 7 April 2027                 [Page 14]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
+
+8.5.  Examples
+
+   In Table 1, "Eligible" is the satisfied type set, "Valid" is syntax
+   validity, "n/a" marks a value or canonical parse that an invalid
+   expression does not have, and the canonical parse is defined in
+   Section 8.6.  Each row is also a vector of the corpus in Section 8.7.
 
    +====================+==========+=======+=======+==================+
    | Expression         | Eligible | Valid | Value | Canonical parse  |
@@ -826,6 +833,15 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
                  Table 1: Requirement Expression Examples
 
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 15]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
+
    "aORb" is one identifier, so it is false when only "a" is eligible
    and true when a component type named "aORb" is.  In "aOR(b)" the run
    "aOR" is an identifier followed by a group with no operator between
@@ -834,13 +850,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    identifier, which leaves three adjacent identifiers.  Bare "AND" is
    an operator with no operands, even when a component type named "AND"
    is eligible.
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 15]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
 
    With only "a" eligible, "a OR b AND c" is false: it groups as "((a OR
    b) AND c)", and "c" is not eligible.  "a OR (b AND c)" is true.  In
@@ -881,15 +890,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    strings: the ASCII domain separator below, one zero octet, and the
    ASCII canonical parse.
 
-   parse-identity = "sha256:" lowercase-hex( SHA-256(
-                      "EP-AEC-EXPRESSION-PARSE-v1" || 0x00 ||
-                      canonical-parse ) )
-
-   The domain separator is versioned; a different canonical form would
-   use a different separator.
-
-
-
 
 
 
@@ -897,6 +897,13 @@ Schrock                   Expires 7 April 2027                 [Page 16]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
+
+   parse-identity = "sha256:" lowercase-hex( SHA-256(
+                      "EP-AEC-EXPRESSION-PARSE-v1" || 0x00 ||
+                      canonical-parse ) )
+
+   The domain separator is versioned; a different canonical form would
+   use a different separator.
 
    An evaluator MUST evaluate the same tree from which it computes the
    canonical parse and parse identity.  It MUST NOT compute them from
@@ -939,13 +946,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    and the parse identity.  The vectors cover every row of Table 1; the
    four whitespace characters and characters that are not whitespace,
    including those listed in Section 8.1; operator-like text inside
-   identifiers with dots, colons, hyphens, and underscores; the operator
-   aliases; grouping; and each limit at, just below, and just beyond its
-   threshold, including overflowing branches behind a true OR and a
-   false AND.
-
-
-
 
 
 
@@ -953,6 +953,11 @@ Schrock                   Expires 7 April 2027                 [Page 17]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
+
+   identifiers with dots, colons, hyphens, and underscores; the operator
+   aliases; grouping; and each limit at, just below, and just beyond its
+   threshold, including overflowing branches behind a true OR and a
+   false AND.
 
    The corpus is a test input.  An evaluator MUST NOT need it, or fetch
    it, at run time.  Producing every assertion in it is necessary for an
@@ -997,11 +1002,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
            not VERIFIED, and a VERIFIED component that is not ACCEPTED
            are ineligible.
 
-       c.  Only after VERIFIED and ACCEPTED, establish material-action
-           MATCH under Section 7.  A different or indeterminate action
-           makes the component ineligible.
-
-
 
 
 
@@ -1009,6 +1009,10 @@ Schrock                   Expires 7 April 2027                 [Page 18]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
+
+       c.  Only after VERIFIED and ACCEPTED, establish material-action
+           MATCH under Section 7.  A different or indeterminate action
+           makes the component ineligible.
 
        d.  If the requirement sets a freshness bound for the component
            type, require protected issuance time, verification time
@@ -1046,15 +1050,11 @@ Internet-Draft        Authorization Evidence Chains         October 2026
        any step yields UNSATISFIED and a bounded reason; it MUST NOT
        yield a partial success.
 
-   The result MUST carry satisfied as a Boolean and SHOULD carry bounded
-   per-component reason codes.  Each normalized fact MUST carry the
-   VERIFIED and ACCEPTED results as separate fields, and a consumer MUST
-   NOT derive one from the other.  Reason codes SHOULD distinguish a
-   verification failure, a verification that could not be evaluated, an
-   acceptance refusal, and a failed material-action match from one
-   another.  An implementation may retain a legacy allow alias, but that
-   alias MUST equal satisfied and MUST NOT be interpreted as local
-   AUTHORIZED.
+
+
+
+
+
 
 
 
@@ -1066,6 +1066,16 @@ Schrock                   Expires 7 April 2027                 [Page 19]
 Internet-Draft        Authorization Evidence Chains         October 2026
 
 
+   The result MUST carry satisfied as a Boolean and SHOULD carry bounded
+   per-component reason codes.  Each normalized fact MUST carry the
+   VERIFIED and ACCEPTED results as separate fields, and a consumer MUST
+   NOT derive one from the other.  Reason codes SHOULD distinguish a
+   verification failure, a verification that could not be evaluated, an
+   acceptance refusal, and a failed material-action match from one
+   another.  An implementation may retain a legacy allow alias, but that
+   alias MUST equal satisfied and MUST NOT be interpreted as local
+   AUTHORIZED.
+
 10.  Evidence Evaluation Replay
 
    An evaluator MUST be able to emit an EP-AEC-REPLAY-v1 record.  The
@@ -1074,6 +1084,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    {
      "@version": "EP-AEC-REPLAY-v1",
      "algorithm_revision": "<evaluator algorithm revision>",
+     "evaluator_profile_digest": "sha256:<hex>",
      "aec_digest": "sha256:<hex>",
      "expected_action_digest": "sha256:<hex>",
      "expected_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
@@ -1103,17 +1114,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    whose evaluators set EP-AEC-EVALUATOR-07-v1.  Records with different
    algorithm revisions are not compared digest for digest; a record from
    an evaluator implementing -06 of this document carries one combined
-   validity member per fact instead of native_verification and
-   acceptance.  The aec_digest is the evidence digest of the complete
-   EP-AEC-v1 object.  Facts remain in component array order.  Object
-   members inside each fact use JCS ordering.  The replay digest is the
-   evidence digest of the complete EP-AEC-REPLAY-v1 record.
-
-   In each fact, native_verification is VERIFIED, FAILED, or
-   NOT_EVALUATED, and acceptance is ACCEPTED, REJECTED, or
-   NOT_EVALUATED.  acceptance is NOT_EVALUATED whenever
-   native_verification is not VERIFIED.  native_verification is
-   NOT_EVALUATED when the native verifier was not invoked, returned no
 
 
 
@@ -1122,6 +1122,29 @@ Schrock                   Expires 7 April 2027                 [Page 20]
 Internet-Draft        Authorization Evidence Chains         October 2026
 
 
+   validity member per fact instead of native_verification and
+   acceptance.  The aec_digest is the evidence digest of the complete
+   EP-AEC-v1 object.  Facts remain in component array order.  Object
+   members inside each fact use JCS ordering.  The replay digest is the
+   evidence digest of the complete EP-AEC-REPLAY-v1 record.
+
+   The evaluator_profile_digest identifies the evaluator profile that
+   produced the record.  It is the evidence digest of a description of
+   that profile: the algorithm revision, which fixes the expression
+   limits of Section 8.4; the value of every other resource limit it
+   enforces (Section 5); and, for each component type with a configured
+   native verifier, the native verifier profile, trust snapshot, and
+   mapping profile digests and the maximum status age the evaluator
+   applies.  This document defines neither a portable serialization of
+   that description nor a closed list of the further normalized fact
+   members, so two implementations compute equal replay digests only
+   when they also agree on those.
+
+   In each fact, native_verification is VERIFIED, FAILED, or
+   NOT_EVALUATED, and acceptance is ACCEPTED, REJECTED, or
+   NOT_EVALUATED.  acceptance is NOT_EVALUATED whenever
+   native_verification is not VERIFIED.  native_verification is
+   NOT_EVALUATED when the native verifier was not invoked, returned no
    usable result, or could not evaluate VERIFIED because no verification
    key could be resolved; it is FAILED only when the checks ran and did
    not pass.
@@ -1144,30 +1167,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
       new, separately identified record.  It does not claim digest
       equality with the stored record.
 
-   *  An evaluator that does not implement a record's revision MUST
-      report the comparison as unsupported or refuse it.  It MUST NOT
-      compare the record as if it had been made under the evaluator's
-      own revision.
 
-   Given the same AEC object, expected action inputs, requirement
-   profile, explicit verification time, normalized native facts, and
-   algorithm revision, implementations MUST compute the same replay
-   digest and SATISFIED result.  ACCEPTED depends on trust snapshots,
-   and status checks depend on status services; therefore the replay
-   record MUST bind the selected verifier-profile, trust-snapshot, and
-   status-snapshot digests needed to identify those inputs.  A party
-   that re-runs the evaluation with the same verification keys under
-   different trust inputs can reproduce the VERIFIED results but not
-   necessarily the ACCEPTED results; the trust-snapshot digests identify
-   whose acceptance the record reports.  A replay record without the
-   underlying evidence and identified trust snapshots can identify a
-   decision but cannot independently prove that every recorded native
-   fact was true.
-
-   The replay digest is not a signature, authorization, transparency
-   receipt, or current-status proof.  Another format MAY sign or log it.
-   This document intentionally defines no signed reliance-result
-   envelope and no legal meaning for a SATISFIED result.
 
 
 
@@ -1177,6 +1177,31 @@ Schrock                   Expires 7 April 2027                 [Page 21]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
+
+   *  An evaluator that does not implement a record's revision MUST
+      report the comparison as unsupported or refuse it.  It MUST NOT
+      compare the record as if it had been made under the evaluator's
+      own revision.
+
+   Given the same AEC object, expected action inputs, requirement
+   profile, evaluator profile, explicit verification time, normalized
+   native facts, and algorithm revision, implementations MUST compute
+   the same replay digest and SATISFIED result.  ACCEPTED depends on
+   trust snapshots, and status checks depend on status services;
+   therefore the replay record MUST bind the selected verifier-profile,
+   trust-snapshot, and status-snapshot digests needed to identify those
+   inputs.  A party that re-runs the evaluation with the same
+   verification keys under different trust inputs can reproduce the
+   VERIFIED results but not necessarily the ACCEPTED results; the trust-
+   snapshot digests identify whose acceptance the record reports.  A
+   replay record without the underlying evidence and identified trust
+   snapshots can identify a decision but cannot independently prove that
+   every recorded native fact was true.
+
+   The replay digest is not a signature, authorization, transparency
+   receipt, or current-status proof.  Another format MAY sign or log it.
+   This document intentionally defines no signed reliance-result
+   envelope and no legal meaning for a SATISFIED result.
 
 11.  Human-Authorization Components
 
@@ -1199,6 +1224,15 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    only from verified completed signoffs, not from an unsigned label or
    the wider selected approver roster.  A SATISFIED bundle is approval
    evidence, not proof of consumption or execution.
+
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 22]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
 
    The ep-receipt built-in MUST report VERIFIED only when the Trust
    Receipt's signoff signatures verify under the keys their approver key
@@ -1226,14 +1260,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    presented quorum policy equals the relying-party-pinned policy and
    the selected approver, role, distinctness, origin, ordering, and
    freshness rules of [EP-QUORUM] hold.  A safety-critical profile
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 22]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    requiring human separation MUST require at least two distinct humans.
    A quorum that is VERIFIED under presenter-selected keys or a weaker
    presenter-selected policy is not ACCEPTED and is ineligible.
@@ -1256,6 +1282,14 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    party's pins for its own role, and the native verifier's scope result
    places the operation within that capability.  The component is not
    VERIFIED unless the operation record and both referenced artifacts
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 23]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
+
    are VERIFIED, and not ACCEPTED unless all three are ACCEPTED and the
    native verifier's scope result places the operation within that
    capability.  An operation outside the capability's scope is therefore
@@ -1280,16 +1314,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
      -> INVOKED
      -> EXECUTED, FAILED, or INDETERMINATE
 
-
-
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 23]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    This document splits the VERIFIED step of that lifecycle into two
    results.  An artifact that [EP-AEB] calls VERIFIED, one that passed
    its native verifier under relying-party-selected trust inputs, is
@@ -1311,6 +1335,16 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    not already acted.  A consequential executor uses shared atomic state
    keyed by an executor-derived action instance and preserves an
    uncertain operation instead of blindly replaying it.
+
+
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 24]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
 
 14.  Security Considerations
 
@@ -1336,16 +1370,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    evidence digest and relation from integrity-protected native bytes.
    An unbacked relation never satisfies a required binding.
 
-
-
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 24]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    *Verifier and key-role confusion.* Native verifiers, revisions, trust
    anchors, mapping profiles, and human directories are relying-party
    pins.  They MUST NOT be accepted in the same transaction as
@@ -1369,6 +1393,14 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    not distinguish a forgery from an intact artifact signed under a key
    the relying party does not hold.  An artifact bound to a different
    action is a failed MATCH, not a refused acceptance.
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 25]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
 
    *Freshness and status.* Message freshness, artifact age, credential
    validity, credential revocation, authority revocation, and policy
@@ -1394,14 +1426,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    each valid expression one reading, and its vector corpus and parse
    identity let an implementer compare a parser with that reading.
    These measures have limits.  A finite corpus can show that an
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 25]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    implementation is wrong on its vectors, not that it is right on every
    input.  A matching parse identity says nothing about how the tree was
    evaluated, how roles were matched, or which components were eligible,
@@ -1425,6 +1449,14 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    does not inherently prove a natural person's identity, human
    operation, comprehension, legal authority, safety, execution, or
    outcome.
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 26]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
 
 15.  Privacy Considerations
 
@@ -1450,14 +1482,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    native human-authorization profiles.  AEC composes them without
    generalizing all evidence into those formats.
 
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 26]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    The earlier Action Evidence Graph draft (draft-schrock-ep-action-
    evidence-graph-00) described content-addressed graph references,
    relying-party evidence policy replay, a five-verdict classification,
@@ -1479,6 +1503,17 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    into AUTHORIZED without the separate boundary decision and controls
    described by AEB.
 
+
+
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 27]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
+
 17.  IANA Considerations
 
    This document has no IANA actions.  It creates no universal
@@ -1493,32 +1528,21 @@ Internet-Draft        Authorization Evidence Chains         October 2026
       uppercase AND and OR are the only word operators and are reserved
       only inside expressions; identifiers and role matching are case-
       sensitive; SP, HTAB, CR, and LF are the only whitespace; the ABNF
-      uses case-sensitive strings [RFC7405].  The JavaScript, Python,
-      and Go reference parsers of -07 already read every vector of the
-      new corpus this way.  The -07 text permitted readings that -08
-      refuses.
+      uses case-sensitive strings [RFC7405].  The JavaScript reference
+      parser that accompanied -07 and its Python and Go ports already
+      agree with every vector of the new corpus on syntax validity and
+      Boolean value.  The -07 text permitted readings that -08 refuses.
 
    *  Separated validity from truth and required validation of the
       entire expression before SATISFIED, so that short-circuiting
       cannot skip a malformed or over-limit branch (Sections 8.3 and 9).
 
-
-
-
-
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 27]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    *  Stated the fixed limits and what they count: 4096 UTF-8 octets,
       256 tokens counting identifiers, operators, and parentheses, and
       32 levels of nesting, with a deterministic refusal class
-      (Section 8.4).  Any configured limit belongs to the identified
-      evaluator profile.
+      (Section 8.4).  An evaluator applies exactly these limits; the
+      expression size is no longer a relying-party resource limit
+      (Section 5).  Configured limits belong to the evaluator profile.
 
    *  Added worked examples (Section 8.5) and a frozen vector corpus
       identified by a commit-pinned URL and a SHA-256 digest
@@ -1536,13 +1560,30 @@ Internet-Draft        Authorization Evidence Chains         October 2026
       under -08 produces a new record, and an unsupported revision is
       reported or refused (Section 10).
 
+
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 28]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
+
    *  No wire-format change.  EP-AEC-v1, EP-AEC-REQUIREMENT-v1, and EP-
       AEC-REPLAY-v1 keep their versions and member sets; the parse
       identity travels in neither object.  Replay digests of -08 records
       differ from those of -07 records because the algorithm revision
       differs.
 
-   *  Section 4 states that the requirement profile digest covers the
+   *  The Section 10 record template now shows evaluator_profile_digest,
+      which the -07 reference evaluator already emitted and the -07
+      template omitted, and says what it identifies.  Section 10 also
+      states that this document does not define a portable serialization
+      of the evaluator profile or a closed list of further fact members.
+
+   *  Section 4 defines the requirement profile digest as the evidence
+      digest of the requirement object and states that it covers the
       expression exactly as stored.  Section 14 adds parser
       differentials.
 
@@ -1562,14 +1603,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    *  Native verifiers report both results, never ACCEPTED without
       VERIFIED, and report the artifact as not VERIFIED when a combined
       native procedure cannot attribute a failure.  A key resolved from
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 28]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
       relying-party key material makes an artifact checkable, not
       ACCEPTED; a key reference that cannot be resolved is recorded as
       NOT_EVALUATED, not FAILED (Section 6).
@@ -1583,6 +1616,15 @@ Internet-Draft        Authorization Evidence Chains         October 2026
       requires both.  Native verifiers evaluate pins against the action
       the artifact carries, and only MATCH compares it with the expected
       action (Section 7).
+
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 29]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
 
    *  Each normalized fact and replay record carries the two results as
       separate native_verification and acceptance members, the replay
@@ -1618,14 +1660,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
       verdict of the same names.  Section 14 adds the verification and
       acceptance consideration, including where the separation stops.
 
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 29]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    *  Defined UNSATISFIED explicitly as every result other than
       SATISFIED, including an evaluation that could not complete.
 
@@ -1639,6 +1673,14 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    *  Updated implementation status for the structured requirement,
       native facts, role constraints, required bindings, and replay
       contract.
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 30]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
 
    *  Updated references without changing the EP-AEC-v1 envelope or
       converting evidence satisfaction into execution authority.
@@ -1671,52 +1713,61 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    original evidence under those configuration pins; serialized facts
    are not trusted merely because their digest matches.
 
-
-
-
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 30]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    At the time of writing, the latest published release of the
    JavaScript package, @emilia-protocol/verify 6.0.0, implements EP-AEC-
    EVALUATOR-07-v1.  EP-AEC-EVALUATOR-08-v1 is implemented in the
    reference repository and is not yet in a published release; this
    draft revision does not by itself imply a released package.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 31]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
+
    The -08 evaluator parses the relying party's expression once, when
    the evaluator is constructed, and evaluates that tree.  It exposes
    the canonical parse, parse identity, and token count as diagnostics
    outside the requirement and replay objects.  A malformed expression
-   refuses construction with the error aec_requirement_invalid, so no
-   replay record is produced for it; a valid expression that is false is
-   accepted at construction and evaluates to UNSATISFIED.  Replay
-   compares a stored record only when the record carries EP-AEC-
-   EVALUATOR-08-v1, by its complete replay digest.  It reports a record
-   of another revision, including -07, as unsupported without modifying
-   it, and always returns a new -08 record.  The structured result
-   reports authorization_decision as false.
+   refuses construction, so no replay record is produced for it; the
+   error is aec_requirement_invalid, or the strict JSON error when the
+   requirement is not I-JSON, as with a lone surrogate.  A valid
+   expression that is false is accepted at construction and evaluates to
+   UNSATISFIED.  Replay compares a stored record only when the record
+   carries EP-AEC-EVALUATOR-08-v1, by its complete replay digest.  It
+   reports a record of another revision, including -07, as unsupported
+   without modifying it, and always returns a new -08 record.  The
+   structured result reports authorization_decision as false.
 
    The Python and Go verifier packages implement the Section 8
-   expression algorithm and its diagnostics in their legacy chain
-   interfaces, also in the reference repository and not yet released.
-   They do not implement the structured EP-AEC-REQUIREMENT-v1 and EP-
-   AEC-REPLAY-v1 contract, and their agreement with the JavaScript
-   implementation on the corpus is agreement on expression evaluation
-   only.  Before this revision, the Go legacy interface trimmed Unicode
-   whitespace from a pinned requirement before evaluating it, so a
-   requirement made of NO-BREAK SPACE followed by "a" was evaluated as
-   "a"; that is corrected, and the three ports now measure the length
-   limit in UTF-8 octets.  All three run the corpus of Section 8.7 and
-   agree on every assertion.  The JavaScript tests also inject faults
-   that keep the parse identity unchanged while evaluating an operator
-   wrongly, matching roles without regard to case, or crediting a
-   component whose native verification FAILED, and reject the resulting
-   wrong verdicts.
+   expression algorithm and its diagnostics and use it in their legacy
+   chain interfaces, also in the reference repository and not yet
+   released.  They do not implement the structured EP-AEC-REQUIREMENT-v1
+   and EP-AEC-REPLAY-v1 contract, and their agreement with the
+   JavaScript implementation on the corpus is agreement on expression
+   evaluation only.  Before this revision, the Go legacy interface
+   trimmed Unicode whitespace from a pinned requirement before
+   evaluating it, so a requirement made of NO-BREAK SPACE followed by
+   "a" was evaluated as "a"; that is corrected, and the three ports now
+   measure the length limit in UTF-8 octets.  All three run the corpus
+   of Section 8.7 and agree on every assertion.  The JavaScript tests
+   also inject faults that keep the parse identity unchanged while
+   evaluating an operator wrongly, matching roles without regard to
+   case, or crediting a component whose native verification FAILED, and
+   reject the resulting wrong verdicts.
 
    The structured evaluator separates the two results.  Native verifier
    callbacks return separate verified and accepted results; every replay
@@ -1730,19 +1781,18 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    reference that cannot be resolved is recorded as NOT_EVALUATED, and
    the directory entry's approver binding, key class, validity period,
    and compromise marker are acceptance inputs.  The Trust Receipt
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 31]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    checkpoint signature is checked under the relying party's log key, so
    a checkpoint that does not verify under that key is FAILED whether it
    was forged or signed by another log.  The built-ins evaluate pins
    against the action the artifact carries and leave the expected action
    to MATCH.
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 32]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
 
    The older string-requirement API remains a separate legacy interface.
    It does not implement the complete structured contract and keeps one
@@ -1782,24 +1832,23 @@ Internet-Draft        Authorization Evidence Chains         October 2026
               2026, <https://datatracker.ietf.org/doc/draft-schrock-ep-
               quorum/>.
 
-
-
-
-
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 32]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    [EP-RECEIPTS]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
               ep-authorization-receipts-13, 11 September 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
+
+
+
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 33]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -1840,16 +1889,6 @@ Internet-Draft        Authorization Evidence Chains         October 2026
               the SHA-256 digest given in Section 8.7, not against the
               URL.
 
-
-
-
-
-
-Schrock                   Expires 7 April 2027                 [Page 33]
-
-Internet-Draft        Authorization Evidence Chains         October 2026
-
-
    [EP-AEB]   Schrock, I., "The Action Evidence Boundary for
               Consequential Agent Effects", Work in Progress, Internet-
               Draft, draft-schrock-action-evidence-boundary-07, 25
@@ -1859,6 +1898,14 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    [EP-QUALIFICATION]
               Schrock, I., "Portable Agent Qualification Statements for
               Consequential Actions", Work in Progress, Internet-Draft,
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 34]
+
+Internet-Draft        Authorization Evidence Chains         October 2026
+
+
               draft-schrock-agent-qualification-statements-00, 27 July
               2026, <https://datatracker.ietf.org/doc/draft-schrock-
               agent-qualification-statements/>.
@@ -1901,4 +1948,13 @@ Author's Address
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 34]
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 7 April 2027                 [Page 35]

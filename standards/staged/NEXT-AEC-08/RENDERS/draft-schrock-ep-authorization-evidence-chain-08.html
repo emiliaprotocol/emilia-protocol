@@ -1752,8 +1752,10 @@ li > p:last-of-type:only-child {
         of an eligible target component of the named type.<a href="#section-4-3.8" class="pilcrow">¶</a>
 </li>
       </ul>
-<p id="section-4-4">The verifier MUST compute the requirement profile digest over the JCS
-      serialization of the complete requirement object. JCS preserves string
+<p id="section-4-4">The verifier MUST compute the requirement profile digest, which is
+      the evidence digest (<a href="#terminology" class="auto internal xref">Section 2</a>) of the complete
+      requirement object: "sha256:" followed by the lowercase hexadecimal
+      SHA-256 digest of its JCS serialization. JCS preserves string
       contents, and the expression enters that serialization exactly as
       stored: a verifier MUST NOT trim it, change its case, apply Unicode
       normalization to it, or otherwise rewrite it before computing the
@@ -1800,7 +1802,8 @@ li > p:last-of-type:only-child {
         revision; and the freshness inputs and status sources; and<a href="#section-5-2.5" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-5-2.6">documented resource limits for parsing, nesting, component count,
-        expression size, and verifier execution.<a href="#section-5-2.6" class="pilcrow">¶</a>
+        and verifier execution. The limits on a requirement expression are not
+        configuration; <a href="#expr-limits" class="auto internal xref">Section 8.4</a> fixes them.<a href="#section-5-2.6" class="pilcrow">¶</a>
 </li>
       </ul>
 <p id="section-5-3">These values MUST NOT be taken from the presented chain or from an
@@ -1928,11 +1931,11 @@ li > p:last-of-type:only-child {
       requires and combines them with AND and OR. This section defines how an
       expression is tokenized, parsed, validated, and evaluated, so that
       every conforming evaluator gives each valid expression the same
-      reading. The JavaScript, Python, and Go reference parsers of -07
-      already read every vector of the corpus in
-      <a href="#expr-vectors" class="auto internal xref">Section 8.7</a> this way. This section makes that
-      behavior normative and testable, and it refuses readings that the -07
-      text permitted.<a href="#section-8-1" class="pilcrow">¶</a></p>
+      reading. The JavaScript reference parser that accompanied -07 and its
+      Python and Go ports already agree with every vector of the corpus in
+      <a href="#expr-vectors" class="auto internal xref">Section 8.7</a> on syntax validity and Boolean value.
+      This section makes that behavior normative and testable, and it
+      refuses readings that the -07 text permitted.<a href="#section-8-1" class="pilcrow">¶</a></p>
 <p id="section-8-2">The expression deliberately answers only which evidence roles are
       present. It has no variables for action parameters, principals,
       entitlements, business risk, or effect state. Those belong to native
@@ -1958,8 +1961,9 @@ ows        = *( SP / HTAB / CR / LF )
 </div>
 <p id="section-8.1-3">An expression is a JSON string. SP, HTAB, CR, and LF are its only
         whitespace characters. Any character that is not whitespace, an
-        identifier character, a parenthesis, or part of an operator makes the
-        expression invalid. This includes NO-BREAK SPACE (U+00A0), EM SPACE
+        identifier character, a parenthesis, or part of an "&amp;&amp;" or
+        "||" operator makes the expression invalid, so a single "&amp;" or
+        "|" does. This includes NO-BREAK SPACE (U+00A0), EM SPACE
         (U+2003), LINE SEPARATOR (U+2028), BYTE ORDER MARK (U+FEFF), ZERO
         WIDTH SPACE (U+200B), VERTICAL TAB (U+000B), FORM FEED (U+000C), and
         every other character outside ASCII. None of them is whitespace, and
@@ -2058,8 +2062,12 @@ ows        = *( SP / HTAB / CR / LF )
         (<a href="#replay" class="auto internal xref">Section 10</a>):<a href="#section-8.4-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-8.4-2">
           <dt id="section-8.4-2.1">Length</dt>
-          <dd style="margin-left: 1.5em" id="section-8.4-2.2">At most 4096 octets in the UTF-8 encoding of the expression as
-          stored, whitespace included.<a href="#section-8.4-2.2" class="pilcrow">¶</a>
+          <dd style="margin-left: 1.5em" id="section-8.4-2.2">At most 4096 octets in the UTF-8 encoding of the expression's
+          string value after JSON decoding, whitespace included, so a JSON
+          escape sequence counts as the octets of the character it denotes.
+          A lone surrogate, which some host languages can hold in a string
+          although it is not Unicode text, counts as three octets and is an
+          invalid character.<a href="#section-8.4-2.2" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
 <dt id="section-8.4-2.3">Tokens</dt>
@@ -2081,18 +2089,22 @@ ows        = *( SP / HTAB / CR / LF )
 <p id="section-8.4-3">An expression that exceeds a limit is invalid. When an expression
         is invalid for more than one reason, the reported refusal class
         follows the order in which the input is examined: the length limit;
-        then tokenization from left to right, where an invalid character is a
-        syntax refusal and a 257th token is a limit refusal; then parsing
-        from left to right, where a 33rd nesting level is a limit refusal and
-        every other failure is a syntax refusal. The refusal class is a
-        diagnostic. Every invalid expression yields UNSATISFIED.<a href="#section-8.4-3" class="pilcrow">¶</a></p>
-<p id="section-8.4-4">An evaluator MUST NOT raise these limits. The other resource limits
-        that <a href="#acceptance-inputs" class="auto internal xref">Section 5</a> lists, such as JSON nesting,
-        component count, and verifier execution, are relying-party
-        configuration. A configured limit, including any tighter expression
-        limit, can change which inputs are accepted, so it MUST be part of the
-        identified evaluator profile. A result under a tighter expression
-        limit is not a result of the fixed profile defined here.<a href="#section-8.4-4" class="pilcrow">¶</a></p>
+        then tokenization from left to right, where an invalid character,
+        including a single "&amp;" or "|", is a syntax refusal where it is
+        met, and a token counts only once it is complete, so that completing
+        a 257th token is a limit refusal; then parsing from left to right,
+        where a 33rd nesting level is a limit refusal and every other failure
+        is a syntax refusal. The refusal class is a diagnostic. Every invalid
+        expression yields UNSATISFIED.<a href="#section-8.4-3" class="pilcrow">¶</a></p>
+<p id="section-8.4-4">An evaluator MUST apply exactly these limits, neither raising nor
+        lowering them. The other resource limits that
+        <a href="#acceptance-inputs" class="auto internal xref">Section 5</a> lists, such as limits on parsing,
+        nesting, component count, and verifier execution, are relying-party
+        configuration. Such a limit can refuse a requirement or a chain
+        regardless of the expression, so it can change which inputs are
+        accepted; it MUST therefore be part of the evaluator profile that a
+        replay record identifies by its <code>evaluator_profile_digest</code>
+        (<a href="#replay" class="auto internal xref">Section 10</a>).<a href="#section-8.4-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="expr-examples">
@@ -2474,6 +2486,7 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
 {
   "@version": "EP-AEC-REPLAY-v1",
   "algorithm_revision": "&lt;evaluator algorithm revision&gt;",
+  "evaluator_profile_digest": "sha256:&lt;hex&gt;",
   "aec_digest": "sha256:&lt;hex&gt;",
   "expected_action_digest": "sha256:&lt;hex&gt;",
   "expected_caid": "caid:1:&lt;action-type&gt;:&lt;suite&gt;:&lt;digest-b64url&gt;",
@@ -2510,7 +2523,19 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
       the complete EP-AEC-v1 object. Facts remain in component array order. Object members
       inside each fact use JCS ordering. The replay digest is the evidence
       digest of the complete EP-AEC-REPLAY-v1 record.<a href="#section-10-3" class="pilcrow">¶</a></p>
-<p id="section-10-4">In each fact, <code>native_verification</code> is <code>VERIFIED</code>,
+<p id="section-10-4">The <code>evaluator_profile_digest</code> identifies the evaluator
+      profile that produced the record. It is the evidence digest of a
+      description of that profile: the algorithm revision, which fixes the
+      expression limits of <a href="#expr-limits" class="auto internal xref">Section 8.4</a>; the value of every
+      other resource limit it enforces (<a href="#acceptance-inputs" class="auto internal xref">Section 5</a>);
+      and, for each component type with a configured native verifier, the
+      native verifier profile, trust snapshot, and mapping profile digests
+      and the maximum
+      status age the evaluator applies. This document defines neither a
+      portable serialization of that description nor a closed list of the
+      further normalized fact members, so two implementations compute equal
+      replay digests only when they also agree on those.<a href="#section-10-4" class="pilcrow">¶</a></p>
+<p id="section-10-5">In each fact, <code>native_verification</code> is <code>VERIFIED</code>,
       <code>FAILED</code>, or <code>NOT_EVALUATED</code>, and <code>acceptance</code> is
       <code>ACCEPTED</code>, <code>REJECTED</code>, or <code>NOT_EVALUATED</code>.
       <code>acceptance</code> is <code>NOT_EVALUATED</code> whenever
@@ -2518,34 +2543,35 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
       <code>native_verification</code> is <code>NOT_EVALUATED</code> when the native
       verifier was not invoked, returned no usable result, or could not
       evaluate VERIFIED because no verification key could be resolved; it is
-      <code>FAILED</code> only when the checks ran and did not pass.<a href="#section-10-4" class="pilcrow">¶</a></p>
-<p id="section-10-5">The algorithm revision is part of the record, so a new revision
+      <code>FAILED</code> only when the checks ran and did not pass.<a href="#section-10-5" class="pilcrow">¶</a></p>
+<p id="section-10-6">The algorithm revision is part of the record, so a new revision
       changes the replay digest even for an expression whose Boolean meaning
       is unchanged. Records move between revisions by re-evaluation, never
-      by relabeling:<a href="#section-10-5" class="pilcrow">¶</a></p>
+      by relabeling:<a href="#section-10-6" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-10-6.1">A stored record MUST NOT be modified. Its
+<li class="normal" id="section-10-7.1">A stored record MUST NOT be modified. Its
         <code>algorithm_revision</code> MUST NOT be replaced, and its digest MUST
-        NOT be recomputed under another revision.<a href="#section-10-6.1" class="pilcrow">¶</a>
+        NOT be recomputed under another revision.<a href="#section-10-7.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-10-6.2">A replay that is compared with a stored record MUST re-verify the
+        <li class="normal" id="section-10-7.2">A replay that is compared with a stored record MUST re-verify the
         original evidence under the identified pins with an evaluator of the
         record's own revision, and MUST compare the complete record by its
-        replay digest.<a href="#section-10-6.2" class="pilcrow">¶</a>
+        replay digest.<a href="#section-10-7.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-10-6.3">Re-evaluating the evidence under a different revision produces a
+        <li class="normal" id="section-10-7.3">Re-evaluating the evidence under a different revision produces a
         new, separately identified record. It does not claim digest equality
-        with the stored record.<a href="#section-10-6.3" class="pilcrow">¶</a>
+        with the stored record.<a href="#section-10-7.3" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-10-6.4">An evaluator that does not implement a record's revision MUST
+        <li class="normal" id="section-10-7.4">An evaluator that does not implement a record's revision MUST
         report the comparison as unsupported or refuse it. It MUST NOT compare
         the record as if it had been made under the evaluator's own
-        revision.<a href="#section-10-6.4" class="pilcrow">¶</a>
+        revision.<a href="#section-10-7.4" class="pilcrow">¶</a>
 </li>
       </ul>
-<p id="section-10-7">Given the same AEC object, expected action inputs, requirement
-      profile, explicit verification time, normalized native facts, and
-      algorithm revision, implementations MUST compute the same replay digest
+<p id="section-10-8">Given the same AEC object, expected action inputs, requirement
+      profile, evaluator profile, explicit verification time, normalized
+      native facts, and algorithm revision, implementations MUST compute the
+      same replay digest
       and SATISFIED result. ACCEPTED depends on trust snapshots, and status
       checks depend on status services; therefore the replay record MUST bind
       the selected verifier-profile, trust-snapshot, and status-snapshot
@@ -2556,11 +2582,11 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
       reports. A replay record
       without the underlying evidence and identified trust snapshots can
       identify a decision but cannot independently prove that every recorded
-      native fact was true.<a href="#section-10-7" class="pilcrow">¶</a></p>
-<p id="section-10-8">The replay digest is not a signature, authorization, transparency
+      native fact was true.<a href="#section-10-8" class="pilcrow">¶</a></p>
+<p id="section-10-9">The replay digest is not a signature, authorization, transparency
       receipt, or current-status proof. Another format MAY sign or log it. This
       document intentionally defines no signed reliance-result envelope and no
-      legal meaning for a SATISFIED result.<a href="#section-10-8" class="pilcrow">¶</a></p>
+      legal meaning for a SATISFIED result.<a href="#section-10-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="human-leg">
@@ -2851,9 +2877,10 @@ native VERIFIED
         only inside expressions; identifiers and role matching are
         case-sensitive; SP, HTAB, CR, and LF are the only whitespace; the
         ABNF uses case-sensitive strings <span>[<a href="#RFC7405" class="cite xref">RFC7405</a>]</span>. The
-        JavaScript, Python, and Go reference parsers of -07 already read
-        every vector of the new corpus this way. The -07 text permitted
-        readings that -08 refuses.<a href="#section-18-1.1" class="pilcrow">¶</a>
+        JavaScript reference parser that accompanied -07 and its Python and
+        Go ports already agree with every vector of the new corpus on syntax
+        validity and Boolean value. The -07 text permitted readings that -08
+        refuses.<a href="#section-18-1.1" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-18-1.2">Separated validity from truth and required validation of the
         entire expression before SATISFIED, so that short-circuiting cannot
@@ -2862,8 +2889,9 @@ native VERIFIED
         <li class="normal" id="section-18-1.3">Stated the fixed limits and what they count: 4096 UTF-8 octets,
         256 tokens counting identifiers, operators, and parentheses, and 32
         levels of nesting, with a deterministic refusal class (Section 8.4).
-        Any configured limit belongs to the identified evaluator
-        profile.<a href="#section-18-1.3" class="pilcrow">¶</a>
+        An evaluator applies exactly these limits; the expression size is no
+        longer a relying-party resource limit (Section 5). Configured limits
+        belong to the evaluator profile.<a href="#section-18-1.3" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-18-1.4">Added worked examples (Section 8.5) and a frozen vector corpus
         identified by a commit-pinned URL and a SHA-256 digest
@@ -2887,12 +2915,20 @@ native VERIFIED
         differ from those of -07 records because the algorithm revision
         differs.<a href="#section-18-1.7" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-18-1.8">Section 4 states that the requirement profile digest covers the
-        expression exactly as stored. Section 14 adds parser
-        differentials.<a href="#section-18-1.8" class="pilcrow">¶</a>
+        <li class="normal" id="section-18-1.8">The Section 10 record template now shows
+        <code>evaluator_profile_digest</code>, which the -07 reference evaluator
+        already emitted and the -07 template omitted, and says what it
+        identifies. Section 10 also states that this document does not define
+        a portable serialization of the evaluator profile or a closed list of
+        further fact members.<a href="#section-18-1.8" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-18-1.9">Updated the implementation status, cited CAID -05, and added
-        RFC 7405.<a href="#section-18-1.9" class="pilcrow">¶</a>
+        <li class="normal" id="section-18-1.9">Section 4 defines the requirement profile digest as the evidence
+        digest of the requirement object and states that it covers the
+        expression exactly as stored. Section 14 adds parser
+        differentials.<a href="#section-18-1.9" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.10">Updated the implementation status, cited CAID -05, and added
+        RFC 7405.<a href="#section-18-1.10" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
@@ -3033,17 +3069,20 @@ native VERIFIED
       the evaluator is constructed, and evaluates that tree. It exposes the
       canonical parse, parse identity, and token count as diagnostics outside
       the requirement and replay objects. A malformed expression refuses
-      construction with the error <code>aec_requirement_invalid</code>, so no
-      replay record is produced for it; a valid expression that is false is
-      accepted at construction and evaluates to UNSATISFIED. Replay compares
+      construction, so no replay record is produced for it; the error is
+      <code>aec_requirement_invalid</code>, or the strict JSON error when the
+      requirement is not I-JSON, as with a lone surrogate. A valid
+      expression that is false is accepted at construction and evaluates to
+      UNSATISFIED. Replay compares
       a stored record only when the record carries
       <code>EP-AEC-EVALUATOR-08-v1</code>, by its complete replay digest. It
       reports a record of another revision, including -07, as unsupported
       without modifying it, and always returns a new -08 record. The
       structured result reports <code>authorization_decision</code> as false.<a href="#section-22-3" class="pilcrow">¶</a></p>
 <p id="section-22-4">The Python and Go verifier packages implement the Section 8
-      expression algorithm and its diagnostics in their legacy chain
-      interfaces, also in the reference repository and not yet released. They
+      expression algorithm and its diagnostics and use it in their legacy
+      chain interfaces, also in the reference repository and not yet
+      released. They
       do not implement the structured EP-AEC-REQUIREMENT-v1 and
       EP-AEC-REPLAY-v1 contract, and their agreement with the JavaScript
       implementation on the corpus is agreement on expression evaluation
