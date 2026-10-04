@@ -19,10 +19,11 @@ on:
   pull_request:
     branches: [main]
   # Required checks must also report on merge-queue candidates. Merge groups
-  # always run the full lane (see the changes job).
+  # always run the full lane (see the changes job): the queue is where the
+  # jobs a pull request defers run, on the exact commit that lands.
   merge_group:
     types: [checks_requested]
-  workflow_dispatch: # enables manual run; required for the gated e2e job
+  workflow_dispatch: # manual full-lane run
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -30,39 +31,58 @@ concurrency:
 
 jobs:
   # ── Job 0: Change lane ───────────────────────────────────────────
-  # Classifies a pull request as `docs` or `full` (scripts/ci/change-lane.mjs).
-  # `docs` means every changed path is prose under docs/, standards/ or
-  # papers/ (or a root *.md) AND no source that a docs-lane-skipped job runs
-  # names a changed path or its directory. Jobs whose `if:` carries
-  # `(github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs')`
-  # are skipped for such pull requests; a job skipped by its own `if:`
-  # reports success to branch protection. Every job that reads prose (test,
-  # build, e2e, docker-build, lint, the typechecks, language governance and
-  # proof statistics, preprint, docs consistency and secrets, protocol
-  # discipline, conformance docs counts, secret scanning) still runs.
+  # Picks the lane every lane-gated job reads (needs.changes.outputs.lane):
   #
-  # The decision never trusts the pull request's own tooling:
-  #   - a pull request that changes .github/ or scripts/ci/ is `full` before
-  #     any classifier runs;
-  #   - the classifier and its self-test are taken from the base commit (the
-  #     merge commit's first parent), so an edit to the classifier is judged
-  #     by the previous one;
-  #   - `docs` also requires that main's latest push run of this workflow
-  #     passed security-case, because the docs lane skips it here;
-  #   - pushes, merge groups and manual runs, a missing base classifier, a
-  #     failed self-test, a classifier error, an Actions API failure and an
-  #     empty output all mean `full`, and every skippable job also runs
-  #     `if: !cancelled()`, so a broken classifier can only make CI slower.
+  #   full    run everything. Merge groups, manual runs, pushes the merge
+  #           queue did not test, and pull requests that are labeled
+  #           `full-ci`, come from main's volatile-evidence refresh branch, or
+  #           change security/security-case.json (the last two carry rules
+  #           the security-case and language-governance policies apply only
+  #           on pull_request runs).
+  #   quick   every other pull request. The jobs whose `if:` carries
+  #           DEFER_CONDITION (scripts/ci/change-lane.mjs) are skipped: the
+  #           security case, the Gate product suite, the conformance parts,
+  #           e2e and docker-build. Each still runs in the merge queue, which
+  #           tests the exact commit that lands, so the PR lane only defers
+  #           them. The fast checks (test, build, lint, the typechecks,
+  #           language governance, preprint, docs, secrets, write discipline,
+  #           the SDK and package suites) still run.
+  #   docs    a quick-lane pull request that changes only prose no
+  #           docs-lane-skipped job reads; the jobs carrying SKIP_CONDITION
+  #           are skipped as well. The classifier and its self-test come
+  #           from the base commit (the merge commit's first parent), so an
+  #           edit to the classifier is judged by the previous one, and a
+  #           pull request that changes .github/ or scripts/ci/ never takes
+  #           this lane.
+  #   tested  a push to main whose exact commit already passed every job in
+  #           QUEUE_TESTED_JOBS in a merge_group run of this workflow. The
+  #           jobs carrying QUEUE_TESTED_CONDITION (that same set) are
+  #           skipped instead of testing the identical commit twice.
+  #           security-case is not in the set: on main it applies the strict
+  #           derived-digest policy and attests the case and both conformance
+  #           manifests, which a merge-queue run never does, so it runs on
+  #           every push, and so does aggregate-conformance-case, which
+  #           attests from its output. That job is not a required check;
+  #           the `conformance` aggregator requires its success in every
+  #           lane except a quick or docs pull request.
+  #
+  # A PR labeled `full-ci` after its last push takes effect on "Re-run all
+  # jobs": the label is read from the API at run time, not from the event.
+  # The lane is written last, so a failure before that leaves it empty, and
+  # every lane condition reads an empty lane as `full`: a broken lane
+  # decision can only make CI slower. Every lane-gated job also runs
+  # `if: !cancelled()`, so it does not wait on this job's success.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
+      # The push dedupe reads this workflow's merge_group runs and jobs.
       actions: read
+      # The `full-ci` label is read from the pull request at run time.
+      pull-requests: read
     outputs:
       lane: ${{ steps.classify.outputs.lane }}
-      main_security_case: ${{ steps.classify.outputs.main_security_case }}
-      main_security_case_run: ${{ steps.classify.outputs.main_security_case_run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: github.event_name == 'pull_request'
@@ -74,18 +94,26 @@ jobs:
         if: github.event_name == 'pull_request'
         with:
           node-version: 24
-      - name: Decide the lane with the base commit's classifier
+      - name: Decide the lane
         id: classify
         env:
           EVENT_NAME: ${{ github.event_name }}
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          # Exactly the jobs whose `if:` carries QUEUE_TESTED_CONDITION
+          # (scripts/ci/ci-lanes.node-test.mjs holds the two equal).
+          QUEUE_TESTED_JOBS: gate-product-suite conformance-core conformance-caid conformance-caid-packets e2e docker-build
         run: |
           set -euo pipefail
           classifier_log="$RUNNER_TEMP/change-lane.md"
           : > "$classifier_log"
-          # Writes the step summary, then the outputs, the lane last: a
-          # failure before that line leaves the lane empty, which is `full`.
+          # Writes the step summary, then the lane, last: a failure before
+          # that line leaves the lane empty, which is `full`.
           finish() {
             {
               # shellcheck disable=SC2016 # literal Markdown backticks
@@ -96,46 +124,70 @@ jobs:
                 printf '\n</details>\n'
               fi
             } >> "$GITHUB_STEP_SUMMARY"
-            if [[ "$1" == docs ]]; then
-              echo "main_security_case=success" >> "$GITHUB_OUTPUT"
-              echo "main_security_case_run=$run_id" >> "$GITHUB_OUTPUT"
-            fi
             echo "lane=$1" >> "$GITHUB_OUTPUT"
             exit 0
           }
-          [[ "$EVENT_NAME" == pull_request ]] || finish full "Event \`$EVENT_NAME\` always runs the full lane."
+
+          if [[ "$EVENT_NAME" == push ]]; then
+            [[ "$REF" == refs/heads/main ]] || finish full "A push to \`$REF\` runs everything."
+            # The merge queue fast-forwards main to the merge-group commit it
+            # tested, so a merged pull request's push carries the SHA of a
+            # merge_group run. Each job in QUEUE_TESTED_JOBS is skipped only
+            # when that run's latest attempt passed it on this exact commit.
+            run_ids="$(gh api "repos/$REPOSITORY/actions/workflows/ci.yml/runs?event=merge_group&head_sha=$SHA&per_page=100" \
+              --jq '.workflow_runs[] | select(.head_sha == env.SHA and .event == "merge_group" and .path == ".github/workflows/ci.yml") | .id')" \
+              || finish full "The Actions API did not answer, so this push runs everything."
+            [[ -n "$run_ids" ]] || finish full "No merge-queue run of ci.yml tested $SHA (a direct push), so this push runs everything."
+            for run_id in $run_ids; do
+              [[ "$run_id" =~ ^[0-9]+$ ]] || continue
+              results="$(gh api --paginate "repos/$REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
+                --jq '.jobs[] | "\(.name)\t\(.conclusion // .status)"')" || continue
+              missing=()
+              for job in $QUEUE_TESTED_JOBS; do
+                grep -qxF "$job"$'\t'success <<< "$results" || missing+=("$job")
+              done
+              if [[ ${#missing[@]} -eq 0 ]]; then
+                finish tested "Merge-queue run $run_id passed $QUEUE_TESTED_JOBS on this exact commit, so this push skips them. security-case and every other job still run."
+              fi
+            done
+            finish full "No merge-queue run of $SHA passed all of $QUEUE_TESTED_JOBS, so this push runs everything."
+          fi
+          [[ "$EVENT_NAME" == pull_request ]] || finish full "Event \`$EVENT_NAME\` runs everything."
+
+          labels="$(gh api "repos/$REPOSITORY/pulls/$PR_NUMBER" --jq '.labels[].name')" \
+            || labels="$(jq -r '.[]' <<< "$EVENT_LABELS")"
+          if grep -qxF full-ci <<< "$labels"; then
+            finish full "The pull request is labeled \`full-ci\`."
+          fi
+          if [[ "$HEAD_REF" == automation/volatile-evidence-* ]]; then
+            finish full "Main's volatile-evidence refresh pull request is strict only on its pull_request run, so it runs everything."
+          fi
           read -r -a merge <<< "$(git rev-list --parents -n 1 HEAD)"
           [[ ${#merge[@]} -eq 3 ]] || finish full "HEAD is not the pull request's two-parent merge commit."
           base="${merge[1]}"
           git diff --name-only -z --no-renames --no-ext-diff "$base" HEAD > "$RUNNER_TEMP/changed-paths"
+          if grep -qzxF security/security-case.json "$RUNNER_TEMP/changed-paths"; then
+            finish full "The pull request changes security/security-case.json, which the security-case policy checks only on pull_request runs."
+          fi
+          deferred="The security case, Gate product suite, conformance, e2e and docker-build run in the merge queue."
           if grep -qzE '^(\.github|scripts/ci)/' "$RUNNER_TEMP/changed-paths"; then
-            finish full "The pull request changes .github/ or scripts/ci/, which always runs the full lane."
+            finish quick "The pull request changes .github/ or scripts/ci/, so it never takes the docs lane. $deferred"
           fi
           lane_dir="$RUNNER_TEMP/base-change-lane"
           mkdir -p "$lane_dir"
           for file in change-lane.mjs change-lane.node-test.mjs; do
             git show "$base:scripts/ci/$file" > "$lane_dir/$file" 2> /dev/null \
-              || finish full "The base commit $base has no scripts/ci/$file."
+              || finish quick "The base commit $base has no scripts/ci/$file. $deferred"
           done
-          env -u GITHUB_STEP_SUMMARY node --test "$lane_dir/change-lane.node-test.mjs"
+          env -u GITHUB_STEP_SUMMARY node --test "$lane_dir/change-lane.node-test.mjs" \
+            || finish quick "The base classifier's self-test failed. $deferred"
           env -u GITHUB_STEP_SUMMARY node "$lane_dir/change-lane.mjs" \
-            --event pull_request --github-output "$RUNNER_TEMP/lane.out" > "$classifier_log"
+            --event pull_request --github-output "$RUNNER_TEMP/lane.out" > "$classifier_log" \
+            || finish quick "The base classifier failed. $deferred"
           cat "$classifier_log"
           candidate="$(cat "$RUNNER_TEMP/lane.out" 2> /dev/null || true)"
-          [[ "$candidate" == lane=docs ]] || finish full "The base classifier chose \`${candidate#lane=}\`."
-          # The docs lane skips security-case on this pull request, so it is
-          # taken only while main's latest push run of ci.yml passed it.
-          run_id="$(gh api "repos/$REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=1" \
-            --jq '.workflow_runs[0].id // empty')" \
-            || finish full "The Actions API did not answer, so main's security-case is unknown."
-          [[ "$run_id" =~ ^[0-9]+$ ]] || finish full "No push run of ci.yml on main was found."
-          conclusions="$(gh api --paginate "repos/$REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
-            --jq '.jobs[] | select(.name == "security-case") | (.conclusion // .status)')" \
-            || finish full "The Actions API did not answer, so main's security-case is unknown."
-          conclusion="${conclusions%%$'\n'*}"
-          [[ "$conclusion" == success ]] \
-            || finish full "security-case on main's latest push run ($run_id) is \`${conclusion:-missing}\`, so this pull request runs it too."
-          finish docs "Prose-only change; main's latest push run ($run_id) passed security-case."
+          [[ "$candidate" == lane=docs ]] || finish quick "The base classifier chose \`${candidate#lane=}\`, not the docs lane. $deferred"
+          finish docs "Prose-only change that no docs-lane-skipped job reads. $deferred"
 
   # ── Job 1: Tests — must pass 100% ────────────────────────────────
   test:
@@ -278,7 +330,7 @@ jobs:
     # without the preverification flag, so its builder runs check:proof-stats,
     # and _publish-npm-package.yml runs check:proof-stats and check:llm-context.
     needs: [changes]
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.outputs.lane != 'quick' && needs.changes.outputs.lane != 'docs')) && (github.event_name != 'push' || needs.changes.outputs.lane != 'tested') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -444,10 +496,14 @@ jobs:
   # ── Job 1c (required check): Gate product ──────────────────────
   # Discharges the preverified release seal in gate-product-suite: passes only
   # when security-case, language-governance and gate-product-suite succeeded
-  # on this SHA (full lane), or, on a pull_request run the changes job put in
-  # the prose-only docs lane after seeing main's latest push run pass
-  # security-case, when the skipped jobs were skipped and language governance
-  # still succeeded. Any other combination takes the full-lane branch.
+  # on this SHA. Two lanes skip some of them on purpose, and both still need
+  # language-governance to succeed and every job that ran to succeed:
+  #   - a quick or docs pull request skips security-case and the suite; the
+  #     merge queue runs both on the commit that lands, and this job passes
+  #     there only on their success, so the pull request's check only defers;
+  #   - a `tested` push to main skips the suite, which passed on this exact
+  #     commit in the merge queue; security-case runs and must succeed.
+  # Anything else, including an empty lane, takes the full-lane branch.
   gate-product:
     needs: [changes, security-case, language-governance, gate-product-suite]
     if: ${{ !cancelled() }}
@@ -458,8 +514,6 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           LANE: ${{ needs.changes.outputs.lane }}
-          MAIN_SECURITY_CASE: ${{ needs.changes.outputs.main_security_case }}
-          MAIN_SECURITY_CASE_RUN: ${{ needs.changes.outputs.main_security_case_run }}
           SECURITY_CASE: ${{ needs.security-case.result }}
           LANGUAGE_GOVERNANCE: ${{ needs.language-governance.result }}
           SUITE: ${{ needs.gate-product-suite.result }}
@@ -469,15 +523,24 @@ jobs:
             echo "::error::language-governance did not succeed: $LANGUAGE_GOVERNANCE"
             exit 1
           }
-          if [[ "$EVENT_NAME" == pull_request && "$LANE" == docs && "$MAIN_SECURITY_CASE" == success \
-            && "$MAIN_SECURITY_CASE_RUN" =~ ^[0-9]+$ ]]; then
+          if [[ "$EVENT_NAME" == pull_request && ( "$LANE" == quick || "$LANE" == docs ) ]]; then
             for result in "$SECURITY_CASE" "$SUITE"; do
               [[ "$result" == skipped || "$result" == success ]] || {
-                echo "::error::docs lane dependency did not pass: $result"
+                echo "::error::a dependency the $LANE lane defers did not pass: $result"
                 exit 1
               }
             done
-            echo "Prose-only change: security-case and gate-product-suite inputs are unchanged; main's push run $MAIN_SECURITY_CASE_RUN passed security-case."
+            echo "Pull request, $LANE lane: security-case and gate-product-suite run in the merge queue, where this check passes only if both succeed."
+          elif [[ "$EVENT_NAME" == push && "$LANE" == tested ]]; then
+            [[ "$SECURITY_CASE" == success ]] || {
+              echo "::error::security-case did not succeed: $SECURITY_CASE"
+              exit 1
+            }
+            [[ "$SUITE" == skipped || "$SUITE" == success ]] || {
+              echo "::error::gate-product-suite did not pass: $SUITE"
+              exit 1
+            }
+            echo "gate-product-suite passed on this exact commit in the merge queue."
           else
             [[ "$SECURITY_CASE" == success ]] || {
               echo "::error::security-case did not succeed: $SECURITY_CASE"
@@ -701,9 +764,17 @@ jobs:
   # before the security case is attested, so main never attests a stale case
   # and a lagging case does not skip the formal, hostility and manifest checks
   # or the conformance manifest attestations.
+  #
+  # A quick or docs pull request defers this job to the merge queue. It has
+  # no post-merge dedupe: every push to main runs it, because only a push
+  # run applies the strict digest policy and attests the case and the two
+  # conformance manifests (aggregate-conformance-case attests from its
+  # output). A pull request whose own rules this job checks (main's refresh
+  # pull request, or one that changes security/security-case.json) runs in
+  # the full lane.
   security-case:
     needs: [changes]
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.outputs.lane != 'quick' && needs.changes.outputs.lane != 'docs')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -941,9 +1012,11 @@ jobs:
   # ── Job 5b (required check): Language governance ────────────────
   # Discharges --security-case-preverified in language-governance-checks:
   # passes only when those checks succeeded and security-case succeeded on
-  # this SHA, or, on a pull_request run the changes job put in the docs lane
-  # after seeing main's latest push run pass security-case, when the security
-  # case was skipped. Any other combination takes the full-lane branch.
+  # this SHA. On a quick or docs pull request, security-case is skipped (the
+  # merge queue runs it, and this check passes there only on its success),
+  # so a skipped security case passes here; a failed or cancelled one never
+  # does. Every other lane, including a `tested` push, takes the full-lane
+  # branch.
   language-governance:
     needs: [changes, security-case, language-governance-checks]
     if: ${{ !cancelled() }}
@@ -954,8 +1027,6 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           LANE: ${{ needs.changes.outputs.lane }}
-          MAIN_SECURITY_CASE: ${{ needs.changes.outputs.main_security_case }}
-          MAIN_SECURITY_CASE_RUN: ${{ needs.changes.outputs.main_security_case_run }}
           SECURITY_CASE: ${{ needs.security-case.result }}
           CHECKS: ${{ needs.language-governance-checks.result }}
         run: |
@@ -964,13 +1035,12 @@ jobs:
             echo "::error::language-governance-checks did not succeed: $CHECKS"
             exit 1
           }
-          if [[ "$EVENT_NAME" == pull_request && "$LANE" == docs && "$MAIN_SECURITY_CASE" == success \
-            && "$MAIN_SECURITY_CASE_RUN" =~ ^[0-9]+$ ]]; then
+          if [[ "$EVENT_NAME" == pull_request && ( "$LANE" == quick || "$LANE" == docs ) ]]; then
             [[ "$SECURITY_CASE" == skipped || "$SECURITY_CASE" == success ]] || {
               echo "::error::security-case did not pass: $SECURITY_CASE"
               exit 1
             }
-            echo "Prose-only change: security-case inputs are unchanged; main's push run $MAIN_SECURITY_CASE_RUN passed security-case."
+            echo "Pull request, $LANE lane: security-case runs in the merge queue, where this check passes only if it succeeds."
           else
             [[ "$SECURITY_CASE" == success ]] || {
               echo "::error::security-case did not succeed: $SECURITY_CASE"
@@ -1470,9 +1540,12 @@ jobs:
   # and Go 1.27. `conformance`, the required status check, is the
   # aggregator at the end: it runs whatever happened above it and passes
   # only when all three succeeded, so a failed, cancelled or skipped part
-  # fails it. None of these jobs carries the docs-lane condition; they run
-  # on every event, as the single job did.
+  # fails it, except for the lane skips it names. None of the parts carries
+  # the docs-lane condition (conformance-core reads prose); they carry the
+  # merge-queue deferral and the post-merge dedupe instead.
   conformance-core:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.outputs.lane != 'quick' && needs.changes.outputs.lane != 'docs')) && (github.event_name != 'push' || needs.changes.outputs.lane != 'tested') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -1581,6 +1654,8 @@ jobs:
   # ports use only node built-ins and the two standard libraries, so the two
   # CAID jobs install no npm or pip packages.
   conformance-caid:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.outputs.lane != 'quick' && needs.changes.outputs.lane != 'docs')) && (github.event_name != 'push' || needs.changes.outputs.lane != 'tested') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -1607,6 +1682,8 @@ jobs:
         run: npm run caid:conformance
 
   conformance-caid-packets:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.outputs.lane != 'quick' && needs.changes.outputs.lane != 'docs')) && (github.event_name != 'push' || needs.changes.outputs.lane != 'tested') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -1628,25 +1705,60 @@ jobs:
 
   # Required status check. Branch protection requires a check named
   # `conformance`; this job is it. `if: always()` makes it report even when
-  # a part failed or was cancelled, and it fails unless every part's result
-  # is success, so a skipped part fails it too.
+  # a part failed or was cancelled. It fails unless every part succeeded,
+  # except that a part may be skipped in the two lanes that skip all three
+  # on purpose: a quick or docs pull request (the merge queue runs them on
+  # the commit that lands, where this job requires their success) and a
+  # `tested` push to main (they passed on this exact commit in the merge
+  # queue). A failed or cancelled part fails it in every lane.
+  #
+  # It also carries aggregate-conformance-case, which is not a required check
+  # itself and skips whenever security-case does. That job may be skipped
+  # only on a quick or docs pull request; everywhere else, a `tested` push
+  # included (security-case and external-rust-evidence run on every push,
+  # and the case is attested there), it must succeed, so a merge-queue
+  # failure of the aggregate case blocks the merge.
   conformance:
-    needs: [conformance-core, conformance-caid, conformance-caid-packets]
+    needs: [changes, conformance-core, conformance-caid, conformance-caid-packets, aggregate-conformance-case]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require every conformance part to succeed
         env:
+          EVENT_NAME: ${{ github.event_name }}
+          LANE: ${{ needs.changes.outputs.lane }}
           CORE: ${{ needs.conformance-core.result }}
           CAID: ${{ needs.conformance-caid.result }}
           CAID_PACKETS: ${{ needs.conformance-caid-packets.result }}
+          CASE: ${{ needs.aggregate-conformance-case.result }}
         run: |
+          set -euo pipefail
+          echo "lane: ${LANE:-(empty)} ($EVENT_NAME)"
           echo "conformance-core: $CORE"
           echo "conformance-caid: $CAID"
           echo "conformance-caid-packets: $CAID_PACKETS"
-          [[ "$CORE" == success && "$CAID" == success && "$CAID_PACKETS" == success ]] \
-            || { echo "::error::a conformance part did not succeed"; exit 1; }
+          echo "aggregate-conformance-case: $CASE"
+          if [[ "$CASE" != success ]] \
+            && ! [[ "$EVENT_NAME" == pull_request && ( "$LANE" == quick || "$LANE" == docs ) && "$CASE" == skipped ]]; then
+            echo "::error::aggregate-conformance-case did not succeed: $CASE"
+            exit 1
+          fi
+          deferred=false
+          if [[ "$EVENT_NAME" == pull_request && ( "$LANE" == quick || "$LANE" == docs ) ]] \
+            || [[ "$EVENT_NAME" == push && "$LANE" == tested ]]; then
+            deferred=true
+          fi
+          for result in "$CORE" "$CAID" "$CAID_PACKETS"; do
+            if [[ "$result" == success ]] || [[ "$deferred" == true && "$result" == skipped ]]; then
+              continue
+            fi
+            echo "::error::a conformance part did not succeed: $result"
+            exit 1
+          done
+          if [[ "$deferred" == true && "$CORE$CAID$CAID_PACKETS" != *success* ]]; then
+            echo "Lane $LANE: the merge queue runs the conformance parts on this change, not this run."
+          fi
 
   # ── Job 11c: Pinned external Rust implementation evidence ────────
   # Rebuilds an externally authored verifier from an immutable source tree and
@@ -1746,7 +1858,10 @@ jobs:
   # only after both jobs pass. The assembler revalidates every source pin,
   # suite hash, hostility result, evaluator commit, and attestation boundary;
   # it cannot promote implementer-signed legacy evidence to strict independent
-  # clean-room acceptance.
+  # clean-room acceptance. Not a required check: it skips with security-case
+  # on a quick or docs pull request, and the required `conformance`
+  # aggregator needs it and fails on its failure, cancellation, or a skip in
+  # any other lane (the merge queue included).
   aggregate-conformance-case:
     needs: [changes, security-case, external-rust-evidence]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') && needs.security-case.result == 'success' && needs.external-rust-evidence.result == 'success' }}
@@ -2026,6 +2141,8 @@ jobs:
 
   # ── Job 16: Docker build smoke test ──────────────────────────────
   docker-build:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.outputs.lane != 'quick' && needs.changes.outputs.lane != 'docs')) && (github.event_name != 'push' || needs.changes.outputs.lane != 'tested') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -2041,9 +2158,10 @@ jobs:
   # Production server boots in ~3s, behaves like prod, and the vitest
   # confusion is resolved by the e2e/** exclude in vitest.config.js.
   e2e:
+    needs: [changes, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' && (github.event_name != 'pull_request' || (needs.changes.outputs.lane != 'quick' && needs.changes.outputs.lane != 'docs')) && (github.event_name != 'push' || needs.changes.outputs.lane != 'tested') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: build
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

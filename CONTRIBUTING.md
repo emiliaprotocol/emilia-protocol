@@ -112,15 +112,31 @@ the formal-methods toolchain. The jobs in
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) are authoritative for
 the complete matrix; no single local command represents every CI lane.
 
-A pull request that changes only prose under `docs/`, `standards/` or `papers/`
-(or a root `*.md`), where no code run by a skipped job names the changed file,
-takes the docs lane: every check that reads prose still runs, and the
-security case, Gate product suite, SDK, wheel and package suites are skipped.
-CI decides this with the classifier as it is on `main`, never the pull
-request's copy; a pull request that touches `.github/` or `scripts/ci/` always
-runs the full lane, and so does every pull request while `main`'s latest push
-run has not passed the security case (including the window between a merge
-that changed a pinned file and the refresh pull request that re-pins it).
+Pull requests take the quick lane: lint, the typechecks, the unit and
+package suites, the build, language governance, preprint, docs and secret
+checks, write discipline, DCO and `npm audit` run, and the heavy suites (the
+security case, the Gate product suite, the conformance parts, e2e and the
+Docker build) are deferred to the merge queue, which runs every job on the
+exact commit that lands. Their required checks report as skipped on the pull
+request, so it can enter the queue; the `conformance`, `gate-product` and
+`language-governance` aggregators pass a deliberate skip and fail any real
+failure or cancellation. Label a pull request `full-ci` to run everything on
+the pull request itself (after adding the label to an open pull request, use
+"Re-run all jobs" or push). Main's volatile-evidence refresh pull request and
+any pull request that changes `security/security-case.json` always run
+everything, because the policy that judges them runs only on pull requests.
+After the queue merges, the push run on `main` skips the jobs that already
+passed on that exact commit in the merge queue; it still runs the security
+case, which on `main` applies the strict digest policy and attests the case
+and the conformance manifests. A direct push the queue did not test runs
+everything.
+
+A quick-lane pull request that changes only prose under `docs/`, `standards/`
+or `papers/` (or a root `*.md`), where no code run by a docs-skipped job names
+the changed file, also takes the docs lane, which additionally skips the SDK,
+wheel, package and other suites that read no prose. CI decides this with the
+classifier as it is on `main`, never the pull request's copy, and a pull
+request that touches `.github/` or `scripts/ci/` never takes it.
 `node scripts/ci/change-lane.mjs --event local --base origin/main` prints the
 classifier's lane and reason before you push. Label a pull request
 `evidence-autopilot` to have CI regenerate the derived evidence files

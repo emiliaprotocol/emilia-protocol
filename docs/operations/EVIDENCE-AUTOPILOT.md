@@ -16,8 +16,7 @@ autopilot GitHub App:
 
 Until the refresh can publish, `main` stays stale after every merge that
 changes a pinned file: the `security-case` job of `main`'s push runs fails,
-pull requests that would take the docs lane run the full lane instead, and
-the test counts fail `main` once they lag for more than 24 hours. Pull requests are not affected;
+and the test counts fail `main` once they lag for more than 24 hours. Pull requests are not affected;
 their CI treats that drift as advisory.
 
 Merging the pull request that adds this file changes no GitHub setting. Every
