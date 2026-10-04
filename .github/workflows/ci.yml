@@ -62,7 +62,9 @@ jobs:
   #           derived-digest policy and attests the case and both conformance
   #           manifests, which a merge-queue run never does, so it runs on
   #           every push, and so does aggregate-conformance-case, which
-  #           attests from its output.
+  #           attests from its output. That job is not a required check;
+  #           the `conformance` aggregator requires its success in every
+  #           lane except a quick or docs pull request.
   #
   # A PR labeled `full-ci` after its last push takes effect on "Re-run all
   # jobs": the label is read from the API at run time, not from the event.
@@ -1709,8 +1711,15 @@ jobs:
   # the commit that lands, where this job requires their success) and a
   # `tested` push to main (they passed on this exact commit in the merge
   # queue). A failed or cancelled part fails it in every lane.
+  #
+  # It also carries aggregate-conformance-case, which is not a required check
+  # itself and skips whenever security-case does. That job may be skipped
+  # only on a quick or docs pull request; everywhere else, a `tested` push
+  # included (security-case and external-rust-evidence run on every push,
+  # and the case is attested there), it must succeed, so a merge-queue
+  # failure of the aggregate case blocks the merge.
   conformance:
-    needs: [changes, conformance-core, conformance-caid, conformance-caid-packets]
+    needs: [changes, conformance-core, conformance-caid, conformance-caid-packets, aggregate-conformance-case]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1722,12 +1731,19 @@ jobs:
           CORE: ${{ needs.conformance-core.result }}
           CAID: ${{ needs.conformance-caid.result }}
           CAID_PACKETS: ${{ needs.conformance-caid-packets.result }}
+          CASE: ${{ needs.aggregate-conformance-case.result }}
         run: |
           set -euo pipefail
           echo "lane: ${LANE:-(empty)} ($EVENT_NAME)"
           echo "conformance-core: $CORE"
           echo "conformance-caid: $CAID"
           echo "conformance-caid-packets: $CAID_PACKETS"
+          echo "aggregate-conformance-case: $CASE"
+          if [[ "$CASE" != success ]] \
+            && ! [[ "$EVENT_NAME" == pull_request && ( "$LANE" == quick || "$LANE" == docs ) && "$CASE" == skipped ]]; then
+            echo "::error::aggregate-conformance-case did not succeed: $CASE"
+            exit 1
+          fi
           deferred=false
           if [[ "$EVENT_NAME" == pull_request && ( "$LANE" == quick || "$LANE" == docs ) ]] \
             || [[ "$EVENT_NAME" == push && "$LANE" == tested ]]; then
@@ -1842,7 +1858,10 @@ jobs:
   # only after both jobs pass. The assembler revalidates every source pin,
   # suite hash, hostility result, evaluator commit, and attestation boundary;
   # it cannot promote implementer-signed legacy evidence to strict independent
-  # clean-room acceptance.
+  # clean-room acceptance. Not a required check: it skips with security-case
+  # on a quick or docs pull request, and the required `conformance`
+  # aggregator needs it and fails on its failure, cancellation, or a skip in
+  # any other lane (the merge queue included).
   aggregate-conformance-case:
     needs: [changes, security-case, external-rust-evidence]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') && needs.security-case.result == 'success' && needs.external-rust-evidence.result == 'success' }}

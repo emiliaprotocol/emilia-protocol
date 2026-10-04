@@ -9,7 +9,8 @@
 // `gh` that answers from fixtures, and the real shell of the three required
 // aggregators (conformance, gate-product, language-governance) for every lane
 // and dependency result, so a lane skip is proven to pass and a failure or
-// cancellation is proven to fail.
+// cancellation is proven to fail. aggregate-conformance-case is not required
+// itself; the conformance aggregator carries it.
 
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -109,8 +110,9 @@ const PR_SKIP_LANES = ['quick', 'docs'];
 const RESULTS = ['success', 'skipped', 'failure', 'cancelled'];
 
 test('conformance passes a lane skip and fails every real failure or cancellation', () => {
-  const run = (event, lane, results) => runStep('conformance', {
-    EVENT_NAME: event, LANE: lane, CORE: results[0], CAID: results[1], CAID_PACKETS: results[2],
+  // The aggregate case succeeds here; the next test varies it.
+  const run = (event, lane, results, aggregateCase = 'success') => runStep('conformance', {
+    EVENT_NAME: event, LANE: lane, CORE: results[0], CAID: results[1], CAID_PACKETS: results[2], CASE: aggregateCase,
   });
   for (const [event, lanes] of [['pull_request', PR_SKIP_LANES], ['push', ['tested']]]) {
     for (const lane of lanes) {
@@ -126,6 +128,32 @@ test('conformance passes a lane skip and fails every real failure or cancellatio
     assert.equal(run(event, lane, ['success', 'success', 'success']), 0, `${event}/${lane}`);
     for (const bad of ['skipped', 'failure', 'cancelled']) {
       assert.equal(run(event, lane, ['success', 'success', bad]), 1, `${event}/${lane} ${bad}`);
+    }
+  }
+});
+
+test('conformance requires the aggregate conformance case except on a quick or docs pull request', () => {
+  // aggregate-conformance-case is not a required check; it skips with
+  // security-case, so this aggregator is what blocks a merge on it.
+  assert.ok([JOBS.conformance.needs].flat().includes('aggregate-conformance-case'));
+  assert.ok(!REQUIRED.includes('aggregate-conformance-case'));
+  const run = (event, lane, aggregateCase, parts = 'skipped') => runStep('conformance', {
+    EVENT_NAME: event, LANE: lane, CORE: parts, CAID: parts, CAID_PACKETS: parts, CASE: aggregateCase,
+  });
+  for (const lane of PR_SKIP_LANES) {
+    assert.equal(run('pull_request', lane, 'skipped'), 0, `${lane} skipped`);
+    assert.equal(run('pull_request', lane, 'success'), 0, `${lane} success`);
+    for (const bad of ['failure', 'cancelled']) assert.equal(run('pull_request', lane, bad), 1, `${lane} ${bad}`);
+  }
+  // A tested push skips the parts but runs security-case and the aggregate
+  // case (it attests there), so the case must succeed.
+  assert.equal(run('push', 'tested', 'success'), 0);
+  for (const bad of ['skipped', 'failure', 'cancelled']) assert.equal(run('push', 'tested', bad), 1, `push/tested ${bad}`);
+  for (const [event, lane] of [['merge_group', 'full'], ['pull_request', 'full'], ['push', 'full'], ['push', ''], ['pull_request', ''],
+    ['merge_group', 'quick'], ['merge_group', 'docs'], ['merge_group', 'tested'], ['push', 'quick'], ['pull_request', 'tested'], ['workflow_dispatch', 'full']]) {
+    assert.equal(run(event, lane, 'success', 'success'), 0, `${event}/${lane}`);
+    for (const bad of ['skipped', 'failure', 'cancelled']) {
+      assert.equal(run(event, lane, bad, 'success'), 1, `${event}/${lane} ${bad}`);
     }
   }
 });

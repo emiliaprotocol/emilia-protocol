@@ -318,9 +318,10 @@ test('job fields: needs in every YAML form and the job-level if only', () => {
 /**
  * A minimal ci.yml in the shape of the real one: a `changes` job with
  * QUEUE_TESTED_JOBS, a docs-skipped job, a deferred job, a deferred and
- * deduplicated job, and aggregators over them.
+ * deduplicated job, a job that skips with the deferred one, and an
+ * aggregator over them.
  */
-function laneWorkflow({ queueTested = 'heavy', extraJobs = [] } = {}) {
+function laneWorkflow({ queueTested = 'heavy', extraJobs = [], aggregated = true } = {}) {
   return [
     'jobs:',
     '  changes:',
@@ -340,11 +341,12 @@ function laneWorkflow({ queueTested = 'heavy', extraJobs = [] } = {}) {
     '    needs: [changes, case]',
     `    if: \${{ !cancelled() && ${SKIP_CONDITION} && needs.case.result == 'success' }}`,
     '  gate:',
-    '    needs: [changes, case, heavy]',
+    `    needs: [changes, case, heavy${aggregated ? ', follower' : ''}]`,
     '    if: always()',
     '    steps:',
     '      - env:',
     '          LANE: ${{ needs.changes.outputs.lane }}',
+    ...(aggregated ? ['          FOLLOWER: ${{ needs.follower.result }}'] : []),
     ...extraJobs,
     '',
   ].join('\n');
@@ -382,6 +384,26 @@ test('lane contract: every other way to skip a job on the lane is refused', () =
     '    steps:',
     "      - run: '[[ \"${{ needs.heavy.result }}\" == success ]]'",
   ] }), /strict: needs heavy, which a lane skips, but neither skips with it nor reads the lane/);
+  // A job that skips with a deferred job carries no lane condition and is
+  // not a required check: unless an aggregator reads its result, its failure
+  // in the merge queue blocks nothing.
+  assert.match(problems({ aggregated: false }), /follower: skips with a job a lane skips, but no aggregator that reads the lane needs it/);
+  // ... and so does one that skips with that follower.
+  assert.match(problems({ extraJobs: [
+    '  second:',
+    '    needs: [follower]',
+    "    if: ${{ !cancelled() && needs.follower.result == 'success' }}",
+  ] }), /second: skips with a job a lane skips, but no aggregator/);
+  // An aggregator that is itself lane-skipped does not count.
+  assert.match(problems({ aggregated: false, extraJobs: [
+    '  skippedgate:',
+    '    needs: [changes, follower]',
+    `    if: \${{ !cancelled() && ${SKIP_CONDITION} }}`,
+    '    steps:',
+    '      - env:',
+    '          LANE: ${{ needs.changes.outputs.lane }}',
+    '          FOLLOWER: ${{ needs.follower.result }}',
+  ] }), /follower: skips with a job a lane skips, but no aggregator/);
   // The same job with the deferral it depends on is fine.
   assert.equal(problems({ extraJobs: [
     '  smoke:',

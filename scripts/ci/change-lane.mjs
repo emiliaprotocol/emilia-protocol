@@ -259,7 +259,12 @@ export function jobCondition(block) {
  *   - a job that needs a deferred or deduplicated job either carries the same
  *     condition, requires that job's success in its own `if:` (so it is
  *     skipped with it), or reads the lane (an aggregator that tells a lane
- *     skip from a failure).
+ *     skip from a failure);
+ *   - a job skipped with it that way (a follower, transitively) is needed by
+ *     an aggregator: a job that runs in every lane, reads the lane, and
+ *     reads the follower's result. A follower carries no lane condition and
+ *     is not a required check, so without that aggregator its failure in
+ *     the merge queue would not block a merge.
  *
  * @param {string} workflow ci.yml text
  * @returns {string[]} problems; empty when the contract holds
@@ -290,8 +295,23 @@ export function laneContract(workflow) {
   }
   for (const name of listed) if (!jobs.has(name)) problems.push(`changes: QUEUE_TESTED_JOBS names ${name}, which is not a job`);
 
+  /** @type {Set<string>} */
+  const followers = new Set();
   for (const condition of [DEFER_CONDITION, QUEUE_TESTED_CONDITION]) {
     const skipped = new Set(carriers(condition));
+    // A job that skips with a skipped job is skipped in the same lanes, so
+    // its own dependents are held to the same rule (a fixed point).
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const [name, job] of jobs) {
+        if (skipped.has(name)) continue;
+        if (job.needs.some((need) => skipped.has(need) && job.condition.includes(`needs.${need}.result == 'success'`))) {
+          skipped.add(name);
+          followers.add(name);
+          grew = true;
+        }
+      }
+    }
     for (const [name, job] of jobs) {
       if (job.condition.includes(condition)) continue;
       for (const need of job.needs.filter((n) => skipped.has(n))) {
@@ -300,6 +320,15 @@ export function laneContract(workflow) {
           problems.push(`${name}: needs ${need}, which a lane skips, but neither skips with it nor reads the lane`);
         }
       }
+    }
+  }
+  for (const follower of [...followers].sort()) {
+    const aggregated = [...jobs.values()].some((job) => job.needs.includes(follower)
+      && !job.condition.includes('outputs.lane')
+      && job.block.includes('needs.changes.outputs.lane')
+      && job.block.includes(`needs.${follower}.result`));
+    if (!aggregated) {
+      problems.push(`${follower}: skips with a job a lane skips, but no aggregator that reads the lane needs it and reads its result, so its failure would not block a merge`);
     }
   }
   return problems;
