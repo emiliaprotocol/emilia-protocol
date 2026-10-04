@@ -30,10 +30,13 @@ jobs:
           node-version: 20
       - run: npm ci --ignore-scripts
       - name: Check for known vulnerabilities (root)
-        # npm's advisory range still includes the reviewed, cap-enforced
-        # brace-expansion backport used by legacy build/lint transitives. The
-        # policy script rejects every other advisory, pins each installed copy,
-        # and executes a result-count plus aggregate-length resource-bound probe.
+        # Two reviewed exceptions, both confined to build/lint transitives:
+        # npm's GHSA-mh99 range still includes the cap-enforced brace-expansion
+        # backport, and GHSA-vfj7 (braces <=3.0.3, no patched release) reaches
+        # only the dev-only eslint-config-next -> fast-glob -> micromatch copy.
+        # The policy script rejects every other advisory, pins each installed
+        # copy and the reported dependency set, runs a resource-bound probe for
+        # each, and the braces exception expires on its recheck date.
         run: npm run audit:root
       # mcp-server ships a bundled stdio runtime and keeps the MCP SDK/build tools
       # as development-only inputs. Audit the dependencies that actually ship to
