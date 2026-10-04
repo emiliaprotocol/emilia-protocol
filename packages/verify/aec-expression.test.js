@@ -77,6 +77,22 @@ test('validity is distinguishable from truth: invalid and false-valid both UNSAT
     assert.equal(caught.length, vectors.filter(v => v.expect.syntax === 'VALID').length);
     assert.ok(invalid.some(v => v.expect.invalid_class === 'limit') && invalid.some(v => v.expect.invalid_class === 'syntax'));
 });
+test('refusal order: a token counts once complete, and a lone surrogate counts three octets', () => {
+    const chain = (n) => Array.from({ length: n }, (_, i) => `r${i}`).join(' OR ');
+    const refusal = (expression) => aec.compileAecRequirementExpression(expression).invalid_class;
+    const full = `${chain(128)} OR`; // 256 complete tokens
+    // A lone & or | where the 257th token would start is an invalid character.
+    for (const tail of [' &', ' |', '&', ' &x', ' !'])
+        assert.equal(refusal(full + tail), 'syntax', JSON.stringify(tail));
+    // Completing a 257th token is a limit refusal, whatever follows it.
+    for (const tail of [' &&', ' ||', ' x', ' x!', ' (', ' )'])
+        assert.equal(refusal(full + tail), 'limit', JSON.stringify(tail));
+    // Length is measured on the decoded string value; a lone surrogate counts
+    // three octets and is an invalid character.
+    assert.equal(refusal(`${'a'.repeat(4094)}\ud800`), 'limit');
+    assert.equal(refusal(`${'a'.repeat(4093)}\ud800`), 'syntax');
+    assert.equal(refusal('\udfff'), 'syntax');
+});
 // ---------------------------------------------------------------------------
 // Structured evaluator (createAuthorizationChainEvaluator)
 // ---------------------------------------------------------------------------
@@ -153,6 +169,11 @@ test('structured API: the requirement keeps its closed v1 member set and its exa
     for (const key of ['parse_identity', 'canonical_parse', 'expression_fingerprint']) {
         assert.throws(() => aec.createAuthorizationChainEvaluator({ requirement: { ...tidy, [key]: one.requirement_expression.parse_identity }, nativeVerifiers: {} }), /aec_requirement_invalid/);
     }
+});
+test('structured API: a requirement that is not strict I-JSON is refused at construction by the strict JSON check', () => {
+    // No evaluator, so no replay record; the refusal is the strict JSON error,
+    // not aec_requirement_invalid, because the object itself is not I-JSON.
+    assert.throws(() => aec.createAuthorizationChainEvaluator({ requirement: requirement('a OR \ud800'), nativeVerifiers: {} }), (e) => e instanceof TypeError && /unpaired Unicode surrogate/.test(e.message));
 });
 test('structured API: AND and OR stay valid native component types; only the expression reserves them', async () => {
     const evaluator = aec.createAuthorizationChainEvaluator({

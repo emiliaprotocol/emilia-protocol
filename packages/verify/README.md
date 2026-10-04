@@ -994,7 +994,10 @@ The requirement `expression` is parsed once, when the evaluator is
 constructed, and evaluation runs on that tree. A malformed expression or one
 over the fixed caps (4096 UTF-8 octets, 256 tokens counting identifiers,
 operators and parentheses, 32 levels of nesting) is refused at construction
-with `aec_requirement_invalid`; no replay record exists for it. The lexer
+with `aec_requirement_invalid`; no replay record exists for it. A
+requirement that is not strict I-JSON, such as one whose expression holds a
+lone surrogate, is refused at construction by the strict JSON check instead.
+The lexer
 takes the longest identifier run before classifying it, so `aORb` and `ORb`
 are identifiers and only an exact `AND` or `OR` is an operator; lowercase
 `and` and `or` are ordinary identifiers, and identifiers are case-sensitive.

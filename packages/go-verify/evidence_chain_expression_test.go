@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -147,5 +148,26 @@ func TestAECExpressionCompiledTreeReused(t *testing.T) {
 	bad := CompileAECRequirementExpression("a OR (b AND)")
 	if bad.Valid || bad.InvalidClass != "syntax" || bad.ParseIdentity != "" {
 		t.Fatalf("unexpected refusal %+v", bad)
+	}
+}
+
+// A token counts once it is complete: a lone & or | where the 257th token
+// would start is a syntax refusal, and completing a 257th token is a limit
+// refusal whatever follows it.
+func TestAECExpressionRefusalOrderTokenCompletion(t *testing.T) {
+	parts := make([]string, 128)
+	for i := range parts {
+		parts[i] = "r" + strconv.Itoa(i)
+	}
+	full := strings.Join(parts, " OR ") + " OR" // 256 complete tokens
+	for _, tail := range []string{" &", " |", "&", " &x", " !"} {
+		if c := CompileAECRequirementExpression(full + tail); c.Valid || c.InvalidClass != "syntax" {
+			t.Errorf("%q: valid=%v class=%q, want syntax", tail, c.Valid, c.InvalidClass)
+		}
+	}
+	for _, tail := range []string{" &&", " ||", " x", " x!", " (", " )"} {
+		if c := CompileAECRequirementExpression(full + tail); c.Valid || c.InvalidClass != "limit" {
+			t.Errorf("%q: valid=%v class=%q, want limit", tail, c.Valid, c.InvalidClass)
+		}
 	}
 }

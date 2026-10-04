@@ -48,6 +48,21 @@ def test_compiled_tree_is_reused():
     assert (refused.valid, refused.invalid_class, refused.parse_identity) == (False, "syntax", None)
 
 
+def test_refusal_order_token_completion_and_lone_surrogate():
+    full = " OR ".join(f"r{i}" for i in range(128)) + " OR"  # 256 complete tokens
+
+    def refusal(expr):
+        return compile_aec_requirement_expression(expr).invalid_class
+    for tail in (" &", " |", "&", " &x", " !"):
+        assert refusal(full + tail) == "syntax", repr(tail)
+    for tail in (" &&", " ||", " x", " x!", " (", " )"):
+        assert refusal(full + tail) == "limit", repr(tail)
+    # The length is measured on the decoded string; a lone surrogate counts
+    # three octets and is an invalid character.
+    assert refusal("a" * 4094 + "\ud800") == "limit"
+    assert refusal("a" * 4093 + "\ud800") == "syntax"
+
+
 def test_legacy_wrapper_over_corpus():
     def stub(ev, ctx):
         return {"valid": True, "action_digest": ev.get("action_digest")}
