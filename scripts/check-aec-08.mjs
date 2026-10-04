@@ -80,14 +80,87 @@ const flatTxt = txt
   .replace(/-\n\s*/g, '-')
   .replace(/\s+/g, ' ');
 
+/** @type {Record<string, string>} */
+const xmlPredefinedEntities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+/**
+ * Decodes XML character references and the five predefined entities in one
+ * pass, so each reference is replaced exactly once: "&amp;lt;" becomes "&lt;",
+ * never "<". Any other named reference is left as written.
+ * @param {string} text
+ */
+function decodeXmlReferences(text) {
+  return text.replace(/&(?:#x([0-9a-fA-F]+)|#([0-9]+)|([A-Za-z][A-Za-z0-9]*));/g, (reference, hex, decimal, name) => {
+    if (name !== undefined) return Object.hasOwn(xmlPredefinedEntities, name) ? xmlPredefinedEntities[name] : reference;
+    const codePoint = Number.parseInt(hex ?? decimal, hex === undefined ? 10 : 16);
+    invariant(codePoint <= 0x10ffff, `XML character reference ${reference} is out of range`);
+    return String.fromCodePoint(codePoint);
+  });
+}
+
+/**
+ * The character data of an XML document: every tag, comment, processing
+ * instruction and declaration removed (a ">" inside a quoted attribute value
+ * does not end its tag), CDATA sections kept verbatim, and references in the
+ * remaining text decoded once. A single left-to-right scan, so no markup can
+ * survive or be reassembled by an earlier removal.
+ * @param {string} source
+ */
+function xmlCharacterData(source) {
+  let out = '';
+  let i = 0;
+  /** @param {string} terminator @param {number} from @param {string} what */
+  const skipPast = (terminator, from, what) => {
+    const end = source.indexOf(terminator, from);
+    invariant(end !== -1, `XML source has an unterminated ${what}`);
+    return end + terminator.length;
+  };
+  while (i < source.length) {
+    const open = source.indexOf('<', i);
+    if (open === -1) {
+      out += decodeXmlReferences(source.slice(i));
+      break;
+    }
+    out += decodeXmlReferences(source.slice(i, open));
+    if (source.startsWith('<![CDATA[', open)) {
+      const contentStart = open + '<![CDATA['.length;
+      i = skipPast(']]>', contentStart, 'CDATA section');
+      out += source.slice(contentStart, i - ']]>'.length);
+    } else if (source.startsWith('<!--', open)) {
+      i = skipPast('-->', open + 4, 'comment');
+    } else if (source.startsWith('<?', open)) {
+      i = skipPast('?>', open + 2, 'processing instruction');
+    } else {
+      // An element tag or a declaration such as DOCTYPE (whose internal subset
+      // sits in brackets); quoted values may contain ">".
+      let j = open + 1;
+      let quote = '';
+      let brackets = 0;
+      for (; j < source.length; j += 1) {
+        const c = source[j];
+        if (quote) {
+          if (c === quote) quote = '';
+        } else if (c === '"' || c === "'") {
+          quote = c;
+        } else if (c === '[' && source[open + 1] === '!') {
+          brackets += 1;
+        } else if (c === ']' && brackets > 0) {
+          brackets -= 1;
+        } else if (c === '>' && brackets === 0) {
+          break;
+        }
+      }
+      invariant(j < source.length, 'XML source has an unterminated tag');
+      i = j + 1;
+    }
+  }
+  return out;
+}
+
 // The source's own words, for the checks below that must hold in the XML as
 // well as in the TXT render (the render is pinned only by checksum unless
 // --render is passed).
-const xmlText = xml
-  .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-  .replace(/<[^>]+>/g, '')
-  .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
-  .replace(/\s+/g, ' ');
+const xmlText = xmlCharacterData(xml).replace(/\s+/g, ' ');
 
 // ---- The renders belong to this source -------------------------------------
 invariant(txt.includes(basename) && html.includes(basename), 'renders do not name the -08 draft');
@@ -266,9 +339,8 @@ for (const vector of vectors) {
 
 // ---- Inline examples (Table 1) ---------------------------------------------
 const table = xml.slice(xml.indexOf('<table anchor="expr-example-table">'), xml.indexOf('</table>'));
-const decode = (s) => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 const rows = [...table.matchAll(/<tr><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><\/tr>/g)]
-  .map((m) => m.slice(1).map(decode));
+  .map((m) => m.slice(1).map(xmlCharacterData));
 const reviewRows = vectors.filter((v) => v.group === 'review-table');
 invariant(rows.length === 17 && reviewRows.length === 17, `Table 1 must hold the 17 review rows (found ${rows.length})`);
 for (const [expression, eligibleText, validText, valueText, canonical] of rows) {
