@@ -246,7 +246,7 @@ describe('reproducibility scratch cleanup', () => {
         run.child.kill(signal);
         const result = await exited(run.child);
 
-        expect(result.signal).toBe(signal);
+        expect(result.signal, run.output()).toBe(signal);
         expect(scratchEntries(run.tmp)).toEqual([]);
         await waitFor(() => !isAlive(buildPid), 'the fixture build to die', run.output);
       }, FIXTURE_TIMEOUT_MS);
@@ -283,7 +283,7 @@ describe('reproducibility scratch cleanup', () => {
       process.kill(workers[0], 'SIGKILL');
       const result = await exited(run.child);
 
-      expect(result).toEqual({ code: 128 + os.constants.signals.SIGKILL, signal: null });
+      expect(result, run.output()).toEqual({ code: 128 + os.constants.signals.SIGKILL, signal: null });
       expect(scratchEntries(run.tmp)).toEqual([]);
       await waitFor(() => !isAlive(buildPid), 'the fixture build to die', run.output);
     }, FIXTURE_TIMEOUT_MS);
@@ -313,7 +313,7 @@ describe('reproducibility scratch cleanup', () => {
       expect(scratchEntries(run.tmp)).toHaveLength(1);
 
       run.child.kill('SIGTERM');
-      expect((await exited(run.child)).signal).toBe('SIGTERM');
+      expect((await exited(run.child)).signal, run.output()).toBe('SIGTERM');
       expect(scratchEntries(run.tmp)).toEqual([]);
     }, FIXTURE_TIMEOUT_MS);
   });
