@@ -5,14 +5,16 @@ All notable changes to `@emilia-protocol/mobile` are documented here.
 
 ## Unreleased
 
+## 0.3.1 (2026-10-04)
+
 ### Added
 
 - `strictJsonGate(text, { refuseNoncharacters: true })` also refuses a
   string or member name that holds a Unicode noncharacter after unescaping,
   which I-JSON (RFC 7493) excludes. It is opt-in: without the option the
-  gate behaves as before. Callers that decode JSON text carrying a CAID
-  action object pass it (draft-schrock-canonical-action-identifier-04,
-  Section 2.4).
+  gate behaves as before. Existing mobile HTTP and receipt parsing callers
+  retain their default behavior; this helper synchronization does not change
+  the mobile approval ceremony or platform verification policy.
 
 ## 0.3.0 (2026-08-30)
 

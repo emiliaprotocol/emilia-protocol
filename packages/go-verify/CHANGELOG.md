@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+## 2.5.0 (2026-10-04)
+
+### Added
+
+- Add `CompileAECRequirementExpression`, `EvaluateAECRequirementExpression`,
+  `AECCompiledExpression`, `AECExpressionEvaluation`, and
+  `AECExpressionParseDomain` for AEC -08 expression diagnostics. One parse
+  supplies the canonical parse, parse identity, token count, and evaluation;
+  syntax validity and refusal class remain separate from the Boolean value.
+  A matching parse identity is an interpretation diagnostic, not a guarantee
+  of equivalent verdicts.
+
+### Fixed
+
+- Evaluate a pinned requirement exactly as supplied instead of trimming
+  Unicode whitespace. Only SP, HTAB, CR, and LF are expression whitespace;
+  a requirement such as a non-breaking space followed by `a` is now refused
+  rather than silently evaluated as `a`.
+- Reuse the compiled tree in the legacy authorization-chain verifier, with
+  caps of 4096 UTF-8 octets, 256 tokens, and 32 nesting levels. Length refusal
+  precedes lexical and parser refusals, and every branch is validated before
+  satisfaction.
+
+### Scope
+
+- The diagnostic APIs and legacy wrapper cover requirement-expression
+  evaluation. This package does not implement the structured AEC -07/-08
+  requirement or replay contract; expression agreement with the JavaScript
+  reference is not conformance to that contract.
+- Retain the `/v2` module path, Go 1.21 language declaration, and existing
+  wire-envelope versions.
+
 ## 2.4.5 (2026-08-30)
 
 ### Maintenance
