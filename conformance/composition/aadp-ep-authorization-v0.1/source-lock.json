@@ -57,7 +57,7 @@
       },
       {
         "path": "packages/verify/package.json",
-        "sha256": "216719b1447eff9970204b299febe1538b61a547e83e2d992c036a1da54220ee"
+        "sha256": "67df2f54f971591396e896be9dff0d49388eed73b9574a92df7f68f6caaba0b5"
       },
       {
         "path": "packages/verify/src/aadp-authorization-artifact.ts",
