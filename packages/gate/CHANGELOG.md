@@ -6,6 +6,19 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## 0.29.0 (2026-10-04)
 
+### Security
+
+- Adds the opt-in `stripe-refund-durable` adapter. It binds approval to an
+  immutable refund job, tenant, environment and probed Stripe account, records
+  a durable attempt before creation, and refuses a second create for an
+  unresolved operation even with a fresh receipt. Recovery commits only from
+  a matching authenticated provider object; an empty or uncertain lookup never
+  releases the attempt or authorizes a retry. This requires the configured
+  PostgreSQL attempt store, retained metadata key and exclusive covered refund
+  path described in the README. The legacy Stripe adapter is unchanged; do not
+  retry an old legacy operation through the new path. PostgreSQL tests use a
+  recording fake Stripe client, not live Stripe or settlement evidence.
+
 ### Added
 
 - `strictJsonGate(text, { refuseNoncharacters: true })` also refuses a
