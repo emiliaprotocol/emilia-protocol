@@ -195,7 +195,7 @@ test('structured API: AND and OR stay valid native component types; only the exp
   assert.throws(() => aec.createAuthorizationChainEvaluator({ requirement: requirement('AND') as any, nativeVerifiers: {} }), /aec_requirement_invalid/);
 });
 
-test('replay migration: same revision compares the complete record; other revisions are UNSUPPORTED_REVISION, never relabeled', async () => {
+test('replay migration: same revision compares the complete record; an edited record is MISMATCH; unknown revisions and malformed records are refused', async () => {
   const evaluator: any = aec.createAuthorizationChainEvaluator({
     requirement: requirement('a OR b') as any,
     nativeVerifiers: { a: { profile: stubProfile, trustSnapshot: {}, verify: passing } },
@@ -215,23 +215,10 @@ test('replay migration: same revision compares the complete record; other revisi
   const mismatch = await evaluator.replay(chain, tampered, inputs());
   assert.equal(mismatch.comparison, 'MISMATCH');
   assert.equal(mismatch.matches, false);
-
-  // A stored -07 record: same members, -07 revision, its own digests.
-  const stored07 = { ...recorded, algorithm_revision: 'EP-AEC-EVALUATOR-07-v1', evaluator_profile_digest: `sha256:${'0'.repeat(64)}` };
-  const before = JSON.stringify(stored07);
-  const old = await evaluator.replay(chain, stored07, inputs());
-  assert.equal(old.comparison, 'UNSUPPORTED_REVISION');
-  assert.equal(old.matches, false);
-  assert.equal(old.recorded_revision, 'EP-AEC-EVALUATOR-07-v1');
-  assert.equal(JSON.stringify(stored07), before, 'the stored record is not rewritten');
-  // Re-evaluation under -08 is a new, separately identified record.
-  assert.equal(old.result.replay.algorithm_revision, 'EP-AEC-EVALUATOR-08-v1');
-  assert.notEqual(old.result.replay_digest, old.claimed_replay_digest);
-  // Relabeling the -07 record as -08 does not make it match either.
-  const relabeled = await evaluator.replay(chain, { ...stored07, algorithm_revision: 'EP-AEC-EVALUATOR-08-v1' }, inputs());
-  assert.equal(relabeled.comparison, 'MISMATCH');
   assert.ok(aec.AEC_SUPERSEDED_EVALUATOR_REVISIONS.includes('EP-AEC-EVALUATOR-07-v1'));
 
+  // No evaluator has made an -99 record; this one is an -08 record relabeled
+  // to an unknown revision, which is all the refusal needs.
   const future = await evaluator.replay(chain, { ...recorded, algorithm_revision: 'EP-AEC-EVALUATOR-99-v1' }, inputs());
   assert.equal(future.comparison, 'UNSUPPORTED_REVISION');
   for (const garbage of [null, 'record', { '@version': 'EP-AEC-REPLAY-v1' }, { ...recorded, '@version': 'other' }]) {
@@ -239,6 +226,129 @@ test('replay migration: same revision compares the complete record; other revisi
     assert.equal(refused.comparison, 'RECORD_INVALID');
     assert.equal(refused.matches, false);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Replay migration against a GENUINE -07 record: made by the released
+// @emilia-protocol/verify 6.0.0 (EP-AEC-EVALUATOR-07-v1) over a real Class-A
+// WebAuthn Trust Receipt, frozen in conformance/vectors/aec-replay-07.v1.*
+// by generate-aec-replay-07.mts. Nothing here edits an -08 record into one.
+// ---------------------------------------------------------------------------
+const replay07Dir = resolve(here, '../../conformance/vectors');
+const replay07 = JSON.parse(readFileSync(resolve(replay07Dir, 'aec-replay-07.v1.json'), 'utf8'));
+const readRecord07 = () => readFileSync(resolve(replay07Dir, 'aec-replay-07.v1.record.json'), 'utf8');
+const sha256Of = (text: string) => `sha256:${crypto.createHash('sha256').update(text, 'utf8').digest('hex')}`;
+const deepFreeze = <T,>(value: T): T => { if (value && typeof value === 'object') { Object.values(value).forEach(deepFreeze); Object.freeze(value); } return value; };
+const evaluator07Inputs = () => ({ expectedAction: replay07.inputs.expected_action, verificationTime: replay07.inputs.verification_time });
+const evaluator08For07 = (): any => aec.createAuthorizationChainEvaluator({ requirement: replay07.inputs.requirement, nativeVerifiers: replay07.inputs.native_verifiers });
+
+test('genuine -07 fixture: frozen bytes, producer is the released 6.0.0 evaluator, record is canonical', () => {
+  const recordBytes = readRecord07();
+  const fixtureBytes = readFileSync(resolve(replay07Dir, 'aec-replay-07.v1.json'), 'utf8');
+  assert.equal(readFileSync(resolve(replay07Dir, 'aec-replay-07.v1.SHA256SUMS'), 'utf8'),
+    `${sha256Of(fixtureBytes).slice(7)}  aec-replay-07.v1.json\n${sha256Of(recordBytes).slice(7)}  aec-replay-07.v1.record.json\n`);
+  assert.equal(replay07.producer.package, '@emilia-protocol/verify');
+  assert.equal(replay07.producer.version, '6.0.0');
+  assert.equal(replay07.producer.algorithm_revision, 'EP-AEC-EVALUATOR-07-v1');
+  const stored = JSON.parse(recordBytes);
+  assert.equal(canonicalizeStrictJson(stored), recordBytes, 'the record file is the canonical bytes the producer hashed');
+  assert.equal(sha256Of(recordBytes), replay07.record.replay_digest);
+  assert.equal(stored['@version'], 'EP-AEC-REPLAY-v1');
+  assert.equal(stored.algorithm_revision, 'EP-AEC-EVALUATOR-07-v1');
+  assert.equal(stored.satisfied, true);
+  assert.deepEqual(stored.facts.map((f: any) => [f.type, f.native_verification, f.acceptance, f.eligible]), [['ep-receipt', 'VERIFIED', 'ACCEPTED', true]]);
+});
+
+test('replay migration: the -08 evaluator reports a genuine -07 record UNSUPPORTED_REVISION and leaves it byte-identical', async () => {
+  const recordBytes = readRecord07();
+  const stored = JSON.parse(recordBytes);
+  const frozenCopy = deepFreeze(JSON.parse(recordBytes));
+  const evaluator = evaluator08For07();
+  for (const presented of [stored, frozenCopy]) {
+    const old = await evaluator.replay(replay07.inputs.chain, presented, evaluator07Inputs());
+    assert.equal(old.comparison, 'UNSUPPORTED_REVISION');
+    assert.equal(old.matches, false);
+    assert.equal(old.recorded_revision, 'EP-AEC-EVALUATOR-07-v1');
+    // The -07 record keeps its own digest; it is identified, not recomputed.
+    assert.equal(old.claimed_replay_digest, replay07.record.replay_digest);
+    assert.equal(canonicalizeStrictJson(presented), recordBytes, 'the presented record is not rewritten');
+  }
+  assert.equal(readRecord07(), recordBytes, 'the stored record file is unchanged');
+  assert.equal(sha256Of(readRecord07()), replay07.record.replay_digest);
+});
+
+test('replay migration: re-evaluating the -07 evidence under -08 is SATISFIED and is a new, separately identified record', async () => {
+  const recordBytes = readRecord07();
+  const stored = JSON.parse(recordBytes);
+  const evaluator = evaluator08For07();
+  const fresh = await evaluator.evaluate(replay07.inputs.chain, evaluator07Inputs());
+  assert.equal(fresh.satisfied, true, JSON.stringify(fresh.reasons));
+  assert.equal(fresh.replay.algorithm_revision, 'EP-AEC-EVALUATOR-08-v1');
+  assert.equal(fresh.replay_digest, sha256Of(canonicalizeStrictJson(fresh.replay)));
+  assert.notEqual(fresh.replay_digest, replay07.record.replay_digest);
+  assert.notEqual(fresh.replay.evaluator_profile_digest, stored.evaluator_profile_digest);
+  // Same evidence, same pins, same time: every member other than the revision
+  // and the evaluator profile digest (which commits to the revision) agrees.
+  assert.deepEqual(Object.keys(fresh.replay).sort(), Object.keys(stored).sort());
+  const differing = Object.keys(fresh.replay).filter(k => canonicalizeStrictJson(fresh.replay[k]) !== canonicalizeStrictJson(stored[k]));
+  assert.deepEqual(differing.sort(), ['algorithm_revision', 'evaluator_profile_digest']);
+  // replay() returns that same fresh record beside the unsupported comparison.
+  const old = await evaluator.replay(replay07.inputs.chain, stored, evaluator07Inputs());
+  assert.equal(old.result.replay_digest, fresh.replay_digest);
+  assert.notEqual(old.result.replay_digest, old.claimed_replay_digest);
+  // The new record is an -08 record in its own right: replaying it matches.
+  const again = await evaluator.replay(replay07.inputs.chain, JSON.parse(JSON.stringify(fresh.replay)), evaluator07Inputs());
+  assert.equal(again.comparison, 'MATCH');
+  assert.equal(again.matches, true);
+});
+
+test('replay migration: no digest comparison across revisions; the -07 outcome does not depend on the record digest', async () => {
+  const stored = JSON.parse(readRecord07());
+  const evaluator = evaluator08For07();
+  const fresh = await evaluator.evaluate(replay07.inputs.chain, evaluator07Inputs());
+  // A digest comparison could only ever return MISMATCH for these records
+  // (the revision is inside the digest). UNSUPPORTED_REVISION for every one,
+  // whatever its other bytes, shows that no comparison was made.
+  const variants = [
+    stored,
+    { ...stored, satisfied: false, reasons: ['edited'] },
+    { ...stored, facts: [] },
+    { ...stored, evaluator_profile_digest: fresh.replay.evaluator_profile_digest },
+    // The exact -08 record, labeled -07: still not compared.
+    { ...JSON.parse(JSON.stringify(fresh.replay)), algorithm_revision: 'EP-AEC-EVALUATOR-07-v1' },
+  ];
+  for (const variant of variants) {
+    const outcome = await evaluator.replay(replay07.inputs.chain, variant, evaluator07Inputs());
+    assert.equal(outcome.comparison, 'UNSUPPORTED_REVISION');
+    assert.equal(outcome.matches, false);
+    assert.equal(outcome.recorded_revision, 'EP-AEC-EVALUATOR-07-v1');
+  }
+});
+
+test('replay migration: the only digest comparison in replay() sits behind the same-revision check', () => {
+  // Behaviour cannot show that a cross-revision digest comparison never runs
+  // (its answer would be MISMATCH, which the revision check then overrides),
+  // so pin the shape in both the source and the compiled module the package
+  // tests execute: one comparison against result.replay_digest, reached only
+  // after a record of another revision has become UNSUPPORTED_REVISION.
+  for (const file of ['src/evidence-chain.ts', 'dist/evidence-chain.js']) {
+    const text = readFileSync(resolve(here, file), 'utf8');
+    const start = text.indexOf('async replay(chain');
+    assert.ok(start > 0, file);
+    const body = text.slice(start, text.indexOf('claimed_replay_digest: claimedDigest, result });', start));
+    assert.equal(body.split('result.replay_digest').length - 1, 1, `${file}: one digest comparison`);
+    assert.match(body, /: recordedRevision !== AEC_EVALUATOR_REVISION \? 'UNSUPPORTED_REVISION'\s+: claimedDigest === result\.replay_digest \? 'MATCH' : 'MISMATCH';/, file);
+  }
+});
+
+test('replay migration: relabeling the genuine -07 record as -08 does not make it match', async () => {
+  const stored = JSON.parse(readRecord07());
+  const evaluator = evaluator08For07();
+  const relabeled = await evaluator.replay(replay07.inputs.chain, { ...stored, algorithm_revision: 'EP-AEC-EVALUATOR-08-v1' }, evaluator07Inputs());
+  // Its -07 evaluator profile digest still differs from the -08 one.
+  assert.equal(relabeled.comparison, 'MISMATCH');
+  assert.equal(relabeled.matches, false);
+  assert.equal(relabeled.recorded_revision, 'EP-AEC-EVALUATOR-08-v1');
 });
 
 // ---------------------------------------------------------------------------

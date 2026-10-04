@@ -81,9 +81,23 @@ Everything else is the -07 text.
 - `node conformance/run.mjs`: all 21 live suites and the
   `EP-AEC-EXPRESSION-v1` profile suite agree across the JavaScript, Python
   and Go ports (104 of 104 corpus vectors in each).
-- `packages/verify`: `node --test aec-expression.test.js` 18 of 18. Four
+- `packages/verify`: `node --test aec-expression.test.js` 24 of 24. Four
   tests keep the parse identity while corrupting precedence, operator
-  evaluation, role matching and FAILED-fact eligibility. Two pin the Section
+  evaluation, role matching and FAILED-fact eligibility. Six cover the
+  genuine -07 record in `conformance/vectors/aec-replay-07.v1.record.json`
+  (SHA-256
+  `de32112e9e9f47925e6ad6b3e05d039fb26901471033f9980bcfc03bb2306365`),
+  which the published `@emilia-protocol/verify` 6.0.0 made with
+  `EP-AEC-EVALUATOR-07-v1` over the real Class-A WebAuthn receipt of
+  `aec-role.v1.json` `accept_pinned_human_receipt`, and which 6.0.0's own
+  `replay()` matches. The -08 `replay()` reports it `UNSUPPORTED_REVISION`
+  with `matches` false and leaves its bytes unchanged; re-evaluation under
+  -08 is SATISFIED and differs from it only in `algorithm_revision` and
+  `evaluator_profile_digest`, so its replay digest is new; edited -07
+  records stay `UNSUPPORTED_REVISION`, never `MISMATCH`; relabeled as -08 the
+  record is `MISMATCH`; and the only digest comparison in `replay()`, in
+  source and compiled output, sits behind the same-revision check.
+  `npm run check:aec-08` replays the same record. Two pin the Section
   8.4 refusal order (a lone `&` or `|` where the 257th token would start is a
   syntax refusal; completing a 257th token is a limit refusal; a lone
   surrogate counts three octets) and the structured constructor's strict JSON
@@ -97,7 +111,8 @@ Everything else is the -07 text.
   a FAILED fact credited as eligible (2), precedence read from the text while
   the correct tree is fingerprinted (5), the operator check folded to
   uppercase (8), the length measured in UTF-16 units (1), the legacy pinned
-  requirement trimmed (2), replay comparing across revisions (1), the
+  requirement trimmed (2), replay comparing across revisions (3, re-run
+  after the genuine -07 tests were added), the
   requirement digest taken over a trimmed expression (1), a token limit of
   257 (3), a depth limit of 31 (8), NO-BREAK SPACE treated as whitespace (4),
   and the constructor accepting an invalid expression (2).

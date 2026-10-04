@@ -132,6 +132,36 @@ legacy `verifyAuthorizationChain`. Passing a finite corpus is necessary for
 the profile, not proof of correctness for every input, and a matching parse
 identity does not prove a matching verdict.
 
+## `aec-replay-07.v1.json` — genuine AEC -07 replay record (frozen)
+
+A replay record made by the released -07 evaluator, kept as stored, for the
+-08 replay migration tests in `packages/verify/aec-expression.test.ts`. The
+producer is the published npm package `@emilia-protocol/verify` 6.0.0, whose
+`AEC_EVALUATOR_REVISION` is `EP-AEC-EVALUATOR-07-v1` (tarball integrity
+`sha512-47L+T0rzZ6vyQHnd+rvdQJvBsRWab0XdK6wOsueCgmy6gIxNWuRpIDy1JhzUTfhGWootI+01rFwLT0SxnJvQ5A==`).
+The inputs are the frozen `aec-role.v1.json` vector
+`accept_pinned_human_receipt` (a real Class-A WebAuthn Trust Receipt with its
+pinned RP profile and verification time), checked by the built-in
+`ep-receipt` verifier under the requirement expression `ep-receipt`; it
+evaluates SATISFIED, and 6.0.0's own `replay()` matches the record.
+
+- `aec-replay-07.v1.json`: inputs, producer provenance and a record summary.
+- `aec-replay-07.v1.record.json`: the record exactly as 6.0.0 serialized it
+  (RFC 8785 bytes, no trailing newline). Its SHA-256,
+  `de32112e9e9f47925e6ad6b3e05d039fb26901471033f9980bcfc03bb2306365`, is the
+  replay digest 6.0.0 reported.
+- `aec-replay-07.v1.SHA256SUMS`: SHA-256 of both files.
+
+`node generate-aec-replay-07.mjs --check` needs no package: it proves the
+inputs still equal the source vector, the record is canonical and matches the
+summary, and the checksums hold. Regenerating, or adding `--tarball` to the
+check to re-run the producer, needs only the published package:
+`npm pack @emilia-protocol/verify@6.0.0`, then
+`node generate-aec-replay-07.mjs --tarball emilia-protocol-verify-6.0.0.tgz`.
+The generator refuses a tarball whose npm integrity differs and never loads
+this repository's evaluator. The fixture is not a conformance suite and is
+not counted in the manifest.
+
 ## Opt-in profile suites (cross-language)
 
 Five opt-in verify profiles ship shared, cross-language vector suites that the

@@ -10,7 +10,8 @@
 // corpus that Section 8 cites are the ones on this tree: the frozen corpus
 // bytes match the SHA-256 in the draft and its locator, and the reference
 // evaluator on this tree reproduces every corpus vector and every inline
-// example.
+// example. It also replays the genuine -07 record that the released 6.0.0
+// evaluator made and requires UNSUPPORTED_REVISION with the record unmodified.
 //
 // `--render` additionally re-renders the source with xml2rfc 3.34.0 (network
 // needed for the bibxml includes) and requires byte-identical TXT and HTML.
@@ -33,6 +34,7 @@ const corpusUrl = 'https://raw.githubusercontent.com/emiliaprotocol/emilia-proto
   + '2ebba2d8439b8e268ba6c3bc2fbbfdd42d2fb318/conformance/vectors/aec-expression.v1.json';
 const corpusCommit = '2ebba2d8439b8e268ba6c3bc2fbbfdd42d2fb318';
 
+/** @param {unknown} condition @param {string} message @returns {asserts condition} */
 function invariant(condition, message) {
   if (!condition) throw new Error(`AEC -08 packet: ${message}`);
 }
@@ -302,6 +304,7 @@ invariant(vectors.find((v) => v.id === 'table-13-left-to-right')?.expect.parse_i
 
 const chain = (n, op = 'OR') => Array.from({ length: n }, (_, i) => `r${i}`).join(` ${op} `);
 const nest = (n, inner) => `${'('.repeat(n)}${inner}${')'.repeat(n)}`;
+/** @type {Array<[string, string[], string, string | null, number | null]>} */
 const limitExamples = [
   [chain(128), ['r127'], 'VALID', null, 255],
   [`${chain(128)} OR`, [], 'INVALID', 'syntax', 256],
@@ -326,6 +329,27 @@ for (const [expression, eligible, syntax, invalidClass, tokens] of limitExamples
 }
 invariant(vectors.filter((v) => v.group === 'limit').length > 0, 'corpus has no limit vectors');
 
+// ---- Implementation Status: replay of a genuine -07 record ------------------
+// The draft says replay reports a record of another revision, including -07,
+// as unsupported without modifying it, and returns a new -08 record. Check
+// that against the record the released 6.0.0 evaluator made
+// (conformance/vectors/aec-replay-07.v1.*), not an edited -08 record.
+execFileSync(process.execPath, [fileURLToPath(new URL('conformance/vectors/generate-aec-replay-07.mjs', repo)), '--check'],
+  { stdio: ['ignore', 'pipe', 'pipe'] });
+const replay07 = JSON.parse(readFileSync(new URL('conformance/vectors/aec-replay-07.v1.json', repo), 'utf8'));
+const record07Bytes = readFileSync(new URL('conformance/vectors/aec-replay-07.v1.record.json', repo), 'utf8');
+invariant(replay07.producer.version === '6.0.0' && replay07.record.algorithm_revision === 'EP-AEC-EVALUATOR-07-v1',
+  'the -07 replay fixture is not a 6.0.0 EP-AEC-EVALUATOR-07-v1 record');
+const evaluator07 = aec.createAuthorizationChainEvaluator({ requirement: replay07.inputs.requirement, nativeVerifiers: replay07.inputs.native_verifiers });
+const stored07 = JSON.parse(record07Bytes);
+const migrated = await evaluator07.replay(replay07.inputs.chain, stored07,
+  { expectedAction: replay07.inputs.expected_action, verificationTime: replay07.inputs.verification_time });
+invariant(migrated.comparison === 'UNSUPPORTED_REVISION' && migrated.matches === false
+  && migrated.recorded_revision === 'EP-AEC-EVALUATOR-07-v1', `genuine -07 record replayed as ${migrated.comparison}`);
+invariant(JSON.stringify(stored07) === JSON.stringify(JSON.parse(record07Bytes)), 'replay modified the stored -07 record');
+invariant(migrated.result.satisfied === true && migrated.result.replay.algorithm_revision === 'EP-AEC-EVALUATOR-08-v1'
+  && migrated.result.replay_digest !== replay07.record.replay_digest, 're-evaluation under -08 is not a new SATISFIED -08 record');
+
 // ---- Optional: re-render ---------------------------------------------------
 let renderNote = 'renders checked by checksum (pass --render to re-render)';
 if (process.argv.includes('--render')) {
@@ -346,4 +370,4 @@ if (process.argv.includes('--render')) {
 
 console.log(`AEC -08: packet, checksums, ASCII and 72 columns, required -08 text, posted -07 integrity PASS; `
   + `corpus SHA-256 ${corpusSha.slice(0, 12)} (${pinnedNote}); the evaluator on this tree reproduces all `
-  + `${vectors.length} corpus vectors, the ${rows.length} Table 1 rows, the parse identity example and the limit examples; ${renderNote}.`);
+  + `${vectors.length} corpus vectors, the ${rows.length} Table 1 rows, the parse identity example and the limit examples; the genuine 6.0.0 -07 replay record is UNSUPPORTED_REVISION and unmodified; ${renderNote}.`);

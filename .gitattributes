@@ -448,6 +448,7 @@ conformance/suites.mjs linguist-generated=true
 conformance/tool-call-binding.test.js linguist-generated=true
 conformance/trusted-context-pack.test.js linguist-generated=true
 conformance/vectors/generate-aec-expression.mjs linguist-generated=true
+conformance/vectors/generate-aec-replay-07.mjs linguist-generated=true
 conformance/vectors/generate-aec-role.mjs linguist-generated=true
 conformance/vectors/generate-agentroa-orprg-ep.mjs linguist-generated=true
 conformance/vectors/generate-authority-document-proof-join.mjs linguist-generated=true
