@@ -22,8 +22,11 @@ evidence, an Action State `-02` Signed Statement, and one-time settlement. It al
 executes replay, action-substitution, and meter-rule-smuggling attacks and requires all
 three to refuse.
 
-The browser control room at `/grace/live` uses the same implementation. Every adapter
-is visibly marked as a reference simulation; no physical grid event is claimed.
+The browser control room at `/grace/live` replays one recorded run of the same
+implementation, because the reference harness is refused in production.
+`app/grace/live/recorded-reference-run.test.ts` keeps that recording equal to a fresh run
+on every value that does not depend on the per-run reference keys. Every adapter is
+visibly marked as a reference simulation; no physical grid event is claimed.
 
 ## Run the TimesFM forecast-evidence profile
 
