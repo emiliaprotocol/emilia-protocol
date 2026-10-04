@@ -1,6 +1,6 @@
 name: Publish verified MCP Registry metadata
 
-# Registry publication is separate from npm. No PAT or npm publication here.
+# Metadata registration is separate from package publishers. No PAT or npm publication here.
 on:
   workflow_dispatch:
     inputs:

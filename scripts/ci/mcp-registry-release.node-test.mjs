@@ -9,6 +9,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import YAML from 'yaml';
+import { auditReleaseChain } from '../check-release-chain.mjs';
 import {
   MCP_NAME, NPM_NAME, PUBLISHER_SHA256, PUBLISHER_URL,
   assertImmutableTagRules, assertRegistryAbsent, setupAuthCache,
@@ -187,7 +188,7 @@ test('CLI token cache is confined to a fresh runner temp directory without overw
 }));
 
 test('workflow is manual, main-only, protected OIDC only, with pinned tools and no secret/token fallback', () => {
-  const text = readFileSync(join(ROOT, '.github/workflows/publish-mcp-registry.yml'), 'utf8');
+  const text = readFileSync(join(ROOT, '.github/workflows/register-mcp.yml'), 'utf8');
   const workflow = YAML.parse(text);
   assert.deepEqual(Object.keys(workflow.on), ['workflow_dispatch']);
   assert.deepEqual(workflow.permissions, { contents: 'read' });
@@ -214,4 +215,11 @@ test('workflow is manual, main-only, protected OIDC only, with pinned tools and 
   assert.ok(!/secrets\.|gh auth token|MCP_GITHUB_TOKEN|npm (publish|install|ci|run)|HOME:/u.test(text));
   assert.ok(text.includes(PUBLISHER_URL)); assert.ok(text.includes(PUBLISHER_SHA256));
   assert.equal(MCP_NAME, 'io.github.emiliaprotocol/mcp-server'); assert.equal(NPM_NAME, '@emilia-protocol/mcp-server');
+});
+
+test('Registry-only metadata registration does not create an undeclared package publisher', () => {
+  assert.deepEqual(auditReleaseChain(ROOT), { packages: 28, npm: 21, pypi: 6, go: 1 });
+  const packages = JSON.parse(readFileSync(join(ROOT, 'release/release-packages.v1.json'), 'utf8')).packages;
+  assert.ok(!packages.some((entry) => entry.workflow === 'register-mcp.yml'));
+  assert.ok(!existsSync(join(ROOT, '.github/workflows/publish-mcp-registry.yml')));
 });

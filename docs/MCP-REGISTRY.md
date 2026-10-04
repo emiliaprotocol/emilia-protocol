@@ -35,7 +35,7 @@ curl -fsS \
 # Run only after the reviewed workflow has merged into main and the
 # registry-publishing-approval environment is restricted to main with
 # FutureEnterprises as its required reviewer.
-gh workflow run publish-mcp-registry.yml \
+gh workflow run register-mcp.yml \
   --repo emiliaprotocol/emilia-protocol --ref main \
   -f release_tag=mcp-v2.1.4 \
   -f 'confirmation=REGISTER io.github.emiliaprotocol/mcp-server@2.1.4'
