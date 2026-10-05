@@ -254,9 +254,13 @@ test('revoke cannot be undone by re-presenting the same signed envelope', () => 
   gate.revoke();
   const again = gate.authorizeEnvelope(signed);
   assert.equal(again.ok, false);
-  assert.equal(again.reason, 'envelope_revoked');
+  assert.equal(again.reason, 'gate_halted'); // halt is checked first; the receipt is not even read
   refuses(gate, ok, 'revoked');
-  // A fresh envelope with a different receipt_id is a new human signoff and loads.
+  // While halted, even a fresh envelope with a different receipt_id is refused.
+  assert.equal(gate.authorizeEnvelope(envelope(privateKey, { receipt_id: 'env_t2' })).reason, 'gate_halted');
+  // After the operator clears the halt, a new signoff loads; the revoked receipt_id never does.
+  gate.clearHalt();
+  assert.equal(gate.authorizeEnvelope(signed).reason, 'envelope_revoked');
   assert.equal(gate.authorizeEnvelope(envelope(privateKey, { receipt_id: 'env_t2' })).ok, true);
   assert.equal(gate.permit(ok).allow, true);
 });
@@ -396,11 +400,10 @@ test('receipt shapes that are not plain data -> refused with a reason, never thr
 test('window bounds are compared in milliseconds: no sub-second use after not_after', () => {
   const { pub, privateKey } = makeKey();
   const S = Math.floor(Date.now() / 1000) + 100;
-  let clock = (S - 50) * 1000;
+  let clock = (S - 50) * 1000 - 1; // authorize just before the window opens; the gate clock may not run backwards
   const gate = new EdgeActuatorGate({ trustedKeys: [pub], now: () => clock } as any);
   const scope = { ...baseScope(), window: { not_before: S - 50, not_after: S } };
   assert.equal(gate.authorizeEnvelope(signEnvelope(privateKey, { scope })).ok, true);
-  clock = (S - 50) * 1000 - 1;
   refuses(gate, ok, 'before_window');
   clock = (S - 50) * 1000; // not_before is inclusive
   assert.equal(gate.permit(ok).allow, true);
@@ -412,4 +415,89 @@ test('window bounds are compared in milliseconds: no sub-second use after not_af
   refuses(gate, ok, 'expired');
   clock = S * 1000 + 999;
   refuses(gate, ok, 'expired');
+});
+
+// ---------------------------------------------------------------------------
+// A human halt latches at the gate: loading another valid signed envelope does
+// not lift it, and setting the clock back does not re-open an expired envelope.
+// ---------------------------------------------------------------------------
+
+test('halt is not lifted by loading a previously replaced envelope', () => {
+  const { pub, privateKey } = makeKey();
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub] } as any);
+  const A = envelope(privateKey, { receipt_id: 'env_a' });
+  const B = envelope(privateKey, { receipt_id: 'env_b' });
+  assert.equal(gate.authorizeEnvelope(A).ok, true);
+  assert.equal(gate.authorizeEnvelope(B).ok, true); // B replaces A
+  gate.revoke();
+  let r;
+  assert.doesNotThrow(() => { r = gate.authorizeEnvelope(A); });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'gate_halted');
+  refuses(gate, ok, 'revoked');
+  assert.equal(new SimulatedArm(gate).move(ok).moved, false);
+  assert.equal(gate.halted, true);
+  // Neither the old public flag nor the read-only accessor lifts the halt.
+  (gate as any).revoked = false;
+  assert.throws(() => { (gate as any).halted = false; }, TypeError);
+  refuses(gate, ok, 'revoked');
+  assert.equal(gate.authorizeEnvelope(B).reason, 'gate_halted');
+  // Only the explicit operator call lifts it, and it does not restore the revoked envelope.
+  gate.clearHalt();
+  assert.equal(gate.halted, false);
+  refuses(gate, ok, 'no_envelope');
+  assert.equal(gate.authorizeEnvelope(B).reason, 'envelope_revoked'); // revoked: refused forever on this gate
+  assert.equal(gate.authorizeEnvelope(A).ok, true); // replaced, not revoked: may reload once not halted
+  assert.equal(gate.permit(ok).allow, true);
+});
+
+test('halt latched before any envelope blocks the first load', () => {
+  const { pub, privateKey } = makeKey();
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub] } as any);
+  gate.revoke();
+  refuses(gate, ok, 'revoked');
+  let r;
+  assert.doesNotThrow(() => { r = gate.authorizeEnvelope(envelope(privateKey, { receipt_id: 'env_a' })); });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'gate_halted');
+  refuses(gate, ok, 'revoked');
+  gate.clearHalt();
+  assert.equal(gate.authorizeEnvelope(envelope(privateKey, { receipt_id: 'env_a' })).ok, true);
+  assert.equal(gate.permit(ok).allow, true);
+});
+
+test('setting the gate clock back does not re-open an expired envelope', () => {
+  const { pub, privateKey } = makeKey();
+  const S = Math.floor(Date.now() / 1000) + 100;
+  let clock = (S - 10) * 1000;
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub], now: () => clock } as any);
+  const scope = { ...baseScope(), window: { not_before: S - 50, not_after: S } };
+  assert.equal(gate.authorizeEnvelope(signEnvelope(privateKey, { scope })).ok, true);
+  assert.equal(gate.permit(ok).allow, true);
+  clock = S * 1000;
+  refuses(gate, ok, 'expired');
+  clock = (S - 10) * 1000; // inside the signed window again, but behind a reading already used
+  refuses(gate, ok, 'clock_regressed');
+  assert.equal(new SimulatedArm(gate).move(ok).moved, false);
+  clock = S * 1000 - 1;
+  refuses(gate, ok, 'clock_regressed');
+  // Authorization reads the same monotonic clock.
+  let r;
+  assert.doesNotThrow(() => { r = gate.authorizeEnvelope(signEnvelope(privateKey, { scope, receipt_id: 'env_y' })); });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'envelope_clock_regressed');
+  // A reading equal to the highest one used is not a regression.
+  clock = S * 1000;
+  refuses(gate, ok, 'expired');
+});
+
+test('authorization reading counts toward the clock high-water mark', () => {
+  const { pub, privateKey } = makeKey();
+  let clock = Date.now();
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub], now: () => clock } as any);
+  assert.equal(gate.authorizeEnvelope(envelope(privateKey)).ok, true);
+  clock -= 1;
+  refuses(gate, ok, 'clock_regressed');
+  clock += 1;
+  assert.equal(gate.permit(ok).allow, true);
 });

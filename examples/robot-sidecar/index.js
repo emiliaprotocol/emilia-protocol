@@ -27,6 +27,14 @@
  *   - every signed time bound (window.not_before, window.not_after, and the
  *     receipt's expires_at) is enforced on every command, in milliseconds,
  *     through the gate's single injected clock, which authorization uses too;
+ *   - the gate clock may not run backwards: the gate keeps the highest reading
+ *     it has used (authorization and permit) and refuses any lower reading, so
+ *     setting the clock back cannot re-open an expired envelope;
+ *   - revoke() latches a gate-level halt. While halted, permit refuses and
+ *     authorizeEnvelope refuses every receipt, so loading another valid signed
+ *     envelope cannot lift a human halt; only the separately named clearHalt()
+ *     does. A revoked receipt_id stays refused on this gate even after
+ *     clearHalt(). The halt is in-memory, unsigned, and per-process;
  *   - every refusal, from authorizeEnvelope and from permit, is a return value
  *     with a specific reason code, never a thrown exception.
  *
@@ -230,17 +238,28 @@ export class EdgeActuatorGate {
     trustedKeys;
     now;
     envelope;
-    revoked;
-    revokedReceiptIds;
+    /** Gate-level halt latched by revoke(). Private: only clearHalt() lifts it; no load does. */
+    #halted;
+    /** receipt_ids revoked on this gate. Never cleared, not even by clearHalt(). */
+    #revokedReceiptIds;
+    /** Highest gate-clock reading used so far (ms); a lower later reading is refused. */
+    #clockHighWaterMs;
     constructor({ trustedKeys = [], now = Date.now } = {}) {
         this.trustedKeys = trustedKeys;
         this.now = now;
         this.envelope = null;
-        this.revoked = false;
-        this.revokedReceiptIds = new Set();
+        this.#halted = false;
+        this.#revokedReceiptIds = new Set();
+        this.#clockHighWaterMs = -Infinity;
     }
-    /** The gate's single clock, in milliseconds; null when it is not a finite number. Never throws. */
-    readClockMs() {
+    /** True while a human halt is latched (read-only; lift it with clearHalt()). */
+    get halted() { return this.#halted; }
+    /**
+     * The gate's single clock, in milliseconds. Refuses a reading that is not a
+     * finite number, or that is below the highest reading this gate has already
+     * used, and records every accepted reading. Never throws.
+     */
+    readClock() {
         let ms;
         try {
             ms = typeof this.now === 'function' ? this.now() : this.now;
@@ -248,7 +267,12 @@ export class EdgeActuatorGate {
         catch {
             ms = NaN;
         }
-        return isFiniteNumber(ms) ? ms : null;
+        if (!isFiniteNumber(ms))
+            return { ok: false, reason: 'clock_unavailable' };
+        if (ms < this.#clockHighWaterMs)
+            return { ok: false, reason: 'clock_regressed' };
+        this.#clockHighWaterMs = ms;
+        return { ok: true, ms };
     }
     /**
      * Verify + load a bounded authorization envelope (one human signoff, many
@@ -264,14 +288,18 @@ export class EdgeActuatorGate {
         }
     }
     loadEnvelope(receipt) {
+        // A latched halt refuses every load, valid or not; only clearHalt() lifts it.
+        if (this.#halted)
+            return { ok: false, reason: 'gate_halted' };
         // One read of the caller's object. Everything below uses `doc`, never `receipt`.
         const read = snapshotReceipt(receipt);
         if (!read.ok)
             return { ok: false, reason: read.reason };
         const doc = read.receipt;
-        const nowMs = this.readClockMs();
-        if (nowMs === null)
-            return { ok: false, reason: 'envelope_clock_unavailable' };
+        const clock = this.readClock();
+        if (!clock.ok)
+            return { ok: false, reason: `envelope_${clock.reason}` };
+        const nowMs = clock.ms;
         const v = verifyEmiliaReceipt(doc, {
             trustedKeys: this.trustedKeys,
             maxAgeSec: 0, // envelope validity is its own window, enforced on every command, not created_at age
@@ -287,8 +315,8 @@ export class EdgeActuatorGate {
         const receiptId = payload.receipt_id;
         if (!isNonEmptyString(receiptId))
             return { ok: false, reason: 'envelope_malformed_receipt_id' };
-        // A halted envelope stays halted: re-presenting the same signed receipt does not lift the halt.
-        if (this.revokedReceiptIds.has(receiptId))
+        // A revoked receipt_id stays refused on this gate forever, even after clearHalt().
+        if (this.#revokedReceiptIds.has(receiptId))
             return { ok: false, reason: 'envelope_revoked' };
         const parsed = parseScope(claim.authorization_scope);
         if (!parsed.ok)
@@ -309,27 +337,43 @@ export class EdgeActuatorGate {
             approver: claim.approver ?? null,
             receipt_id: receiptId,
         });
-        this.revoked = false;
         return { ok: true, envelope: this.envelope };
     }
-    /** Halt authority: the human can revoke the envelope at any time (in-memory, this gate instance only). */
+    /**
+     * Halt authority: latch a gate-level halt. The active envelope (if any) is
+     * dropped and its receipt_id is refused on this gate from now on. While
+     * halted, permit() refuses with `revoked` and authorizeEnvelope() refuses
+     * every receipt with `gate_halted`. Works with or without a loaded envelope.
+     * In-memory, unsigned, this gate instance only.
+     */
     revoke() {
-        this.revoked = true;
+        this.#halted = true;
         if (this.envelope)
-            this.revokedReceiptIds.add(this.envelope.receipt_id);
+            this.#revokedReceiptIds.add(this.envelope.receipt_id);
+        this.envelope = null;
+    }
+    /**
+     * Operator action that lifts a latched halt. It does not restore the revoked
+     * envelope: the gate has no envelope until a new one loads, and a revoked
+     * receipt_id is still refused. This is an in-process call; any code holding
+     * the gate object can make it.
+     */
+    clearHalt() {
+        this.#halted = false;
     }
     /** Offline per-command check against the active envelope. Fail-closed; never throws. */
     permit(command) {
+        if (this.#halted)
+            return refuse('revoked');
         if (!this.envelope)
             return refuse('no_envelope');
-        if (this.revoked)
-            return refuse('revoked');
         // Every signed time bound, in milliseconds, on the one gate clock. The usable
         // interval is half-open: not_before*1000 <= now < not_after*1000, and
         // now < expires_at (exclusive, as the receipt verifier treats it).
-        const nowMs = this.readClockMs();
-        if (nowMs === null)
-            return refuse('clock_unavailable');
+        const clock = this.readClock();
+        if (!clock.ok)
+            return refuse(clock.reason);
+        const nowMs = clock.ms;
         const w = this.envelope.window;
         if (w.not_before !== null && nowMs < w.not_before * 1000)
             return refuse('before_window');
