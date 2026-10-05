@@ -40,6 +40,79 @@ function listSuites(dir, out = []) {
   return out;
 }
 
+/**
+ * Tokenize enough shell syntax to find commands without asking a regular
+ * expression to decide whether each option owns the word after it. Newlines
+ * and shell control operators end a command; quotes and escaped characters
+ * stay in the word they protect.
+ */
+function shellCommands(text) {
+  const commands = [];
+  let command = [];
+  let word = '';
+  let quote = '';
+
+  const finishWord = () => {
+    if (word.length > 0) command.push(word);
+    word = '';
+  };
+  const finishCommand = () => {
+    finishWord();
+    if (command.length > 0) commands.push(command);
+    command = [];
+  };
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (char === '\\' && quote !== "'") {
+      const next = text[i + 1];
+      if (next === '\n') {
+        i += 1;
+      } else if (next !== undefined) {
+        word += next;
+        i += 1;
+      } else {
+        word += char;
+      }
+    } else if (char === '\n') {
+      // The input also contains YAML and JavaScript source, not only shell.
+      // Do not let an unmatched quote in either language absorb later lines.
+      quote = '';
+      finishCommand();
+    } else if (quote) {
+      if (char === quote) quote = '';
+      else word += char;
+    } else if (char === "'" || char === '"') {
+      quote = char;
+    } else if (char === ';' || char === '|' || char === '&') {
+      finishCommand();
+    } else if (/\s/.test(char)) {
+      finishWord();
+    } else {
+      word += char;
+    }
+  }
+  finishCommand();
+  return commands;
+}
+
+function invokedNodeScripts(text) {
+  const invoked = new Set();
+  for (const words of shellCommands(text)) {
+    for (let i = 0; i < words.length; i += 1) {
+      if (words[i] !== 'node' && words[i] !== 'tsx') continue;
+      for (let j = i + 1; j < words.length; j += 1) {
+        const candidate = words[j];
+        if (/^[\w./-]+\.m?[jt]s$/.test(candidate)) {
+          invoked.add(candidate);
+          break;
+        }
+      }
+    }
+  }
+  return invoked;
+}
+
 /** Workflow text plus every npm script and node script it reaches. */
 function ciReachableText() {
   const workflowsDir = join(ROOT, '.github/workflows');
@@ -65,8 +138,7 @@ function ciReachableText() {
 
   // One level into the node scripts that text runs: a proof runner such as
   // scripts/run-gate-reference-proof.mjs may execute an example suite itself.
-  const nodeScript = /\b(?:node|tsx)\s+(?:--?[\w-]+(?:[= ]\S+)?\s+)*([\w./-]+\.m?[jt]s)\b/g;
-  const invoked = new Set([...text.matchAll(nodeScript)].map((m) => m[1]));
+  const invoked = invokedNodeScripts(text);
   const scriptBodies = [...invoked]
     .map((rel) => join(ROOT, rel))
     .filter((abs) => abs.startsWith(ROOT) && existsSync(abs))
@@ -93,6 +165,19 @@ function isWired(suite, text) {
 
 const suites = listSuites(join(ROOT, 'examples')).sort();
 const text = ciReachableText();
+
+test('node-script command parsing is bounded and respects command boundaries', () => {
+  const adversarialOptions = '-- -'.repeat(10_000);
+  assert.deepEqual(
+    [...invokedNodeScripts([
+      'node --no-warnings "scripts/run-one.mjs" && echo scripts/not-run.mjs',
+      'npx tsx --tsconfig tsconfig.json scripts/run-two.ts',
+      `node ${adversarialOptions} scripts/run-three.js`,
+      'node --version; printf scripts/also-not-run.mjs',
+    ].join('\n'))],
+    ['scripts/run-one.mjs', 'scripts/run-two.ts', 'scripts/run-three.js'],
+  );
+});
 
 test('discovery is not vacuous', () => {
   assert.ok(suites.length >= 20, `found only ${suites.length} example suites; the walker is broken`);
