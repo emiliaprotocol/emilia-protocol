@@ -18,12 +18,20 @@
  *     a skipped check;
  *   - command fields the envelope does not name are refused unless the
  *     envelope lists them in `allowed_command_fields`;
- *   - every refusal is a return value `{ allow: false, reason }` with a
- *     specific reason code, never a thrown exception.
+ *   - the receipt is read exactly once into a frozen, data-only copy; the
+ *     signature is verified over that copy and the envelope is parsed from
+ *     that same copy, so a getter or Proxy cannot swap a wider payload in
+ *     after verification;
+ *   - every signed time bound (window.not_before, window.not_after, and the
+ *     receipt's expires_at) is enforced on every command, in milliseconds,
+ *     through the gate's single injected clock, which authorization uses too;
+ *   - every refusal, from authorizeEnvelope and from permit, is a return value
+ *     with a specific reason code, never a thrown exception.
  *
  * Why a sidecar, not the model: it sits before the actuator, so a compromised or
  * confused planner still cannot move hardware outside the authorized envelope.
  */
+import { types } from 'node:util';
 import { verifyEmiliaReceipt } from '../../packages/require-receipt/index.js';
 
 /** Command fields with gate-defined semantics. `allowed_command_fields` may not re-declare them. */
@@ -32,6 +40,9 @@ const CORE_COMMAND_FIELDS = new Set(['action', 'target', 'reach_cm']);
 const KNOWN_SCOPE_KEYS = new Set(['effect_class', 'target_set', 'allowed_actions', 'bounds', 'window', 'allowed_command_fields']);
 const KNOWN_BOUND_KEYS = new Set(['max_reach_cm']);
 const KNOWN_WINDOW_KEYS = new Set(['not_before', 'not_after']);
+/** Receipt snapshot limits, matching the strict canonical JSON profile the verifier signs over. */
+const MAX_RECEIPT_DEPTH = 64;
+const MAX_RECEIPT_NODES = 100_000;
 
 type Refusal = { allow: false, reason: string, field?: string };
 type Permit = { allow: true, reason: 'within_envelope', command: Readonly<Record<string, unknown>> };
@@ -56,6 +67,57 @@ function stringSet(v: unknown): string[] | null {
     out.push(item);
   }
   return out;
+}
+
+class ReceiptReadError extends Error {
+  code: string;
+  constructor(code: string) { super(code); this.code = code; }
+}
+
+/**
+ * Read an untrusted receipt exactly once into a deep, frozen, data-only copy.
+ * Only plain objects, dense arrays, strings, booleans, null, and finite numbers
+ * are copied. Proxies, class instances, accessors, symbol keys, and any other
+ * value are refused with a reason, and no accessor is ever invoked: values are
+ * taken from own data property descriptors. Verification and enforcement then
+ * both run on this copy, so they see identical bytes.
+ */
+function snapshotReceipt(receipt: unknown): { ok: true, receipt: any } | { ok: false, reason: string } {
+  if (receipt === null || typeof receipt !== 'object') return { ok: false, reason: 'envelope_malformed_receipt' };
+  let nodes = 0;
+  const copy = (v: unknown, depth: number): unknown => {
+    if (++nodes > MAX_RECEIPT_NODES || depth > MAX_RECEIPT_DEPTH) throw new ReceiptReadError('envelope_receipt_too_deep');
+    if (v === null || typeof v === 'string' || typeof v === 'boolean') return v;
+    if (typeof v === 'number') {
+      if (!Number.isFinite(v)) throw new ReceiptReadError('envelope_receipt_non_data_value');
+      return v;
+    }
+    if (typeof v !== 'object') throw new ReceiptReadError('envelope_receipt_non_data_value');
+    if (types.isProxy(v)) throw new ReceiptReadError('envelope_receipt_non_plain_object');
+    const isArray = Array.isArray(v);
+    if (!isArray && !isPlainObject(v)) throw new ReceiptReadError('envelope_receipt_non_plain_object');
+    if (isArray && Object.getPrototypeOf(v) !== Array.prototype) throw new ReceiptReadError('envelope_receipt_non_plain_object');
+    const keys = Reflect.ownKeys(v as object);
+    const out: any = isArray ? [] : {};
+    for (const key of keys) {
+      if (typeof key === 'symbol') throw new ReceiptReadError('envelope_receipt_symbol_field');
+      const desc = Object.getOwnPropertyDescriptor(v, key);
+      if (!desc || !('value' in desc)) throw new ReceiptReadError('envelope_receipt_accessor_field');
+      if (isArray && key === 'length') continue;
+      if (isArray && String(Number(key)) !== key) throw new ReceiptReadError('envelope_receipt_non_plain_object');
+      // defineProperty, not assignment, so a `__proto__` member stays an own data member.
+      Object.defineProperty(out, key, { value: copy(desc.value, depth + 1), enumerable: true, writable: false, configurable: false });
+    }
+    if (isArray && out.length !== keys.length - 1) throw new ReceiptReadError('envelope_receipt_non_plain_object'); // sparse
+    return Object.freeze(out);
+  };
+  try {
+    return { ok: true, receipt: copy(receipt, 0) };
+  } catch (err) {
+    if (err instanceof ReceiptReadError) return { ok: false, reason: err.code };
+    if (err instanceof RangeError) return { ok: false, reason: 'envelope_receipt_too_deep' };
+    return { ok: false, reason: 'envelope_receipt_unreadable' };
+  }
 }
 
 /**
@@ -164,25 +226,65 @@ export class EdgeActuatorGate {
     this.revokedReceiptIds = new Set();
   }
 
-  /** Verify + load a bounded authorization envelope (one human signoff, many edge-verified acts). */
-  authorizeEnvelope(receipt: any) {
-    const v = verifyEmiliaReceipt(receipt, {
+  /** The gate's single clock, in milliseconds; null when it is not a finite number. Never throws. */
+  private readClockMs(): number | null {
+    let ms: unknown;
+    try { ms = typeof this.now === 'function' ? this.now() : this.now; } catch { ms = NaN; }
+    return isFiniteNumber(ms) ? ms : null;
+  }
+
+  /**
+   * Verify + load a bounded authorization envelope (one human signoff, many
+   * edge-verified acts). Fail-closed; every refusal is `{ ok: false, reason }`,
+   * never a thrown exception.
+   */
+  authorizeEnvelope(receipt: unknown): { ok: false, reason: string } | { ok: true, envelope: any } {
+    try {
+      return this.loadEnvelope(receipt);
+    } catch {
+      return { ok: false, reason: 'envelope_internal_error' };
+    }
+  }
+
+  private loadEnvelope(receipt: unknown): { ok: false, reason: string } | { ok: true, envelope: any } {
+    // One read of the caller's object. Everything below uses `doc`, never `receipt`.
+    const read = snapshotReceipt(receipt);
+    if (!read.ok) return { ok: false, reason: read.reason };
+    const doc = read.receipt;
+
+    const nowMs = this.readClockMs();
+    if (nowMs === null) return { ok: false, reason: 'envelope_clock_unavailable' };
+    const v = verifyEmiliaReceipt(doc, {
       trustedKeys: this.trustedKeys,
-      maxAgeSec: 0, // envelope validity is its own window, enforced below — not created_at age
+      maxAgeSec: 0, // envelope validity is its own window, enforced on every command, not created_at age
       allowedOutcomes: ['allow_with_signoff', 'allow'],
+      now: () => nowMs, // the same clock permit() uses
     });
     if (!v.ok) return { ok: false, reason: `envelope_${v.reason}` };
-    const claim = receipt?.payload?.claim || {};
+
+    const payload = doc.payload;
+    const claim = isPlainObject(payload.claim) ? payload.claim : {};
     if (claim.action_type !== 'physical.envelope') return { ok: false, reason: 'not_an_envelope' };
-    const receiptId = receipt.payload?.receipt_id;
+    const receiptId = payload.receipt_id;
     if (!isNonEmptyString(receiptId)) return { ok: false, reason: 'envelope_malformed_receipt_id' };
     // A halted envelope stays halted: re-presenting the same signed receipt does not lift the halt.
     if (this.revokedReceiptIds.has(receiptId)) return { ok: false, reason: 'envelope_revoked' };
     const parsed = parseScope(claim.authorization_scope);
     if (!parsed.ok) return { ok: false, reason: parsed.reason };
+
+    // The verifier already refused an expires_at it cannot parse or that has passed;
+    // keep the same parsed instant so permit() enforces it on every command.
+    let expiresAtMs: number | null = null;
+    if (payload.expires_at !== undefined) {
+      const t = Date.parse(payload.expires_at);
+      if (!Number.isFinite(t)) return { ok: false, reason: 'envelope_receipt_expired' };
+      expiresAtMs = t;
+    }
+
     this.envelope = Object.freeze({
       scope: parsed.scope,
       window: parsed.scope.window,
+      expires_at_ms: expiresAtMs,
       approver: claim.approver ?? null,
       receipt_id: receiptId,
     });
@@ -201,13 +303,15 @@ export class EdgeActuatorGate {
     if (!this.envelope) return refuse('no_envelope');
     if (this.revoked) return refuse('revoked');
 
-    let nowMs: unknown;
-    try { nowMs = typeof this.now === 'function' ? this.now() : this.now; } catch { nowMs = NaN; }
-    if (!isFiniteNumber(nowMs)) return refuse('clock_unavailable');
-    const nowSec = Math.floor(nowMs / 1000);
+    // Every signed time bound, in milliseconds, on the one gate clock. The usable
+    // interval is half-open: not_before*1000 <= now < not_after*1000, and
+    // now < expires_at (exclusive, as the receipt verifier treats it).
+    const nowMs = this.readClockMs();
+    if (nowMs === null) return refuse('clock_unavailable');
     const w = this.envelope.window;
-    if (w.not_before !== null && nowSec < w.not_before) return refuse('before_window');
-    if (nowSec > w.not_after) return refuse('expired');
+    if (w.not_before !== null && nowMs < w.not_before * 1000) return refuse('before_window');
+    if (nowMs >= w.not_after * 1000) return refuse('expired');
+    if (this.envelope.expires_at_ms !== null && nowMs >= this.envelope.expires_at_ms) return refuse('receipt_expired');
 
     const read = snapshotCommand(command);
     if (!read.ok) return refuse(read.reason, read.field);

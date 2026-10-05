@@ -271,3 +271,145 @@ test('loaded envelope is a copy: mutating the receipt afterwards does not widen 
   refuses(gate, { ...ok, reach_cm: 500 }, 'exceeds_bounds');
   refuses(gate, { ...ok, action: 'weapon.fire' }, 'action_not_in_envelope');
 });
+
+// ---------------------------------------------------------------------------
+// Envelope-level bypasses: every signed time bound is enforced on every
+// command through one clock, and the receipt is read exactly once.
+// ---------------------------------------------------------------------------
+
+function signEnvelope(privateKey, { scope = baseScope() as any, expires_at = undefined as any, receipt_id = 'env_x' } = {}) {
+  const payload: any = {
+    receipt_id, subject: 'agent:test', issuer: 'ep:org:test', created_at: new Date().toISOString(),
+    claim: { action_type: 'physical.envelope', outcome: 'allow_with_signoff', approver: 'ep:approver:sup', control_mode: 'on_the_loop', authorization_scope: scope },
+  };
+  if (expires_at !== undefined) payload.expires_at = expires_at;
+  return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value: crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url') } };
+}
+
+test('signed expires_at is enforced by permit, not only at authorization', () => {
+  const { pub, privateKey } = makeKey();
+  let clock = Date.now();
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub], now: () => clock } as any);
+  const scope = { ...baseScope(), window: { not_before: Math.floor(clock / 1000) - 1, not_after: Math.floor(clock / 1000) + 3600 } };
+  const auth = gate.authorizeEnvelope(signEnvelope(privateKey, { scope, expires_at: new Date(clock + 2000).toISOString() }));
+  assert.equal(auth.ok, true, `envelope should load: ${auth.reason}`);
+  assert.equal(gate.permit({ action: 'arm.move', target: 'arm-1', reach_cm: 1 }).allow, true);
+  clock += 2500; // past expires_at, well inside window.not_after
+  refuses(gate, { action: 'arm.move', target: 'arm-1', reach_cm: 1 }, 'receipt_expired');
+  assert.equal(new SimulatedArm(gate).move({ action: 'arm.move', target: 'arm-1', reach_cm: 1 }).moved, false);
+});
+
+test('authorization verifies expires_at with the gate clock, not the host clock', () => {
+  const { pub, privateKey } = makeKey();
+  const realNow = Date.now();
+  const scope = { ...baseScope(), window: { not_before: 0, not_after: Math.floor(realNow / 1000) + 3600 } };
+  // Host clock says still valid; the gate clock says expired: refused.
+  const late = new EdgeActuatorGate({ trustedKeys: [pub], now: () => realNow + 10_000 } as any);
+  const r = late.authorizeEnvelope(signEnvelope(privateKey, { scope, expires_at: new Date(realNow + 5000).toISOString() }));
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'envelope_receipt_expired');
+  refuses(late, ok, 'no_envelope');
+  // Host clock says expired; the gate clock says valid: loads, and permit agrees.
+  const early = new EdgeActuatorGate({ trustedKeys: [pub], now: () => realNow - 10_000 } as any);
+  const r2 = early.authorizeEnvelope(signEnvelope(privateKey, { scope, expires_at: new Date(realNow - 5000).toISOString() }));
+  assert.equal(r2.ok, true, `envelope should load under the gate clock: ${r2.reason}`);
+  assert.equal(early.permit(ok).allow, true);
+  // An unusable gate clock refuses authorization rather than falling back to the host clock.
+  for (const now of [() => NaN, () => { throw new Error('rtc'); }]) {
+    const broken = new EdgeActuatorGate({ trustedKeys: [pub], now } as any);
+    let r3;
+    assert.doesNotThrow(() => { r3 = broken.authorizeEnvelope(signEnvelope(privateKey, { scope })); });
+    assert.equal(r3.ok, false);
+    assert.equal(r3.reason, 'envelope_clock_unavailable');
+  }
+});
+
+test('receipt payload getter cannot swap a widened payload in after verification', () => {
+  const { pub, privateKey } = makeKey();
+  const signed = signEnvelope(privateKey);
+  const widened = structuredClone(signed.payload);
+  widened.claim.authorization_scope.bounds.max_reach_cm = 100000;
+  widened.claim.authorization_scope.allowed_actions.push('weapon.fire');
+  let reads = 0;
+  const swapping = { '@version': signed['@version'], signature: signed.signature, get payload() { reads += 1; return reads <= 2 ? signed.payload : widened; } };
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub] } as any);
+  let r;
+  assert.doesNotThrow(() => { r = gate.authorizeEnvelope(swapping); });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'envelope_receipt_accessor_field');
+  assert.equal(reads, 0, 'the accessor is refused without being invoked');
+  refuses(gate, { ...ok, action: 'weapon.fire' }, 'no_envelope');
+});
+
+test('receipt behind a Proxy cannot swap a widened payload in after verification', () => {
+  const { pub, privateKey } = makeKey();
+  const signed = signEnvelope(privateKey);
+  const widened = structuredClone(signed.payload);
+  widened.claim.authorization_scope.bounds.max_reach_cm = 100000;
+  widened.claim.authorization_scope.allowed_actions.push('weapon.fire');
+  let reads = 0;
+  const swapping = new Proxy(signed, { get(t, k) { if (k === 'payload') { reads += 1; return reads <= 2 ? t.payload : widened; } return t[k]; } });
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub] } as any);
+  let r;
+  assert.doesNotThrow(() => { r = gate.authorizeEnvelope(swapping); });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'envelope_receipt_non_plain_object');
+  refuses(gate, { ...ok, action: 'weapon.fire' }, 'no_envelope');
+  refuses(gate, { ...ok, reach_cm: 500 }, 'no_envelope');
+  // Nested exotic values anywhere in the receipt are refused the same way.
+  const nested = structuredClone(signed);
+  nested.payload.claim = new Proxy(nested.payload.claim, {});
+  assert.equal(gate.authorizeEnvelope(nested).reason, 'envelope_receipt_non_plain_object');
+});
+
+test('receipt shapes that are not plain data -> refused with a reason, never thrown', () => {
+  const { pub, privateKey } = makeKey();
+  const signed = signEnvelope(privateKey);
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub] } as any);
+  const cases: [any, string][] = [
+    [undefined, 'envelope_malformed_receipt'],
+    [null, 'envelope_malformed_receipt'],
+    ['receipt', 'envelope_malformed_receipt'],
+    [new Proxy(signed, { get() { throw new Error('boom'); } }), 'envelope_receipt_non_plain_object'],
+    [new Proxy(signed, { ownKeys() { throw new Error('boom'); } }), 'envelope_receipt_non_plain_object'],
+    [{ ...signed, get payload() { throw new Error('boom'); } }, 'envelope_receipt_accessor_field'],
+    [{ ...signed, [Symbol('x')]: 1 }, 'envelope_receipt_symbol_field'],
+    [{ ...signed, payload: { ...signed.payload, claim: new Map() } }, 'envelope_receipt_non_plain_object'],
+    [{ ...signed, payload: { ...signed.payload, extra: () => 1 } }, 'envelope_receipt_non_data_value'],
+    [{ ...signed, payload: { ...signed.payload, extra: undefined } }, 'envelope_receipt_non_data_value'],
+    [{ ...signed, payload: { ...signed.payload, extra: 1n } }, 'envelope_receipt_non_data_value'],
+    [{ ...signed, payload: { ...signed.payload, extra: NaN } }, 'envelope_receipt_non_data_value'],
+  ];
+  const cyclic: any = structuredClone(signed);
+  cyclic.payload.claim.self = cyclic.payload.claim;
+  cases.push([cyclic, 'envelope_receipt_too_deep']);
+  for (const [receipt, reason] of cases) {
+    let r;
+    assert.doesNotThrow(() => { r = gate.authorizeEnvelope(receipt); }, reason);
+    assert.equal(r.ok, false, reason);
+    assert.equal(r.reason, reason);
+  }
+  refuses(gate, ok, 'no_envelope');
+  assert.equal(gate.authorizeEnvelope(signed).ok, true);
+});
+
+test('window bounds are compared in milliseconds: no sub-second use after not_after', () => {
+  const { pub, privateKey } = makeKey();
+  const S = Math.floor(Date.now() / 1000) + 100;
+  let clock = (S - 50) * 1000;
+  const gate = new EdgeActuatorGate({ trustedKeys: [pub], now: () => clock } as any);
+  const scope = { ...baseScope(), window: { not_before: S - 50, not_after: S } };
+  assert.equal(gate.authorizeEnvelope(signEnvelope(privateKey, { scope })).ok, true);
+  clock = (S - 50) * 1000 - 1;
+  refuses(gate, ok, 'before_window');
+  clock = (S - 50) * 1000; // not_before is inclusive
+  assert.equal(gate.permit(ok).allow, true);
+  clock = S * 1000 - 1;
+  assert.equal(gate.permit(ok).allow, true);
+  clock = S * 1000; // not_after is exclusive
+  refuses(gate, ok, 'expired');
+  clock = S * 1000 + 500;
+  refuses(gate, ok, 'expired');
+  clock = S * 1000 + 999;
+  refuses(gate, ok, 'expired');
+});
