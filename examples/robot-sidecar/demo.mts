@@ -38,11 +38,7 @@ line('='.repeat(64));
 line('  EMILIA Gate — robot sidecar  (arm-1, on-the-loop envelope)');
 line('='.repeat(64));
 
-// EdgeActuatorGate's constructor infers `trustedKeys` as `never[]` from its `= []`
-// default (no JSDoc in index.js to widen it); the real, already-true type here is
-// `string[]` (base64url-encoded Ed25519 public keys). Cast at this call boundary
-// only — index.js is owned by another batch and out of scope for this file.
-const gate = new EdgeActuatorGate({ trustedKeys: [pub] } as any);
+const gate = new EdgeActuatorGate({ trustedKeys: [pub] });
 const arm = new SimulatedArm(gate);
 
 line(`\n  command before any envelope        -> ${m(arm.move({ action: 'arm.move', target: 'arm-1', reach_cm: 30 }))}`);
@@ -60,8 +56,7 @@ line(`\n  human hits halt (revoke) ->`);
 line(`  arm.move 30cm (after revoke)       -> ${m(arm.move({ action: 'arm.move', target: 'arm-1', reach_cm: 30 }))}`);
 
 // expired envelope
-// Same trustedKeys type-gap as above (see comment near `gate`).
-const gate2 = new EdgeActuatorGate({ trustedKeys: [pub] } as any);
+const gate2 = new EdgeActuatorGate({ trustedKeys: [pub] });
 gate2.authorizeEnvelope(envelope({ not_after: nowSec - 1 }));
 const arm2 = new SimulatedArm(gate2);
 line(`  arm.move under EXPIRED envelope    -> ${m(arm2.move({ action: 'arm.move', target: 'arm-1', reach_cm: 30 }))}`);

@@ -1,34 +1,144 @@
 # EMILIA Gate — robot/actuator edge sidecar
 
 The Consequence Firewall at the **actuator boundary**, for the physical world. A human (or quorum)
-**pre-authorizes a bounded on-the-loop envelope** once (PIP-013) — target set, allowed actions,
-bounds (e.g. reach), time window, with a halt/revoke authority. Each motion command is then verified
-**at the edge, offline, sub-millisecond, with no cloud, no per-command human, and no consumption** of
-the envelope. Out-of-envelope, expired, or revoked → the actuator does not move.
+**pre-authorizes a bounded on-the-loop envelope** once (PIP-013): target set, allowed actions,
+bounds (e.g. reach), time window, with a halt/revoke authority. Each motion command is then checked
+**at the edge, offline, with no cloud, no per-command human, and no consumption** of the envelope.
+Out-of-envelope, malformed, expired, or revoked → the actuator does not move.
 
 ```bash
-node --test     # 7 tests
-node demo.mjs    # refuse -> authorize envelope -> in-bounds moves -> out-of-bounds/wrong-action/halt/expired refused
+npm run test:robot-sidecar   # from the repo root; also runs in CI on Node 20
+node demo.mjs                # refuse -> authorize envelope -> in-bounds moves -> out-of-bounds/wrong-action/halt/expired refused
 ```
+
+`index.js`, `sidecar.test.js`, and `demo.mjs` are generated from the `.ts`/`.mts` sources by
+`npm run build:standalone-runtimes`; edit the TypeScript, then regenerate.
 
 ## Why a sidecar, not the model
 
 It sits *before* the actuator. A compromised, prompt-injected, or confused planner still cannot move
-hardware outside the authorized envelope — the gate is the last line, and it fails closed.
+hardware outside the authorized envelope, provided the sidecar is the only path to the actuator.
+This example does not establish that (see "Not enforced" below).
 
-## The edge property (the differentiator)
+## What the check enforces
 
-Human signoff has human latency; you cannot approve every motion at machine speed. So the human
-authorizes the **envelope** once, and the hot path is pure local crypto: verify each command against
-the envelope offline. A cloud-approval system adds a network round-trip and a liveness dependency to
-every actuation — unacceptable in contested, air-gapped, or latency-critical deployments. See
-`docs/EP-EDGE-OFFLINE-VERIFICATION.md`.
+`authorizeEnvelope(receipt)` first reads the receipt exactly once into a deep, frozen, data-only
+copy: plain objects, dense arrays, strings, booleans, null, and finite numbers. No getter is ever
+invoked. The signature is verified over that copy and the envelope is parsed from the same copy, so
+a getter or Proxy cannot hand the verifier the signed payload and the parser a wider one. It then
+loads an envelope only when:
+
+- the gate is not halted (see "Halt" below). A halted gate refuses every receipt with `gate_halted`
+  before reading it;
+- the receipt verifies under `trustedKeys` (Ed25519, via `packages/require-receipt`), its outcome is
+  `allow` or `allow_with_signoff`, and its `action_type` is `physical.envelope`. Verification uses
+  the gate's own clock (`now`), the same one `permit` uses, never the host clock separately; a
+  signed `expires_at` that has already passed on that clock is refused;
+- `receipt_id` is a non-empty string that this gate instance has not revoked;
+- `allowed_actions` is a non-empty list of distinct strings (an envelope that names no actions is refused,
+  not read as "any action");
+- `window.not_after` is a finite number (no open-ended envelopes); `not_before`, if present, is finite
+  and not after `not_after`;
+- `target_set`, if present, is a non-empty list of distinct strings; `bounds`, if present, holds only
+  `max_reach_cm` as a finite, non-negative number;
+- the scope contains no key the gate does not understand. An unknown constraint (say `geofence`) or
+  bound (say `max_speed_cm_s`) is refused with `envelope_unsupported_constraint` /
+  `envelope_unsupported_bound`, because the gate could not enforce it.
+
+The loaded scope is copied and frozen, so mutating the receipt object afterwards does not widen it.
+Every refusal from `authorizeEnvelope` is a return value `{ ok: false, reason }`, never a thrown
+exception, including for hostile receipt objects:
+
+| Class | Reason codes |
+| --- | --- |
+| Receipt shape | `envelope_malformed_receipt` (not an object), `envelope_receipt_non_plain_object` (Proxy, class instance, Map, Date, array subclass, sparse array), `envelope_receipt_accessor_field`, `envelope_receipt_symbol_field`, `envelope_receipt_non_data_value` (undefined, function, bigint, NaN, ±Infinity), `envelope_receipt_too_deep` (deeper than 64 levels, more than 100,000 values, or cyclic), `envelope_receipt_unreadable` |
+| Gate state | `gate_halted` (a halt is latched; only `clearHalt()` lifts it) |
+| Clock | `envelope_clock_unavailable` (the gate clock is not a finite number or throws), `envelope_clock_regressed` (the gate clock reads below a value this gate already used) |
+| Signature and receipt | `envelope_` + the `packages/require-receipt` verifier reason, e.g. `envelope_untrusted_or_invalid_signature`, `envelope_receipt_expired`, `envelope_outcome_not_accepted`; `not_an_envelope`, `envelope_malformed_receipt_id`, `envelope_revoked` |
+| Scope | `envelope_malformed_scope`, `envelope_unsupported_constraint`, `envelope_malformed_effect_class`, `envelope_malformed_allowed_actions`, `envelope_malformed_target_set`, `envelope_malformed_bounds`, `envelope_unsupported_bound`, `envelope_malformed_window`, `envelope_malformed_allowed_command_fields` |
+| Backstop | `envelope_internal_error` (an unexpected exception inside the gate, refused rather than thrown) |
+
+### Time bounds
+
+Every signed time bound is enforced on every `permit` call, in milliseconds, against one reading of
+the gate clock. The envelope is usable at instant `t` (ms since the epoch) only when
+
+    window.not_before * 1000 <= t  <  window.not_after * 1000    and    t < expires_at
+
+`not_before` is inclusive; `not_after` and the receipt's `expires_at` are exclusive (the same rule the
+receipt verifier applies to `expires_at`). There is no rounding to whole seconds, so a command at
+`not_after` plus 500 ms is refused. Whichever end bound comes first wins: a receipt that expires
+before its window closes stops authorizing motion at `expires_at`.
+
+The gate clock may not run backwards. The gate keeps the highest reading it has used, in
+`authorizeEnvelope` and in `permit`, whatever the outcome of that call, and refuses any later reading
+below it (`clock_regressed` from `permit`, `envelope_clock_regressed` from `authorizeEnvelope`). A
+reading equal to the highest one is accepted. So once a command has been refused as `expired`,
+setting the clock back into the window does not re-open the envelope. The high-water mark lives in
+the gate instance and does not survive a restart.
+
+`permit(command)` returns `{ allow: true, reason: 'within_envelope', command }` only when every check
+passes; `command` is a frozen snapshot of what was checked, and `SimulatedArm` actuates from that
+snapshot. Every refusal is a return value `{ allow: false, reason[, field] }`, never a thrown exception:
+
+| Class | Reason codes |
+| --- | --- |
+| Gate state | `revoked` (a halt is latched; checked before anything else), `no_envelope`, `clock_unavailable`, `clock_regressed` (the clock reads below a value this gate already used), `before_window`, `expired` (window `not_after` reached), `receipt_expired` (signed `expires_at` reached) |
+| Command shape | `command_not_plain_object` (null, arrays, primitives, class instances), `command_accessor_field`, `command_symbol_field`, `command_unreadable` |
+| Extra fields | `unknown_command_field` for any field the envelope does not constrain, unless it is listed in `allowed_command_fields`; listed extras must be strings, booleans, or finite numbers (`invalid_extra_field_value`) |
+| `action` | `missing_action`, `invalid_action` (not a non-empty string), `action_not_in_envelope` |
+| `target` (when `target_set` is set) | `missing_target`, `invalid_target`, `out_of_target_set` |
+| `reach_cm` (when `max_reach_cm` is set) | `missing_reach_cm`, `invalid_reach_cm_type` (strings, null, booleans, arrays, objects, bigint), `reach_cm_not_finite` (NaN, ±Infinity), `reach_cm_negative_zero`, `reach_cm_negative`, `exceeds_bounds` |
+
+A field the envelope constrains must be present: a command that omits `target` or `reach_cm` is
+refused, not waved through. `reach_cm` is itself an unknown field when the envelope sets no
+`max_reach_cm`. The pattern follows `checkOrderWithinEnvelope` in `lib/grace/curtailment.ts`: a
+missing or unparseable bound or value is a refusal, never an unlimited default.
+
+### Halt
+
+`revoke()` latches a halt on the gate, with or without a loaded envelope. It drops the active
+envelope and records its `receipt_id` as revoked. While the halt is latched:
+
+- `permit` refuses every command with `revoked`;
+- `authorizeEnvelope` refuses every receipt with `gate_halted`, however valid. Loading another
+  signed envelope, including one that was loaded earlier and replaced, never lifts the halt.
+
+Only `clearHalt()`, a separate operator method, lifts it. Clearing does not restore the halted
+envelope: the gate has no envelope (`no_envelope`) until one loads. Reload rules on one gate:
+
+- a `receipt_id` that was active when `revoke()` was called is refused forever on that gate
+  (`envelope_revoked`), including after `clearHalt()`;
+- a `receipt_id` that was loaded and then replaced by a later envelope was never revoked, so it
+  may load again, but only while the gate is not halted.
+
+`halted` is a read-only accessor; the latch itself is a private field, so assigning to the gate
+object does not clear it.
+
+## Not enforced
+
+- **The halt is in-memory, unsigned, and per-process.** `revoke()` latches state on one gate
+  instance. It is not a signed revocation, it is not shared between gates, and it does not survive
+  a restart: a fresh process starts unhalted and will load the same unexpired envelope again.
+- **`clearHalt()` is not an authenticated operator action.** It is an in-process method call, and
+  any code holding the gate object can make it. The gate does not check who cleared the halt or
+  record that it happened. A production deployment would need a signed halt record (issued by the
+  halt authority, checked and persisted by every gate, and lifted only by a signed clear) and an
+  attested gate that proves this code is what runs before the actuator. Neither exists here.
+- **Nothing attests that the sidecar is running** or that it is the only path to the actuator. The
+  Attested Gate (device/workload attestation, e.g. WIMSE/SPIFFE) is not built.
+- **No hardware adapters.** `SimulatedArm` is a toy; there is no driver integration.
+- The gate trusts its clock (`now`). It refuses a non-finite reading and a reading below one it
+  already used, but it cannot detect a clock that is wrong and moving forward, or one that was
+  already wrong when the gate started.
+- The envelope is not bound to a specific planner identity beyond what the signed receipt carries;
+  any caller that can reach `permit` is checked against the envelope, not authenticated.
+- Only `reach_cm` is a modeled bound. Envelopes that need other physical limits are refused rather
+  than partially enforced.
 
 ## API
 
-- `new EdgeActuatorGate({ trustedKeys })` · `authorizeEnvelope(receipt)` · `permit(command)` · `revoke()`
+- `new EdgeActuatorGate({ trustedKeys, now? })` · `authorizeEnvelope(receipt)` · `permit(command)` · `revoke()` · `clearHalt()` · `halted` (read-only)
 - `new SimulatedArm(gate).move(command)` — actuates only if `permit` allows; logs every decision.
 
-Reference implementation, experimental. Composes `@emilia-protocol/require-receipt`. Next: real
-hardware adapters + the **Attested Gate** (prove the sidecar is installed and running via
-device/workload attestation — WIMSE/SPIFFE). Apache-2.0.
+Reference implementation, experimental. Apache-2.0.
