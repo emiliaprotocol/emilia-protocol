@@ -239,7 +239,11 @@ jobs:
         # scripts/ci/ holds the CI lane classifier and the evidence autopilot
         # bundle tool; their suites prove the fail-closed lane decision and
         # the derived-evidence-only bundle.
-        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/issue/*.test.js packages/attest/test.js packages/require-receipt/*.test.js packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs integrations/github-authority-map-action/tests/*.node-test.mjs integrations/github-merge-gate-action/tests/*.node-test.mjs scripts/ci/*.node-test.mjs
+        # The *.test.mjs globs carry the hybrid (ML-DSA) suites of verify,
+        # issue and attest. Each package's own `npm test` names them, but
+        # this step stands in for those scripts, and until 2026-10-05 its
+        # *.test.js-only globs ran none of the three.
+        run: node --test packages/verify/test.js packages/verify/*.test.js packages/verify/*.test.mjs packages/issue/test.js packages/issue/*.test.js packages/issue/*.test.mjs packages/attest/test.js packages/attest/*.test.mjs packages/require-receipt/*.test.js packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs integrations/github-authority-map-action/tests/*.node-test.mjs integrations/github-merge-gate-action/tests/*.node-test.mjs scripts/ci/*.node-test.mjs
       - name: Verify OpenShell approver receipts (node:test)
         # integrations/openshell-approver-receipts carries its own lockfile
         # (@grpc/grpc-js, protobufjs). This runs its unit suite and strict
@@ -362,12 +366,39 @@ jobs:
       - name: Gate the documented standalone example runs on minimum Node
         # receipt-program, authority-loop-v1, and agent-mailbox-v0.1 ship node:test suites that ran
         # in NO runner until 2026-08-07 (vitest excludes examples/**, and no job
-        # listed them), and robot-sidecar's fail-closed suite ran nowhere until
-        # 2026-10-05. Keep every examples/ demo suite named here or in a
-        # dedicated step so a green CI actually means the demos run.
+        # listed them). Keep every examples/ demo suite named here or in a
+        # dedicated step so a green CI actually means the demos run. The same
+        # drift recurred: sixteen more suites, robot-sidecar's fail-closed
+        # suite among them, ran nowhere until 2026-10-05.
+        # scripts/ci/example-suites-wired.node-test.mjs now fails the
+        # "Verify package suites" step when an examples/ suite is not wired.
         run: |
           npm run check:standalone-runtimes
-          node --test examples/action-escrow/scenario.test.mjs examples/action-escrow/standalone.test.mjs examples/receipt-program/demo.test.mjs examples/authority-loop-v1/demo.test.mjs examples/ot-command-binding-v1/scenario.test.mjs examples/self-modification-gate-v1/scenario.test.mjs examples/self-modification-gate-v1/run.test.mjs examples/bulk-power-action-assurance-v0.1/run.test.mjs examples/agent-mailbox-v0.1/demo.test.mjs examples/robot-sidecar/sidecar.test.js
+          node --test \
+            examples/action-escrow/scenario.test.mjs \
+            examples/action-escrow/standalone.test.mjs \
+            examples/agent-mailbox-v0.1/demo.test.mjs \
+            examples/apertoid-gate-dai/demo.test.mjs \
+            examples/audit-procedure-evidence/demo.test.mjs \
+            examples/authority-loop-v1/demo.test.mjs \
+            examples/bulk-power-action-assurance-v0.1/run.test.mjs \
+            examples/cap1-independent-verifier/run.test.mjs \
+            examples/composition/caid-aec-aeb-capsule-v1/run.test.mjs \
+            examples/composition/cross-slot-conformance-v1/run.test.mjs \
+            examples/customer-owned-mcp-gateway/run.test.mjs \
+            examples/finance-loss-boundary/scenario.test.mjs \
+            examples/ot-command-binding-v1/scenario.test.mjs \
+            examples/ot-command-binding-v1/vectors.test.mjs \
+            examples/receipt-program/demo.test.mjs \
+            examples/regulatory-mobile-oversight/demo.test.mjs \
+            examples/robot-sidecar/sidecar.test.js \
+            examples/scitt/registration-event-order.test.mjs \
+            examples/self-modification-gate-v1/run.test.mjs \
+            examples/self-modification-gate-v1/scenario.test.mjs \
+            examples/supply-chain-authority-v1/scenario.test.mjs \
+            examples/trusted-context-multi-provider/run.test.mjs
+          node examples/external-verification/self-test.mjs
+          node examples/wimse-pep/self-test.mjs
       # Runs the public Gate proof command on the repository's minimum Node
       # version. The command refuses stale compiled or standalone runtimes
       # before exercising allowance, indeterminate reconciliation, HTTP Gate,
@@ -1600,6 +1631,13 @@ jobs:
         run: |
           npm run conformance:composition:ccs-v13-aeb
           npm run conformance:composition:ccs09-aeb
+      - name: Portable State Handoff composition conformance
+        # The lab's README commands. Its suites need TypeScript (the roundtrip
+        # imports packages/verify source), so they run under tsx here rather
+        # than in the Node 20 example step. Unrun in CI until 2026-10-05.
+        run: |
+          npx tsx --test packages/verify/portable-state-handoff.test.ts examples/portable-state-handoff/roundtrip.test.mts conformance/composition/portable-state-handoff-v0.1/schemas.test.mts
+          npx tsx conformance/composition/portable-state-handoff-v0.1/run.mts --check
       - name: Crossing-record and adjacent native-authority compositions
         run: |
           npm run conformance:composition:crossing-record
