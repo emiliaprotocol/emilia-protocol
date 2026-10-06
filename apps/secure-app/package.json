@@ -15,15 +15,13 @@
   },
   "expo": {
     "install": {
-      "exclude": [
-        "expo"
-      ]
+      "exclude": []
     }
   },
   "dependencies": {
     "@noble/curves": "2.3.0",
     "@noble/hashes": "2.3.0",
-    "expo": "57.0.25",
+    "expo": "57.0.26",
     "expo-asset": "57.0.18",
     "expo-local-authentication": "~57.0.3",
     "expo-screen-capture": "~57.0.3",
@@ -35,6 +33,7 @@
   "overrides": {
     "@expo/metro": "56.0.2",
     "brace-expansion": "5.0.12",
+    "expo-constants": "57.0.20",
     "metro": "0.84.5",
     "nanoid": "3.3.18",
     "postcss": "8.5.25",
