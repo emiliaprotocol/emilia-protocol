@@ -24,7 +24,7 @@ const ACTION = Object.freeze({
   body: 'exact effect body',
 });
 const ACTION_DIGEST = digestAeb(ACTION);
-const CAID = `caid:1:github.issue.update.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:github.issue.update.1:jcs-sha256:${'A'.repeat(43)}`;
 const TARGET_DIGEST = consequenceActuatorTargetDigest({
   providerId: 'github',
   providerAccountId: ACTION.owner,

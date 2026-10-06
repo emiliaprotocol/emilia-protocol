@@ -270,7 +270,7 @@ test('APS -03 intent and policy-decision chain verifies and maps without materia
   }));
   const mapped = adapter.mapAction({ ...input(fixture), profile: profile(), native });
   assert.equal(mapped.mapping, 'MATCH');
-  assert.match(mapped.caid ?? '', /^caid:1:commerce\.preflight\.1:jcs-sha256:/);
+  assert.match(mapped.caid ?? '', /^canactid:1:commerce\.preflight\.1:jcs-sha256:/);
   assert.equal(mapped.action_digest, digestAeb(fixture.expectedAction));
 });
 

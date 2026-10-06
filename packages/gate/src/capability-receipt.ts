@@ -61,7 +61,7 @@ const DEFAULT_PROVIDER_ENTRY_TIMEOUT_MS = 30_000;
 const MAX_DELEGATES = 64;
 const MAX_SCOPE_ACTIONS = 256;
 const ACTION_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
-const CAID_RE = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID_RE = /^canactid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const ACTION_FENCE_CONSTRAINT = 'ep_capability_operations_live_action_uniq';
 
 type KeyMaterial = KeyObject | string | Buffer;

@@ -767,7 +767,7 @@ BEGIN
      OR public.ep_gate_jsonb_is_safe_nonnegative_integer(v_body->'trust_epoch') IS NOT TRUE
      OR public.ep_gate_jsonb_is_safe_nonnegative_integer(v_body->'configuration_epoch') IS NOT TRUE
      OR jsonb_typeof(v_body->'caid') <> 'string'
-     OR (v_body->>'caid') !~ '^caid:1:[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$'
+     OR (v_body->>'caid') !~ '^canactid:1:[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$'
      OR public.ep_gate_hash('EP-GATE-ADMISSION-SNAPSHOT-v2:DIGEST', v_body) <> p_snapshot->>'snapshot_digest' THEN
     RAISE EXCEPTION 'admission snapshot identity or digest mismatch';
   END IF;

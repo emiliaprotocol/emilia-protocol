@@ -4,7 +4,7 @@
 
 ; A.1 Identifier
 
-caid          = %s"caid" ":" caid-version ":" action-type ":"
+caid          = %s"canactid" ":" caid-version ":" action-type ":"
                 suite ":" digest
                                  ; at most 1024 octets, and its
                                  ; action-type at most 512 (2.6)

@@ -36,7 +36,7 @@ export const AUTHORITY_PROGRAM_RESULT_VERSION = 'EP-AUTHORITY-PROGRAM-VERIFY-RES
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 // Join the deployed CAID v1 wire format; an authority-program-only digest
 // label would sever this artifact from the CAID registry and its vectors.
-const ROOT_CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const ROOT_CAID = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const MAX_STAGES = 64;
 const MAX_DEPTH = 32;

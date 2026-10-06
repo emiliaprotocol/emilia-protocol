@@ -168,12 +168,12 @@ object EmiliaMobileChallengeValidator {
     private const val AUTHORIZED_ACTION_TYPE = "emilia.mobile.authorized-action.1"
     private const val DEFAULT_SOURCE_ACTION_TYPE = "application.action"
     private const val ACTION_CAID_PREFIX =
-        "caid:1:$AUTHORIZED_ACTION_TYPE:jcs-sha256:"
+        "canactid:1:$AUTHORIZED_ACTION_TYPE:jcs-sha256:"
     private val json = Json { ignoreUnknownKeys = false; explicitNulls = true }
     private val fieldName = Regex("^@?[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$")
     private val actionReference = Regex("^[A-Za-z0-9:_.@-]{8,256}$")
     private val actionCaid = Regex(
-        """^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$""",
+        """^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$""",
     )
     private val sha256 = Regex("^sha256:[0-9a-f]{64}$")
     private val contextMembers = setOf(

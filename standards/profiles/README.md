@@ -14,11 +14,13 @@ implementation, deployment, validation, adoption, or endorsement.
   TXT match the immutable IETF archive; publication is not implementation,
   deployment, working-group adoption, RFC status, or IETF endorsement.
 
-- `NEXT-WIMSE-CAID-SCOPE-01/`: experimental companion profile mapping two
-  WIMSE delegation scope families to pinned CAID action types under CAID
-  registry version 4. It supersedes `NEXT-WIMSE-CAID-SCOPE-00/`, which pins
-  registry version 3 and has been shared for review. Neither is adopted by
-  WIMSE or published as an Internet-Draft.
+- `NEXT-WIMSE-CAID-SCOPE-02/`: current experimental companion profile mapping
+  two WIMSE delegation scope families to pinned CAID action types under CAID
+  registry version 5 and the CAID-05 `canactid:` scheme. Its generator and
+  validator cover 24 vectors, including explicit refusal of the legacy
+  `caid:` spelling. The versioned `-00` and `-01` review packets remain
+  preserved. None of these profiles is adopted by WIMSE or published as an
+  Internet-Draft.
 
 The Reliance Agreement moved to `../staged/` after its implementation and
 claim-boundary review. Its movement does not imply legal, insurance, or partner

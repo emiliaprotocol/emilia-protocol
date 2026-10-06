@@ -16,7 +16,7 @@ import { verifyCoverageReconciliationAttestation } from './coverage-reconciliati
 
 const D = (character: string) => `sha256:${character.repeat(64)}`;
 const C = (character: string) => (
-  `caid:1:health.medical-prior-authorization-review.1:jcs-sha256:${character.repeat(43)}`
+  `canactid:1:health.medical-prior-authorization-review.1:jcs-sha256:${character.repeat(43)}`
 );
 const PERIOD = {
   start: '2026-07-01T00:00:00Z',

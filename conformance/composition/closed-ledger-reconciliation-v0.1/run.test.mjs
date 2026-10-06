@@ -144,6 +144,6 @@ test('settlement identity is recomputable and stable on both sides of the join',
   const first = settlementIdentity(settlement);
   const second = settlementIdentity({ ...settlement });
   assert.deepEqual(first, second);
-  assert.match(first.caid, /^caid:1:payment\.settlement\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+  assert.match(first.caid, /^canactid:1:payment\.settlement\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
   assert.match(first.action_digest, /^sha256:[0-9a-f]{64}$/);
 });

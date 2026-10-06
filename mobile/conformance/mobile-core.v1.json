@@ -47,7 +47,7 @@
         "destination_last4": "4401"
       },
       "expect": {
-        "action_caid": "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM",
+        "action_caid": "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM",
         "action_digest": "sha256:f6a151156b476ece29dab84266ab4a94abd81bd683a222942681d2850cb26f4e",
         "caid_digest": "sha256:5eea519817c2ebbf957acc5713f12c3fc1089697191c0ca925e3c68f14586173",
         "fingerprint": "5EEA-5198-17C2-EBBF"

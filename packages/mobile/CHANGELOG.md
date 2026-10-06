@@ -5,6 +5,18 @@ All notable changes to `@emilia-protocol/mobile` are documented here.
 
 ## Unreleased
 
+## 0.4.0 (2026-10-06)
+
+### Changed
+
+- Issue new mobile action identities with the IANA-registered `canactid:` URI
+  scheme. Current identity parsing and verification fail closed on legacy
+  `caid:` values; signed historical artifacts remain unchanged and require an
+  explicitly selected legacy verifier.
+- Advance the package's verifier dependency to `@emilia-protocol/verify` 8.x,
+  keeping mobile issuance and verification on the same current identity
+  boundary.
+
 ## 0.3.1 (2026-10-04)
 
 ### Added

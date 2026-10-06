@@ -40,7 +40,7 @@ const byteOrder = (left, right) => Buffer.compare(Buffer.from(left, 'utf8'), Buf
  */
 const digest = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 const caid = (label) => (
-  `caid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`
+  `canactid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`
 );
 
 function executionProgramAdmissionBinding(input) {

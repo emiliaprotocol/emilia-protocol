@@ -837,7 +837,7 @@ const AEC_LIMITS = Object.freeze({
     maxSubjects: 64, maxVerifierDurationMs: 1000,
 });
 const AEC_DIGEST = /^sha256:[0-9a-f]{64}$/;
-const AEC_CAID = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const AEC_CAID = /^canactid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const structuredReserved = new Set([...RESERVED_COMPONENT_TYPES, AEC_BUNDLE_COMPONENT]);
 const textValue = (v, maximum = 2048) => typeof v === 'string' && v.length > 0 && v.length <= maximum && !/[\u0000-\u001f\u007f]/.test(v);
 const typeValue = (v) => textValue(v, 128) && IDENT.test(v);

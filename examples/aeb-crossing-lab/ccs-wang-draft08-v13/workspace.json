@@ -4,7 +4,7 @@
     "id": "native:ccs-draft08-v1.3-ed25519",
     "version": "1.0.0",
     "module": "adapter.mjs",
-    "module_digest": "sha256:4b8e08d496a665c7b1de3caf0b9ea15409d20b5122dbea2d4659cdbd835d549b"
+    "module_digest": "sha256:3b32fca79527d5bc3701c03467bbc205cf6490c3f1de4014f788509f0fa4fb94"
   },
   "artifact": "artifact.json",
   "artifact_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
@@ -165,7 +165,7 @@
     "requirement_ref": "requirement:machine-policy-decision",
     "profile_id": "ccs-draft08-v13-tool-action",
     "artifact_ref": "ccs:draft08:v13:allow-live-sum",
-    "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+    "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
     "status": {
       "checked_at": "2030-09-01T00:00:00Z",
       "expires_at": "2030-09-01T00:01:00Z",

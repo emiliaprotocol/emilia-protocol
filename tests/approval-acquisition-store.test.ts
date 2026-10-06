@@ -39,7 +39,7 @@ const reserveInput: ReserveApprovalInput = {
   requestDigest: request.request_digest,
   challengeHash: `sha256:${'4'.repeat(64)}`,
   actionHash: `sha256:${'5'.repeat(64)}`,
-  actionCaid: 'caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  actionCaid: 'canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
   action: { action_type: 'payment.release' },
   approverId: 'approver-a',
   pollTokenHash: request.poll_token_hash,

@@ -32,7 +32,7 @@ import type {
 } from "../types.mjs";
 
 const NOW = "2026-07-22T12:00:00.000Z";
-const CAID = `caid:1:payment.release.1:jcs-sha256:${"A".repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${"A".repeat(43)}`;
 const PROPOSAL_INTEGRITY_KEY = crypto
   .createHash("sha256")
   .update("formal-consequence-lifecycle-key")
@@ -740,7 +740,7 @@ async function refuseInvalidAdmissions(
       receipt: fixture.harness.mint(),
       evaluation: {
         ...structuredClone(fixture.aeb.evaluation),
-        caid: "caid:1:payment.release.1:jcs-sha256:WRONG",
+        caid: "canactid:1:payment.release.1:jcs-sha256:WRONG",
       },
     },
     async () => {
@@ -825,7 +825,7 @@ export async function runConsequenceLifecycleScenario(
     evaluation: fixture.aeb.evaluation,
     attempt: entered.attempt as any,
     provider_evidence: providerEvidence(fixture.proposal, entered.attempt, {
-      caid: "caid:1:payment.release.1:jcs-sha256:WRONG",
+      caid: "canactid:1:payment.release.1:jcs-sha256:WRONG",
     }),
   });
   ensure(

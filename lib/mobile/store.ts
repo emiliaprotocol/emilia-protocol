@@ -12,6 +12,7 @@ import {
   buildDecisionPassport,
   buildMobileActionIdentity,
   deriveMobileActionContinuity,
+  legacyMobileActionFingerprintV04,
   materialFieldDiff,
   mobileActionFingerprint,
   normalizeSystemAlignments,
@@ -503,7 +504,14 @@ export async function listMobileActions(
   supabase: SupabaseClient,
   { entityRef, approverId }: { entityRef: string; approverId: string },
 ): Promise<Json[]> {
-  return listMobileActionContinuity(supabase, { entityRef, approverId, pendingOnly: true });
+  const actions = await listMobileActionContinuity(supabase, {
+    entityRef,
+    approverId,
+    pendingOnly: true,
+  });
+  return actions.filter((action) => (
+    mobileRecord(action.identity) && action.identity.profile === 'caid-05'
+  ));
 }
 
 // `row` is a raw RPC row from Supabase (external, pre-validation data) — its
@@ -523,11 +531,19 @@ function mobileContinuitySnapshot(row: any): Json {
     outcome_verified: ['executed', 'refused'].includes(effectStatus)
       && MOBILE_SHA256.test(operation?.provider_evidence_digest || ''),
   });
-  const identity = typeof row.action_caid === 'string' && MOBILE_SHA256.test(row.action_digest || '')
+  const currentFingerprint = typeof row.action_caid === 'string'
+    ? mobileActionFingerprint(row.action_caid)
+    : null;
+  const legacyFingerprint = currentFingerprint === null && typeof row.action_caid === 'string'
+    ? legacyMobileActionFingerprintV04(row.action_caid)
+    : null;
+  const identity = MOBILE_SHA256.test(row.action_digest || '')
+    && (currentFingerprint !== null || legacyFingerprint !== null)
     ? {
         action_caid: row.action_caid,
         action_digest: row.action_digest,
-        fingerprint: mobileActionFingerprint(row.action_caid),
+        profile: currentFingerprint !== null ? 'caid-05' : 'legacy-caid-v04',
+        fingerprint: currentFingerprint ?? legacyFingerprint,
       }
     : null;
   const normalized = {
@@ -540,11 +556,12 @@ function mobileContinuitySnapshot(row: any): Json {
     quorum: continuity.quorum,
     events: Array.isArray(row.events) ? row.events : [],
     operation,
-    can_withdraw: row.status === 'approved'
+    can_withdraw: identity?.profile === 'caid-05'
+      && row.status === 'approved'
       && ['open', 'authorized'].includes(row.group_state)
       && operation === null,
   };
-  if (MOBILE_SHA256.test(row.action_digest || '') && typeof row.action_caid === 'string') {
+  if (identity?.profile === 'caid-05') {
     normalized.passport = buildDecisionPassport({
       ...row,
       consumption_nonce: operation?.consumption_nonce || null,
@@ -598,11 +615,12 @@ export async function resolveMobileAction(
     throw new Error(String(error?.message || error).replace('action inbox', 'action lookup'));
   }
   const data = rows.find((row) => row.action_reference === actionReference);
-  if (!data || data.status !== 'pending' || Date.parse(data.expires_at as string) <= Date.now()) return null;
+  if (!data || !mobileRecord(data.identity) || data.identity.profile !== 'caid-05'
+      || data.status !== 'pending' || Date.parse(data.expires_at as string) <= Date.now()) return null;
   return data;
 }
 
-function mobileRecord(value: unknown): boolean {
+function mobileRecord(value: unknown): value is Record<string, any> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
@@ -673,7 +691,7 @@ function mobileDecisionEvidenceMatches(evidence: any, {
     && context.ep_version === '1.0'
     && context.context_type === 'ep.signoff.v1'
     && MOBILE_LOOKUP_ID.test(context.action_reference || '')
-    && /^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/
+    && /^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/
       .test(context.action_caid || '')
     && MOBILE_SHA256.test(context.action_digest || '')
     && evidence.context.action_hash === actionHash

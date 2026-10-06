@@ -22,7 +22,7 @@ import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } fr
 export const RECEIPT_PROGRAM_VERSION = 'EP-RECEIPT-PROGRAM-v1';
 export const RECEIPT_PROGRAM_CERTIFICATE_VERSION = 'EP-RECEIPT-PROGRAM-CERTIFICATE-v1';
 export const RECEIPT_PROGRAM_SIGNATURE_ALGORITHM = 'Ed25519';
-const CAID_RE = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID_RE = /^canactid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 const MAX_ID_BYTES = 256;
 const MAX_CANONICAL_BYTES = 1024 * 1024;

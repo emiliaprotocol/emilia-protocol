@@ -243,22 +243,22 @@ func TestDefinitionSha256InResultsAndPins(t *testing.T) {
 func TestParseCaid(t *testing.T) {
 	d := strings.Repeat("A", 42) + "E"
 	for input, want := range map[string]string{
-		"caid:1:a.b.1:jcs-sha256:" + d:                             "",
-		"caid:1:a.b.1:cbor-sha256:" + d:                            "",
-		"caid:1:a.b.1:zz-unregistered:" + d:                        "unknown_suite",
-		"caid:1:a.b.1:foo:x":                                       "unknown_suite",
-		"caid:1:a.b.1:jcs-sha256:" + strings.Repeat("A", 42) + "B": "malformed_caid",
-		"caid:1:a.b.1:jcs-sha256:" + d + "=":                       "malformed_caid",
-		"caid:1:a.b.1:jcs-sha256:" + d[:42]:                        "malformed_caid",
-		"CAID:1:a.b.1:jcs-sha256:" + d:                             "malformed_caid",
-		"caid:2:a.b.1:jcs-sha256:" + d:                             "malformed_caid",
-		"caid:1:a.b.01:jcs-sha256:" + d:                            "malformed_caid",
-		"caid:1:a.b.1:JCS-sha256:" + d:                             "malformed_caid",
-		"caid:1:a.b.1:1x:" + d:                                     "malformed_caid",
-		"caid:1:a.b.1:jcs-sha256:" + d + "\n":                      "malformed_caid",
-		" caid:1:a.b.1:jcs-sha256:" + d:                            "malformed_caid",
-		"caid:1:a.b.1:jcs-sha256:" + d + ":x":                      "malformed_caid",
-		"caid:1:a.b.1:jcs-sha256:" + d[:41] + "\xed\xa0\x80":       "malformed_caid",
+		"canactid:1:a.b.1:jcs-sha256:" + d:                             "",
+		"canactid:1:a.b.1:cbor-sha256:" + d:                            "",
+		"canactid:1:a.b.1:zz-unregistered:" + d:                        "unknown_suite",
+		"canactid:1:a.b.1:foo:x":                                       "unknown_suite",
+		"canactid:1:a.b.1:jcs-sha256:" + strings.Repeat("A", 42) + "B": "malformed_caid",
+		"canactid:1:a.b.1:jcs-sha256:" + d + "=":                       "malformed_caid",
+		"canactid:1:a.b.1:jcs-sha256:" + d[:42]:                        "malformed_caid",
+		"CANACTID:1:a.b.1:jcs-sha256:" + d:                             "malformed_caid",
+		"canactid:2:a.b.1:jcs-sha256:" + d:                             "malformed_caid",
+		"canactid:1:a.b.01:jcs-sha256:" + d:                            "malformed_caid",
+		"canactid:1:a.b.1:JCS-sha256:" + d:                             "malformed_caid",
+		"canactid:1:a.b.1:1x:" + d:                                     "malformed_caid",
+		"canactid:1:a.b.1:jcs-sha256:" + d + "\n":                      "malformed_caid",
+		" canactid:1:a.b.1:jcs-sha256:" + d:                            "malformed_caid",
+		"canactid:1:a.b.1:jcs-sha256:" + d + ":x":                      "malformed_caid",
+		"canactid:1:a.b.1:jcs-sha256:" + d[:41] + "\xed\xa0\x80":       "malformed_caid",
 	} {
 		got := ParseCaid(input)
 		if want == "" {
@@ -273,6 +273,33 @@ func TestParseCaid(t *testing.T) {
 	}
 }
 
+func TestNewIssuanceAndExplicitLegacyV04Verification(t *testing.T) {
+	object := obj{"action_type": "test.text.1", "c": "x"}
+	computed := ComputeCaid(object, ComputeOptions{Suite: "jcs-sha256", Definitions: stringDefinition})
+	if !strings.HasPrefix(computed.Caid, "canactid:1:test.text.1:jcs-sha256:") {
+		t.Fatalf("new issuance used the wrong scheme: %q", computed.Caid)
+	}
+	if parsed := ParseCaid(computed.Caid); !parsed.OK {
+		t.Fatalf("current identifier did not parse: %#v", parsed)
+	}
+	legacy := "caid:" + strings.SplitN(computed.Caid, ":", 2)[1]
+	if parsed := ParseCaid(legacy); parsed.OK || !reflect.DeepEqual(parsed.Refusals, []string{"malformed_caid"}) {
+		t.Fatalf("current parser accepted legacy input: %#v", parsed)
+	}
+	if parsed := ParseLegacyCaidV04(legacy); !parsed.OK {
+		t.Fatalf("legacy v04 parser refused legacy input: %#v", parsed)
+	}
+	if got := VerifyLegacyCaidV04(object, legacy, VerifyOptions{Definitions: stringDefinition}); !got.Valid {
+		t.Fatalf("legacy v04 verification failed: %#v", got)
+	}
+	if got := VerifyLegacyCaidV04JSON([]byte(`{"action_type":"test.text.1","c":"x"}`), legacy, VerifyOptions{Definitions: stringDefinition}); !got.Valid {
+		t.Fatalf("legacy v04 JSON verification failed: %#v", got)
+	}
+	if parsed := ParseLegacyCaidV04(computed.Caid); parsed.OK || !reflect.DeepEqual(parsed.Refusals, []string{"malformed_caid"}) {
+		t.Fatalf("legacy v04 parser accepted current input: %#v", parsed)
+	}
+}
+
 func TestVerifyReasonsAndDetails(t *testing.T) {
 	object := obj{"action_type": "test.text.1", "c": "x"}
 	good := computeOK(t, object, stringDefinition)
@@ -280,12 +307,12 @@ func TestVerifyReasonsAndDetails(t *testing.T) {
 	str := func(s string) *string { return &s }
 
 	// malformed_caid observes the CAID argument.
-	v := VerifyCaid(object, "caid:1:x", opts)
+	v := VerifyCaid(object, "canactid:1:x", opts)
 	if !reflect.DeepEqual(v, VerifyResult{Reasons: []string{"malformed_caid"}, Details: []VerifyDetail{{Reason: "malformed_caid", Rule: "caid", Observed: str("string")}}}) {
 		t.Fatalf("malformed: %#v", v)
 	}
 	// Unregistered suite: unknown_suite from parsing.
-	v = VerifyCaid(object, "caid:1:test.text.1:zz-unregistered:"+strings.Repeat("A", 43), opts)
+	v = VerifyCaid(object, "canactid:1:test.text.1:zz-unregistered:"+strings.Repeat("A", 43), opts)
 	if !reflect.DeepEqual(v, VerifyResult{Reasons: []string{"unknown_suite"}, Details: []VerifyDetail{{Reason: "unknown_suite", Rule: "suite"}}}) {
 		t.Fatalf("unregistered suite: %#v", v)
 	}

@@ -13,7 +13,7 @@ import { canonicalize } from '../execution-binding.js';
 import { verifyRemedyProgramReceipt } from './remedy-program-receipt.js';
 export const REMEDY_CASE_SET_VERSION = 'EP-GATE-REMEDY-CASE-SET-v1';
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
-const CAID = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID = /^canactid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,255}$/;
 const CREATE_KEYS = new Set(['tenantId', 'caseSetId', 'ownerToken', 'legs']);
 const RECORD_KEYS = new Set([

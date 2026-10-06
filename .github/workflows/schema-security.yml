@@ -6,8 +6,9 @@ name: schema-security
 # reconciliation against the live database.
 #
 # Secret policy:
-#   - pull_request_target: the workflow and executable reconciliation code come
-#     only from the trusted base commit. Candidate SQL/ledger bytes are data.
+#   - pull_request_target: only candidate-reconciliation runs. The workflow and
+#     executable reconciliation code come from the trusted base commit;
+#     candidate SQL/ledger bytes are data. No environment or secret is used.
 #   - merge_group: only candidate-reconciliation runs (trusted base code
 #     parsing candidate bytes as data, no secret). GitHub reads this workflow
 #     file from the merge-queue candidate, so the secret-using live leg never
@@ -26,13 +27,16 @@ name: schema-security
 #   member also holds whatever PUBLIC holds, so the runbook's audit must pass
 #   before the secret points at the new login. The god-mode service-role key
 #   is NOT in CI.
-# Restrict the environment's deployment branches to main. push, schedule,
-# workflow_dispatch on main and pull_request_target all run on refs/heads/main
-# and are admitted; a workflow running on any other ref (including a
-# merge-queue ref, refs/heads/gh-readonly-queue/main/...) is refused. Until the
-# environment exists GitHub creates it on first use with no restriction, and a
-# copy of the secret left at repository level stays readable by candidate
-# workflow files on merge_group, so moving it is a manual settings step.
+# Restrict the environment's deployment branches to main. Only push, schedule,
+# and workflow_dispatch use it. A pull_request_target deployment is associated
+# with the pull request's head branch for environment admission even when its
+# workflow code is read from main, so the live leg must not request this
+# main-only environment on a pull request. Merge-queue refs are excluded for the
+# same reason. Protected-main push and the nightly run provide the live truth
+# check. Until the environment exists GitHub creates it on first use with no
+# restriction, and a copy of the secret left at repository level stays readable
+# by candidate workflow files on merge_group, so moving it is a manual settings
+# step.
 #
 # To make this a true deploy gate: require the unique
 # `emilia-production-schema-contract-v2` GitHub check on main and configure the
@@ -99,8 +103,11 @@ jobs:
             --candidate-root candidate-data
 
   live-schema-contract:
-    # Never on merge_group: that run reads this file from the candidate.
-    if: github.event_name != 'merge_group'
+    # Never on pull requests or merge_group. Pull-request deployments are bound
+    # to the candidate branch for environment admission; merge_group reads this
+    # file from the candidate. Protected-main push/nightly/manual runs own the
+    # environment-secret live contract.
+    if: github.event_name != 'pull_request_target' && github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # The schema-gate credential lives in this environment, whose deployment
@@ -126,7 +133,7 @@ jobs:
         working-directory: trusted
         run: npm ci --ignore-scripts
 
-      - name: Secret guard (skip neutrally on fork PRs; required on main/schedule)
+      - name: Secret guard (required on protected-main and scheduled runs)
         id: guard
         env:
           SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
@@ -136,12 +143,8 @@ jobs:
             echo "schema CI credential present — running schema truth checks."
           else
             echo "have_secrets=false" >> "$GITHUB_OUTPUT"
-            if [ "${{ github.event_name }}" = "pull_request_target" ]; then
-              echo "::notice::SCHEMA_GATE_DB_URL unavailable (fork PR or unset) — skipping schema-security neutrally."
-            else
-              echo "::error::SCHEMA_GATE_DB_URL is REQUIRED on '${{ github.event_name }}' but is missing. Prod schema truth cannot be verified — failing."
-              exit 1
-            fi
+            echo "::error::SCHEMA_GATE_DB_URL is REQUIRED on '${{ github.event_name }}' but is missing. Prod schema truth cannot be verified — failing."
+            exit 1
           fi
 
       - name: schema:security — contract vs live prod (tables, columns, RLS, no-anon policies, RPC ACLs, indexes, authority shape)
@@ -172,11 +175,12 @@ jobs:
           LIVE_RESULT: ${{ needs.live-schema-contract.result }}
         run: |
           set -euo pipefail
-          if [[ "$EVENT_NAME" == merge_group ]]; then
-            # The live leg is excluded on merge_group (candidate workflow
-            # file); push to main runs it with base code after the merge.
+          if [[ "$EVENT_NAME" == pull_request_target || "$EVENT_NAME" == merge_group ]]; then
+            # The live leg is excluded on PRs (main-only environment admission)
+            # and merge_group (candidate workflow file). Push to main runs it
+            # with protected source immediately after the merge.
             [[ "$LIVE_RESULT" == skipped ]] || {
-              echo "::error::live schema contract must not run on merge_group: $LIVE_RESULT"
+              echo "::error::live schema contract must not run on candidate events: $LIVE_RESULT"
               exit 1
             }
           else

@@ -33,6 +33,7 @@ const ICNS = 'https://github.com/advisories/GHSA-w3rx-r6r6-pgpr';
 const OTHER = 'https://github.com/advisories/GHSA-0000-0000-0000';
 const NODE_FORGE = 'https://github.com/advisories/GHSA-86w9-cpqp-85rv';
 const BRACES = 'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm';
+const SOURCE_MAP = 'https://github.com/advisories/GHSA-68fv-2mgg-jv7q';
 const BRACES_AFFECTED = [
   '@expo/cli',
   '@expo/metro',
@@ -355,10 +356,10 @@ test('the committed exception file satisfies the enforced schema', () => {
   const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
   assert.deepEqual(
     exceptions.map((exception) => exception.advisory),
-    [NODE_FORGE, BRACES],
-    'only the unfixed node-forge CLI and braces watcher advisories may be accepted',
+    [NODE_FORGE, BRACES, SOURCE_MAP],
+    'only the reviewed tooling advisories may be accepted',
   );
-  const [nodeForge, braces] = exceptions;
+  const [nodeForge, braces, sourceMap] = exceptions;
   assert.equal(nodeForge.package, 'node-forge');
   assert.equal(nodeForge.severity, 'high');
   assert.deepEqual(
@@ -372,6 +373,11 @@ test('the committed exception file satisfies the enforced schema', () => {
   assert.deepEqual([...braces.affectedPackages].sort(), BRACES_AFFECTED);
   assert.equal(braces.acceptedOnText, '2026-10-04');
   assert.equal(braces.expiresOnText, '2026-12-01');
+  assert.equal(sourceMap.package, 'source-map-js');
+  assert.equal(sourceMap.severity, 'high');
+  assert.deepEqual([...sourceMap.affectedPackages], ['source-map-js']);
+  assert.equal(sourceMap.acceptedOnText, '2026-10-06');
+  assert.equal(sourceMap.expiresOnText, '2026-10-08');
   for (const exception of exceptions) {
     assert.ok(exception.expiresOn > exception.acceptedOn);
     assert.ok(exception.affectedPackages.size > 0);
@@ -426,6 +432,30 @@ test('the braces acceptance still matches the tree it was argued against', () =>
   }
 });
 
+test('the source-map acceptance stays pinned to the quarantined build-only copy', () => {
+  const lockfile = JSON.parse(readFileSync(join(SECURE_APP, 'package-lock.json'), 'utf8'));
+  const copies = Object.keys(lockfile.packages)
+    .filter((path) => /(?:^|\/)node_modules\/source-map-js$/.test(path));
+  assert.deepEqual(copies, ['node_modules/source-map-js']);
+  assert.equal(lockfile.packages['node_modules/source-map-js'].version, '1.2.1');
+  assert.equal(
+    lockfile.packages['node_modules/source-map-js'].integrity,
+    'sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==',
+  );
+  const dependents = Object.entries(lockfile.packages)
+    .filter(([, entry]) => entry.dependencies?.['source-map-js'] !== undefined)
+    .map(([path]) => path)
+    .sort();
+  assert.deepEqual(dependents, ['node_modules/postcss']);
+
+  const sources = ['App.tsx', 'index.ts', ...readdirSync(join(SECURE_APP, 'lib'))
+    .filter((name) => /\.(?:ts|tsx|js|mjs)$/.test(name) && !name.endsWith('.test.mjs'))
+    .map((name) => join('lib', name))];
+  for (const source of sources) {
+    assert.doesNotMatch(readFileSync(join(SECURE_APP, source), 'utf8'), /['"]source-map-js['"]/, source);
+  }
+});
+
 test('the committed exceptions still fail on any other live advisory', () => {
   const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
   const advisories = collectLiveAdvisories(bundlerChainReport({ url: OTHER }), 'low');
@@ -451,8 +481,8 @@ test('the gate passes against the real dependency tree', () => {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   assert.match(stdout, /AUDIT GATE PASS/);
-  assert.match(stdout, /2 accepted advisory\(ies\)/);
-  for (const advisory of [NODE_FORGE, BRACES]) {
+  assert.match(stdout, /3 accepted advisory\(ies\)/);
+  for (const advisory of [NODE_FORGE, BRACES, SOURCE_MAP]) {
     assert.ok(
       stdout.split(/\r?\n/).some((line) => line.trim() === advisory),
       `${advisory} must appear as an exact output line`,

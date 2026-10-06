@@ -19,7 +19,7 @@ function digestOf(label) {
     return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 }
 function caidOf(label) {
-    return `caid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
+    return `canactid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
 }
 function ownerDigest(token) {
     return `sha256:${crypto.createHash('sha256')
@@ -71,7 +71,7 @@ function signedProgram() {
                 node_id: 'inspect',
                 action: {
                     mode: 'exact',
-                    caid: 'caid:1:devops.infrastructure-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+                    caid: 'canactid:1:devops.infrastructure-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
                     action_digest: DIGEST,
                 },
                 trust_program_digest: DIGEST,

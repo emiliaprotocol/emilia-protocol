@@ -21,7 +21,7 @@ import {
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
 const D = (character: string) => `sha256:${character.repeat(64)}`;
-const C = (character: string) => `caid:1:operations.recovery.1:jcs-sha256:${character.repeat(43)}`;
+const C = (character: string) => `canactid:1:operations.recovery.1:jcs-sha256:${character.repeat(43)}`;
 const NOW = '2026-08-03T20:00:00.000Z';
 const ACTION_EXPIRES = '2026-08-03T20:30:00.000Z';
 const CAPABILITY_EXPIRES = '2026-08-03T21:00:00.000Z';

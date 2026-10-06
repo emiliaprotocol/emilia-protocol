@@ -98,7 +98,7 @@ const X509_ARTIFACT_DIGEST = digestAebTyped(
   AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION,
 );
 const ACTION = {
-  caid: 'caid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  caid: 'canactid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
   action_digest: DIGEST('77'),
 } as const;
 const ADMISSION_DOMAIN = {

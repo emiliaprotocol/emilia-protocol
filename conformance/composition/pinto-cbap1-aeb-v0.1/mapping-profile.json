@@ -8,7 +8,7 @@
   "mapping": {
     "native_action": "CBAP-1 bundle label 7 action-bytes",
     "canonical_action": "JCS UTF-8 object",
-    "caid_profile": "caid:1:account.suspend.1:jcs-sha256",
+    "caid_profile": "canactid:1:account.suspend.1:jcs-sha256",
     "action_type": "account.suspend.1",
     "material_fields": [
       "account_ref",

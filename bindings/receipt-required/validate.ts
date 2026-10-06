@@ -57,7 +57,7 @@ const STATUSES = new Set([
 const PROFILE_ID = /^ep:receipt-required:binding:[a-z0-9-]+:v1$/;
 const PROTOCOL_ID = /^[a-z0-9-]+$/;
 const ACTION_FIELD = /^[a-z][a-z0-9_]*$/;
-const CAID = /^caid:1:[a-z][a-z0-9._-]{0,126}:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID = /^canactid:1:[a-z][a-z0-9._-]{0,126}:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const ACTION_HASH = /^sha256:[0-9a-f]{64}$/;
 const FORBIDDEN_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
 

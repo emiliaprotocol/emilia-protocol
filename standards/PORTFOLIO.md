@@ -1,6 +1,6 @@
 # EMILIA Standards Portfolio
 
-Updated: 2026-09-27
+Updated: 2026-10-05
 
 ## One story
 
@@ -126,7 +126,8 @@ Separately, the **runtime execution spine** is:
 
 1. **Architecture-03** defines the system boundaries and non-collapsing
    decision vocabulary.
-2. **CAID-04** identifies and matches the exact material action.
+2. **CAID-05** identifies and matches the exact material action using the
+   provisionally registered `canactid:` URI scheme.
 3. **AEC-06** verifies and composes action-matched evidence into a relying-party
    satisfaction result.
 4. **AEB-07** applies the executor-side admission boundary, including authority
@@ -352,6 +353,22 @@ Implementation Status section, and requests seven IANA registries and the
 `caid` URI scheme. It is an individual Internet-Draft, not an adopted
 working-group item.
 
+On **October 2, 2026**, CAID-05 was posted through Datatracker submission
+169802. Its XML and TXT were verified byte-for-byte against the immutable IETF
+archive and the XML was mirrored into `posted/` on October 5. -05 changes the
+literal identifier prefix from the unregistered `caid:` form to `canactid:`;
+it does not change the action object, canonicalization, suite, digest bytes,
+mapping algorithm, or reference registry. The change is wire-breaking. A
+legacy `caid:` identifier is not equal to a `canactid:` identifier with the
+same suffix, signed legacy identifiers are never rewritten, and accepting the
+legacy form requires an explicit -04 verification profile.
+
+On **October 5, 2026**, IANA added `canactid` to the provisional URI Schemes
+registry with CAID-05 as its reference. The provisional registration provides
+a globally registered namespace; it is not permanent registration, IETF
+adoption, IETF endorsement, certification, implementation evidence, or
+deployment evidence.
+
 The published line also retains Authority Introduction-03, Quorum-04, and the
 other current individual drafts listed in `STATUS.json`. Model-to-Matter
 remains deliberately separate: publication does not claim a wet-lab deployment,
@@ -393,7 +410,7 @@ maintenance status.
 | Series | Current revision | Maintenance status | Datatracker expiry |
 | --- | --- | --- | --- |
 | `draft-schrock-ae-challenge` | -07 | Maintained | 2027-02-12 |
-| `draft-schrock-canonical-action-identifier` | -04 | Maintained | 2027-04-01 |
+| `draft-schrock-canonical-action-identifier` | -05 | Maintained | 2027-04-05 |
 | `draft-schrock-ep-authorization-evidence-chain` | -06 | Maintained (one corrective revision planned first) | 2027-03-10 |
 | `draft-schrock-ep-authorization-receipts` | -13 | Maintained | 2027-03-16 |
 | `draft-dunbar-dmsc-gw-scenarios-gap-analysis` | -04 | Maintained with coauthors | 2027-02-15 |

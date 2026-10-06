@@ -15,7 +15,7 @@ const closure = readFileSync(new URL(
 const tenant = '00000000-0000-4000-8000-000000000001';
 const keyA = '00000000-0000-4000-8000-00000000000a';
 const keyB = '00000000-0000-4000-8000-00000000000b';
-const caid = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const caid = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const digest = (character: string) => `sha256:${character.repeat(64)}`;
 let pool: pg.Pool;
 

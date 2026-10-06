@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// CAID Action-Mapping Profile v1 (draft-schrock-canonical-action-identifier-04
+// CAID Action-Mapping Profile v1 (draft-schrock-canonical-action-identifier-05
 // Section 8).
 //
 // A mapping result is a content-correlation result, not authorization.

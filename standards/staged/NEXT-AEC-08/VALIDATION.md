@@ -1,6 +1,6 @@
 # AEC -08 validation
 
-Prepared on 2026-10-04 from
+Initially prepared on 2026-10-04 and updated on 2026-10-06 from
 `../NEXT-AEC-07/UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-07.xml`
 (SHA-256 `bfcf111687d6b48cd6b32b829144673c6b70cb340209316dc5a1945a1a62d1e6`).
 The IETF archive copy,
@@ -11,11 +11,11 @@ the posted -07 bytes.
 ## Source
 
 `SHA256SUMS.txt` pins the three files. The source SHA-256 is
-`d0aac6f5366abf180507d13e1dea7239c553d5e61ed279d6a959034225f227c3`; the TXT
-render is `eaffa47ba035908028ac393fced0c0713bbbf2c5b3f34316296dc0464ac416f2`.
+`f69cd4da12188221abf1848e8e3cde126613d019e6ae202cd5a164cbc15bb158`; the TXT
+render is `b4d9436d8f539b10c5c34f5bcd5c47463671b73ed1bd23748dfbeb1b3d84df76`.
 
 Changed relative to -07: `docName`, the `seriesInfo` value and the date
-(4 October 2026); Section 4 (the requirement profile digest is named as the
+(6 October 2026); Section 4 (the requirement profile digest is named as the
 evidence digest of the requirement object and covers the expression as
 stored); Section 5 (the expression size is no longer a relying-party resource
 limit); Section 8 (rewritten, with subsections 8.1 to 8.7); Section 9 (new
@@ -26,7 +26,9 @@ the evaluator profile in the replay determinism inputs, and the replay
 migration rules); Section 14 (parser differentials); Section 18 (Changes in
 -08, new); Implementation Status; the normative RFC 7405 reference; CAID
 cited at -05; and the informative `AEC-EXPRESSION-VECTORS` reference.
-Everything else is the -07 text.
+The two CAID examples use CAID-05's current `canactid:` scheme and the change
+list states that a legacy identifier is not rewritten. Everything else is the
+-07 text.
 
 ## Rendering
 
@@ -149,13 +151,12 @@ Everything else is the -07 text.
   $.expression: unpaired Unicode surrogate`; `aec-expression.test.js` pins
   it. RFC 8785 Section 3.1 requires JSON string data to be expressible as
   Unicode.
-- "@emilia-protocol/verify 6.0.0, implements EP-AEC-EVALUATOR-07-v1": npm
-  `latest` is 6.0.0 (published 2026-09-28T13:24:43Z), and its
-  `dist/evidence-chain.js` line 667 sets `EP-AEC-EVALUATOR-07-v1`. The branch
-  leaves `packages/verify` at 6.0.0 with the -08 entry under "Unreleased" in
-  its CHANGELOG. PyPI `emilia-verify` is 2.8.6, the version
-  `packages/python-verify` still declares; the newest Go module tag,
-  `packages/go-verify/v2.4.5`, predates this branch.
+- "@emilia-protocol/verify 7.0.0, implements EP-AEC-EVALUATOR-08-v1": npm
+  `latest` is 7.0.0 (published 2026-10-04T18:39:39Z), and its changelog and
+  package tests pin `EP-AEC-EVALUATOR-08-v1`. PyPI `emilia-verify` is 2.9.0,
+  and the newest Go module tag is `packages/go-verify/v2.5.0`; their changelogs
+  state that they implement the Section 8 diagnostics and legacy wrapper, not
+  the structured requirement or replay contract.
 - Construction refusal, replay comparison, `authorization_decision: false`:
   `packages/verify/src/evidence-chain.ts` (`validateAecRequirement`,
   `replay`), exercised by `packages/verify/aec-expression.test.js`.
@@ -207,7 +208,7 @@ the text:
    limits are now exact, and Section 5 no longer lists the expression size
    as a relying-party limit.
 
-Re-run against this tree, whose TXT render is `eaffa47b...` (the clean-room
+Re-run against this tree, whose TXT render is `b4d9436d...` (the clean-room
 parser was not rewritten from the new text; the seven changes state readings
 it already took, and the 40 new cases below exercise them): the clean-room
 parser produces all six assertions of all 104 vectors. The seeded case files regenerate byte for byte

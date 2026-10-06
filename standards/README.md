@@ -88,7 +88,7 @@ also carries a maintenance status (`maintenance_status`, defined in
 `STATUS.json.status_language`) and its Datatracker expiry date; the
 human-readable table is in [`PORTFOLIO.md`](PORTFOLIO.md#maintenance-status).
 
-The separate runtime execution spine is **Architecture-03 -> CAID-04 ->
+The separate runtime execution spine is **Architecture-03 -> CAID-05 ->
 AEC-06 -> AEB-07**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
@@ -329,9 +329,25 @@ and some action objects whose CAIDs were valid under -03 are now refused. The
 reference registry advances to version 5: 62 type versions, 53 active, all of
 which compute, and 9 deprecated. -04 adds Privacy Considerations and an
 Implementation Status section, revises Security Considerations, and requests
-seven IANA registries and the `caid` URI scheme. It is an individual
-Internet-Draft, not a working-group item, and posting is not protocol-owner
-review. CAID-03 moved to `archive/`.
+seven IANA registries and the unregistered `caid` URI scheme. It is an
+individual Internet-Draft, not a working-group item, and posting is not
+protocol-owner review. CAID-03 moved to `archive/`.
+
+## October 2 CAID revision and October 5 URI registration
+
+`draft-schrock-canonical-action-identifier-05` was posted through Datatracker
+submission 169802 at 2026-10-02T19:53:38Z. Its XML and TXT match the immutable
+IETF archive byte-for-byte. -05 changes the complete identifier from the
+unregistered `caid:` form to `canactid:` without changing the action object,
+canonicalization, suite, digest bytes, mapping algorithm, or registry version.
+The two complete identifier strings are not equal. Signed legacy identifiers
+are never rewritten, and accepting them requires an explicit -04 verification
+profile.
+
+IANA provisionally registered the `canactid` URI scheme on 2026-10-05 with
+CAID-05 as its reference. Provisional registration is not permanent
+registration, an RFC, working-group adoption, IETF endorsement, certification,
+implementation evidence, or deployment evidence.
 
 ## New-filing freeze
 

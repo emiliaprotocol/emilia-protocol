@@ -15,7 +15,7 @@ One EP receipt (`EP-RECEIPT-v1`), fixed test keys, byte-exact artifacts in
    action object's canonical JCS bytes (`jcs-sha256` suite), so it is
    byte-identical whether the receipt travels as canonical JSON, as a
    deterministic CBOR map, or inside a COSE_Sign1 envelope. The vectors pin
-   the identical `caid:` string across all three forms, cross-checked against
+   the identical `canactid:` string across all three forms, cross-checked against
    the reference implementation in `caid/impl/js/caid.mjs` under the registry
    definition for `payment.release.1`.
 2. **The COSE payload IS the canonical JSON bytes.** SHA-256 of the receipt's
@@ -135,6 +135,8 @@ value, and the CAID digest is computed over the JCS bytes in both worlds.
 ## Run it
 
 ```bash
+npm --prefix packages/verify run build
+node conformance/encoding-equivalence/generate.mjs
 npx vitest run tests/receipt-cose-encoding.test.ts
 ```
 

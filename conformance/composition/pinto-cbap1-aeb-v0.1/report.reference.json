@@ -49,11 +49,11 @@
   },
   "crossing_lab": {
     "@version": "EMILIA-CROSSING-LAB-LOCAL-REPORT-v1",
-    "workspace_digest": "sha256:b2937e64fa937285686cb1599cdc24eddf21cae7200bec25472e7b0e5cbadd75",
+    "workspace_digest": "sha256:81d30fb8f17114fdb5e0e0d1a59edde863bd1125b0bd433c50ffe4da3a0422c3",
     "adapter": {
       "id": "pinto:cbap1-contestability-binding",
       "version": "0.1.0",
-      "module_digest": "sha256:b5536489a2fabcb45c058ff83824dae6ac4dc523a8b80ebc2eaa5416ecc1074c"
+      "module_digest": "sha256:15ae25ae32fadc50894dafb729bbffb18513ed4f91fd9da66537c0970aac26d6"
     },
     "evaluated_at": "2026-08-30T00:00:00Z",
     "adapter_rows": [
@@ -82,9 +82,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
           "composition": {
-            "action_digest": "sha256:2cfd66c9088d7cda142cf18e0c0aedbd881e0e77549f143b2cb0f289146cec49",
+            "action_digest": "sha256:0463386ecc3eae8a5d91e9607ac9376fbd2757ec8686e5b0dad6455d27d0fe83",
             "engine": "EP-AEC-v1",
             "requirement_expression": "contestability-binding",
             "satisfied": true
@@ -96,7 +96,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:e3e909b0e841452d1dc2b17bd0fb53c6c4193a218193aac2b532fce7f0f8adda"
           },
-          "evidence_digest": "sha256:412c21a97488a576bf9b752a87dda216c11ffbdd92062ab8c3b5294f32a2a577",
+          "evidence_digest": "sha256:2576fe98842ae93e1e965933c10a2a58b8e7595e9ff0ba9f6adb5f335939b2c3",
           "executor_id": "executor:historical-verifier",
           "initiator_id": "reviewer:crossing-lab",
           "legs": [
@@ -106,7 +106,7 @@
               "adapter_id": "pinto:cbap1-contestability-binding",
               "adapter_version": "0.1.0",
               "artifact_ref": "artifact:pinto-cbap1:001",
-              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
               "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
               "evidence_role": "contestability-binding",
               "freshness": {
@@ -145,7 +145,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "BeOFxNltl1_uSdFu9CDky-EF9PNwF9cEo533mKG5o8nM5FH-Bc-s_4XwFsXEBe-vKuPgNwqrucJZS4k3PBsNBw"
+            "value": "m0pQup7l7gF3XN75PRxOGQYx_fnL2M6UYKIlNrgDdTN8JzJtxPi8UsbZYMG53ne9fJT5gX4GfsApIJ3iRC7dAQ"
           }
         }
       },
@@ -178,9 +178,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
           "composition": {
-            "action_digest": "sha256:f63de1694ef37539adcb4ea9e62e6b55a3ba38ac6c90fbe2932908b40252fd6b",
+            "action_digest": "sha256:71f6a3e38b3527d00820a3eaefee87d793f3fa9e1a3fb084c7dbd1eafcade705",
             "engine": "EP-AEC-v1",
             "requirement_expression": "contestability-binding",
             "satisfied": false
@@ -192,7 +192,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:e3e909b0e841452d1dc2b17bd0fb53c6c4193a218193aac2b532fce7f0f8adda"
           },
-          "evidence_digest": "sha256:058b6dbedc9c1483e5455fe47a05954d604e771c98623bfc3a5993094e40e085",
+          "evidence_digest": "sha256:b09b38823322bb1b7067a87b3b3a625272b4bf20abc7eef3edd55132ec227f04",
           "executor_id": "executor:historical-verifier",
           "initiator_id": "reviewer:crossing-lab",
           "legs": [
@@ -202,7 +202,7 @@
               "adapter_id": "pinto:cbap1-contestability-binding",
               "adapter_version": "0.1.0",
               "artifact_ref": "artifact:pinto-cbap1:001",
-              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
               "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
               "evidence_role": "contestability-binding",
               "freshness": {
@@ -248,7 +248,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "AEcWOGMa5iJjGYWryrStSL_TtGxB_DfJKDqt2MuYy2U4ELHzOo1uwMwTXSsSA8_kwtUfTiAg5M-JM-vcQ7LXCw"
+            "value": "7VWQhX-O--_I2om72BgllOMaoGPBrm5hKO1O8ZFYdTPIdY3po3F-rRMBBYvV2ERx9mwtRjy4sYS-TJAADurOCg"
           }
         }
       },
@@ -283,9 +283,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
           "composition": {
-            "action_digest": "sha256:f63de1694ef37539adcb4ea9e62e6b55a3ba38ac6c90fbe2932908b40252fd6b",
+            "action_digest": "sha256:71f6a3e38b3527d00820a3eaefee87d793f3fa9e1a3fb084c7dbd1eafcade705",
             "engine": "EP-AEC-v1",
             "requirement_expression": "contestability-binding",
             "satisfied": false
@@ -357,7 +357,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "DNpUSQYXPu8mEai1bSxfgkN7iS_r5XbuGAFgUI4uElTWvFaQagfSyzMb6WLhywiCtD4Rw8wg7IxDUzoFnMDrAw"
+            "value": "VtBpZZ7X6g7dWGAbeVk2FXsJdp0KY1_HUm0iQ6zNiN2_OrhEmeI0oIaPi--HYSZTlPC8nU1lVcC_wb7dDVqyDQ"
           }
         }
       },
@@ -388,9 +388,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
           "composition": {
-            "action_digest": "sha256:f63de1694ef37539adcb4ea9e62e6b55a3ba38ac6c90fbe2932908b40252fd6b",
+            "action_digest": "sha256:71f6a3e38b3527d00820a3eaefee87d793f3fa9e1a3fb084c7dbd1eafcade705",
             "engine": "EP-AEC-v1",
             "requirement_expression": "contestability-binding",
             "satisfied": false
@@ -402,7 +402,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:e3e909b0e841452d1dc2b17bd0fb53c6c4193a218193aac2b532fce7f0f8adda"
           },
-          "evidence_digest": "sha256:db8ae3ba3228afd56bc96ab867a15cb3c7bb9564fda1d2077dcaa4cda5d72039",
+          "evidence_digest": "sha256:4e8388b5935114dd037a5ff773b30d31be89fb986f7a25b3c224b428ce9e8383",
           "executor_id": "executor:historical-verifier",
           "initiator_id": "reviewer:crossing-lab",
           "legs": [
@@ -412,7 +412,7 @@
               "adapter_id": "pinto:cbap1-contestability-binding",
               "adapter_version": "0.1.0",
               "artifact_ref": "artifact:pinto-cbap1:001",
-              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
               "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
               "evidence_role": "contestability-binding",
               "freshness": {
@@ -455,7 +455,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "SHijff0_xZRtdOAVQaJiSdS2Vv0n_keWPBCoz4NJvOUPpF0huvHLsPY33xI5YSLSz6KHrOwKDjdNDqafSJCWCg"
+            "value": "tDhQYHzbiD-l3EmFpVkVoa_VoPZl5zo1hPamJT17Jyah8Wi4YkPIhecrsajIx7D0f_JqMTUx71WkB4szGz8KBg"
           }
         }
       },
@@ -486,9 +486,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
           "composition": {
-            "action_digest": "sha256:f63de1694ef37539adcb4ea9e62e6b55a3ba38ac6c90fbe2932908b40252fd6b",
+            "action_digest": "sha256:71f6a3e38b3527d00820a3eaefee87d793f3fa9e1a3fb084c7dbd1eafcade705",
             "engine": "EP-AEC-v1",
             "requirement_expression": "contestability-binding",
             "satisfied": false
@@ -500,7 +500,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:e3e909b0e841452d1dc2b17bd0fb53c6c4193a218193aac2b532fce7f0f8adda"
           },
-          "evidence_digest": "sha256:2e77eda8bb33d91506cd1014b92fd5e2afdfa6d3757f7b06431b48c3e0d32e45",
+          "evidence_digest": "sha256:a1deb600e2d29501d57ed976093a405b60c3847919990acd45937fa463cff4b9",
           "executor_id": "executor:historical-verifier",
           "initiator_id": "reviewer:crossing-lab",
           "legs": [
@@ -510,7 +510,7 @@
               "adapter_id": "pinto:cbap1-contestability-binding",
               "adapter_version": "0.1.0",
               "artifact_ref": "artifact:pinto-cbap1:001",
-              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
               "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
               "evidence_role": "contestability-binding",
               "freshness": {
@@ -553,7 +553,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "mCy2GsCLlvwOFZTe2EOlB7aY33sQWy1eanrwgofvhhgii-9IPS7aZP6rPc4eamig_eoLorlBLyjHlYycxHyrCA"
+            "value": "KXd419pTOO3ExZI01Ev2tM6l6hB72ir-A74FPOxmQOKLbYYyTSXnNHXetrUQTzQOHdQkbhamXcpyiblfR823DA"
           }
         }
       },
@@ -582,9 +582,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
           "composition": {
-            "action_digest": "sha256:2cfd66c9088d7cda142cf18e0c0aedbd881e0e77549f143b2cb0f289146cec49",
+            "action_digest": "sha256:0463386ecc3eae8a5d91e9607ac9376fbd2757ec8686e5b0dad6455d27d0fe83",
             "engine": "EP-AEC-v1",
             "requirement_expression": "contestability-binding",
             "satisfied": true
@@ -596,7 +596,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:e3e909b0e841452d1dc2b17bd0fb53c6c4193a218193aac2b532fce7f0f8adda"
           },
-          "evidence_digest": "sha256:12be598def0cb8025ba92622bc56747e781dad883b6fc11e32abcc55ca0a19d4",
+          "evidence_digest": "sha256:d5015bc0377c40d47e1b15e7d0383b04d00afc839d0fce285d85afac22a4500a",
           "executor_id": "executor:historical-verifier",
           "initiator_id": "reviewer:crossing-lab",
           "legs": [
@@ -606,7 +606,7 @@
               "adapter_id": "pinto:cbap1-contestability-binding",
               "adapter_version": "0.1.0",
               "artifact_ref": "artifact:pinto-cbap1:001:rewrapped",
-              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
               "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
               "evidence_role": "contestability-binding",
               "freshness": {
@@ -645,7 +645,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "cXTvmSEJf6xIXyj94z7Pkmy_1OM2PbFN9CI0vaAXPxPsu1-si3xQxQzt_CnpPNERZXqrU4bCAMVwbB6iwKA2BA"
+            "value": "quuQwqif0Eq5lsV3SeNF7CqJ4v0nnia8lob74jazD27SsZjOlm4n_qbkfzC3EsQd3eVQ2FReIfDyEgR8PR6hAQ"
           }
         }
       }
@@ -696,7 +696,7 @@
       "native_specification_correctness",
       "native_protocol_equivalence"
     ],
-    "report_digest": "sha256:4835270781942f89e15b8dcd9daa6af67675791eee33516e18359a058b0e2b10"
+    "report_digest": "sha256:63c4afa84b97c8fdff0df9d17c7f6ec1a76ed1c3afb749b0c501953667518e2a"
   },
-  "report_digest": "sha256:9c878ebafc60f5eb4ebd12174ca50cf7f5bb8427c7bf094cc2ff8a66bccbd6e7"
+  "report_digest": "sha256:23c571157af127260fc480a0695d729fc98bd0fa55316b646c9a45780be9ac61"
 }

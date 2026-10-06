@@ -49,7 +49,7 @@ import {
   type ConsequenceEnvelopeBoundary,
 } from './dist/consequence-envelope.js';
 
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = Object.freeze({
   action_type: 'payment.release.1',
   transfer_id: 'transfer-1',

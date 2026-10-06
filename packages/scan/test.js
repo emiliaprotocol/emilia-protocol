@@ -789,7 +789,7 @@ test('selected-action shortcut refuses unknown, read-only, multiple, and unavail
 
   const missingRuntime = run('--action', 'sendWire', '--apply', '--verify');
   assert.equal(missingRuntime.status, 1);
-  assert.match(`${missingRuntime.stdout}${missingRuntime.stderr}`, /npm install --save-exact @emilia-protocol\/mcp-guard@0\.6\.1/);
+  assert.match(`${missingRuntime.stdout}${missingRuntime.stderr}`, /npm install --save-exact @emilia-protocol\/mcp-guard@0\.7\.0/);
   assert.equal(existsSync(join(dir, 'emilia')), false, 'failed verification preflight must not write a partial starter');
 
   const hostileOutput = spawnSync(process.execPath, [
@@ -818,11 +818,11 @@ test('selected-action shortcut refuses unknown, read-only, multiple, and unavail
 
 test('selected-action preflight refuses older, forged, and incompatible Guard runtimes before writes', () => {
   const cases = [
-    { label: 'older package', packageVersion: '0.6.0', runtimeVersion: '0.6.1' },
-    { label: 'forged package version', packageVersion: '666.0.0', runtimeVersion: '0.6.1' },
-    { label: 'forged runtime version', packageVersion: '0.6.1', runtimeVersion: '666.0.0' },
-    { label: 'missing runtime export', packageVersion: '0.6.1', runtimeVersion: '0.6.1', omitBinder: true },
-    { label: 'wrong entry contract', packageVersion: '0.6.1', runtimeVersion: '0.6.1', entry: 'forged.js' },
+    { label: 'older package', packageVersion: '0.6.1', runtimeVersion: '0.7.0' },
+    { label: 'forged package version', packageVersion: '666.0.0', runtimeVersion: '0.7.0' },
+    { label: 'forged runtime version', packageVersion: '0.7.0', runtimeVersion: '666.0.0' },
+    { label: 'missing runtime export', packageVersion: '0.7.0', runtimeVersion: '0.7.0', omitBinder: true },
+    { label: 'wrong entry contract', packageVersion: '0.7.0', runtimeVersion: '0.7.0', entry: 'forged.js' },
   ];
   for (const fixture of cases) {
     const dir = mkdtempSync(join(tmpdir(), 'emilia-selected-runtime-refusal-'));
@@ -848,7 +848,7 @@ test('selected-action preflight refuses older, forged, and incompatible Guard ru
     ], { cwd: dir, encoding: 'utf8' });
     assert.equal(result.status, 1, `${fixture.label}: ${result.stdout}\n${result.stderr}`);
     assert.match(`${result.stdout}${result.stderr}`,
-      /Local verification requires the exact audited runtime\. Install it first: npm install --save-exact @emilia-protocol\/mcp-guard@0\.6\.1/,
+      /Local verification requires the exact audited runtime\. Install it first: npm install --save-exact @emilia-protocol\/mcp-guard@0\.7\.0/,
       fixture.label);
     assert.equal(existsSync(join(dir, 'emilia')), false,
       `${fixture.label}: failed runtime preflight must not write a starter`);

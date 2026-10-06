@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-10-04T21:41:21.656Z",
+  "evidence_snapshot_at": "2026-10-06T11:02:47.282Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "429c8745cb15b0b7e523ca6f1fa2598387b3eca6cb276f3ace22bcdc4d1c8e63",
+    "input_digest_sha256": "90f7299d1736962a15d9a4206f8ad8273c36fbb817231ef8286eca2bf88a9277",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "598734fad9a0815c5725dbf7f50163d192e9c3ca133a017894ee2a2106360ddc",
-        "bytes": 51312
+        "sha256": "e6b51b7e48d7274335eb6f38afac18ffce4530fe44d63e4a46a8bd1243984a80",
+        "bytes": 51922
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "d6fbb8c65d8daea568b939fb00bc8eb47664a0b4901db8fe0ab243be5d20f869",
+        "sha256": "b27d540ba9fb70e84c3cb8a4a7ca63c42244c03b9b8d8c978ccc240550f82ec2",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "8187871a9ea21a3658e204fa460c23ce9cad0a559a6eef6823d4590e5c8ef067",
+        "sha256": "6009077d865b7a86cc5cd1d9be8379defd2340bbd7b472a4fa7906e6d6a74ac4",
         "bytes": 7296
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "c66380b50ac4d0b2a7e5b123602653d8e0c7d51a2e3d873fbe723b963a27f50e",
+        "sha256": "b02cd4efdf523dc1059d778bc253761c0a37c4c00c70330148a99f63ee054b53",
         "bytes": 391520
       },
       {
@@ -47,23 +47,23 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "b7eb5cc8c946075fdca7ad7ccd631b9306cfed920b16650e97c00d9a954d741c",
-        "bytes": 81414
+        "sha256": "4e627cdac7b5eaef0cb1d515d6b11b07def68fb2727114584e3a7befd2957062",
+        "bytes": 82179
       },
       {
         "path": "caid/conformance/vectors.json",
-        "sha256": "91bc038843e50354191568477946964fedfb6c13dbf510b92f8679c50e47f3ed",
-        "bytes": 503377
+        "sha256": "f87ab5f3827a3b3072c84918ad2d299e5d637096affe4b68e2524efb074655cb",
+        "bytes": 513573
       },
       {
         "path": "caid/conformance/mapping-vectors.json",
-        "sha256": "1d3c24370f0308835ef28c183022636e7ce7dd933ee6fa330e9919f70f783d57",
-        "bytes": 89160
+        "sha256": "5302bc704a7642718070939199a63ec3a552b44c37dcc140fd81c7efeee6eb99",
+        "bytes": 89625
       },
       {
         "path": "conformance/vectors/model-to-matter.v1.json",
-        "sha256": "409a60baf302f979b782c8a6fff024f8e0941d607e138fa1b2192da8a8e6a4c3",
-        "bytes": 136310
+        "sha256": "a2500eeb6512e9abcdfee88a939f7568f23cd9b6d3fe1c9af51f24f7a8cebeb4",
+        "bytes": 136326
       }
     ],
     "freshness_command": "npm run check:llm-context",
@@ -308,8 +308,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 10980,
-      "files": 668,
+      "total": 11000,
+      "files": 672,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -318,7 +318,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "851b7b24323243aa31889ba5cd71c9a2eae34a8c658ef2a03ad4d74effab804d",
+      "manifest_sha256": "3e4ac96ab82739ba063c631e67056d8af132623568bdded2d318f44d24c174b8",
       "vector_bundle_sha256": "bd3d62e7bd186976d04acbdfb45aba1091398799ee500beb3d85b8d679a9f8df"
     },
     "formal": {
@@ -350,7 +350,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "8078c76a87b4cd93d188ed91d6b3682a2e88e2ca6952886f4de5be484d119e3d",
+        "evidenceSha256": "77084f79ece878eebbc5de52a8473ef58fa33d034af350e2701a87d9aa558056",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -420,7 +420,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "a6e712769fe7e7e09910b16da0840f273de49ce679c3ef3240ab046ba9d9910a"
+      "evidence_bundle_sha256": "82b1d134e5cb09912c5532120da0cbb5fee6dfc005c02c848227c471824c292d"
     },
     "caid": {
       "core_vectors": 616,
@@ -4466,6 +4466,7 @@
     "The external Rust result is time-pinned to the vector bundle evaluated at that run. It must not be silently upgraded when the current bundle grows.",
     "Strict clean-room construction acceptance remains false until independent construction attestation is verified under a separately pinned attestor key.",
     "The Internet-Drafts are individual submissions unless the live IETF Datatracker says otherwise. They are not RFCs and do not imply IETF endorsement.",
+    "The canactid URI scheme is provisionally registered in IANA's URI Schemes registry and references CAID-05. Provisional registration is not permanent registration, IETF adoption, IETF endorsement, certification, implementation evidence, deployment evidence, authorization, or proof of execution.",
     "Self-authored compliance mappings are mappings, not certifications or third-party assurance opinions.",
     "EMILIA is not an auditor, an accredited certification body, a regulator, or an insurer. Assurance artifacts support verification and re-performance procedures; authorized independent parties reach audit, certification, regulatory, and underwriting conclusions.",
     "EP-CERT-v1 is a scheme design. No public EMILIA certification program is operating, and CF-1 or EG-1 must not be expanded beyond the exact behavior exercised by its reproducible harness.",
@@ -4480,7 +4481,7 @@
     "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
     "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
     "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
-    "Twenty-six Datatracker records are active in the repository portfolio as of September 28, 2026: 21 sole-authored series and five coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, GRACE Grid Curtailment -00, and Early Attestation Considered Very Harmful (draft-intra-handshake-fail) -48. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
+    "The repository portfolio count was last checked comprehensively on September 28, 2026: 26 active Datatracker records, comprising 21 sole-authored series and five coauthored series. CAID alone was rechecked on October 5 and advanced to -05. The coauthored records in that portfolio snapshot are Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, GRACE Grid Curtailment -00, and Early Attestation Considered Very Harmful (draft-intra-handshake-fail) -48. Recheck the live Datatracker before quoting the complete current portfolio. These records are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -4579,9 +4580,9 @@
     },
     {
       "identifier": "draft-schrock-canonical-action-identifier",
-      "revision_at_snapshot": "04",
+      "revision_at_snapshot": "05",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published September 28 (Datatracker posting 2026-09-28T07:24:09Z) as an individual Internet-Draft, not adopted; use -04 for target-bound tool-call identity and profile-bounded cross-format matching. -04 is a substantive revision that makes the processing model complete and checkable: a strict I-JSON input profile, host values refused and never rewritten, one data model with one table of limits, definition conformance and definition_sha256, the code field type with named code formats, the monotone enum advance, a fixed reason order with verification details, and normative mapping stages A through D. The suites, the digest, and the canonical form of every object that both -03 and -04 accept do not change; the identifier syntax changes only by refusing the forms its Section 14.1 lists, and some action objects whose CAIDs were valid under -03 are now refused. The reference registry advances to version 5: 62 type versions, 53 active, all of which compute, and 9 deprecated. It adds Privacy Considerations and an Implementation Status section, revises Security Considerations, and requests seven IANA registries and the caid URI scheme. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-04.xml and is recorded in september_28_2026_caid_wave.",
+      "next_action": "Published October 2 (Datatracker posting 2026-10-02T19:53:38Z) as an individual Internet-Draft, not adopted; use -05 for new identifiers. -05 changes the literal URI scheme from the unregistered caid prefix to canactid and leaves the action object, canonicalization, suites, digest bytes, mapping algorithm, and registry version unchanged. The change is wire-breaking: legacy caid identifiers and current canactid identifiers are unequal even when their suffixes match, and signed legacy identifiers are never rewritten. A -05 verifier refuses the legacy prefix unless the deployment explicitly selects a legacy -04 verification profile. IANA provisionally registered canactid on 2026-10-05, referencing -05. Provisional registration is not permanent registration, IETF adoption, endorsement, certification, implementation evidence, or deployment evidence. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-05.xml and is recorded in october_2_2026_caid_wave.",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4755,7 +4756,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-09-28",
+    "updated": "2026-10-05",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -5341,7 +5342,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 28, 2026, the repository tracks 26 active records: 21 sole-authored series and five coauthored series, each with a maintenance status in standards/STATUS.json. Current Datatracker revisions include CAID -04, Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Agent Operation Continuity -00, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. The portfolio count was last checked comprehensively on September 28, 2026: 26 active records, comprising 21 sole-authored series and five coauthored series, each with a maintenance status in standards/STATUS.json. CAID alone was rechecked on October 5 and advanced to -05. The stored snapshot also includes Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Agent Operation Continuity -00, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting the complete current portfolio or any external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

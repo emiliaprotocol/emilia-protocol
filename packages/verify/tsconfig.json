@@ -15,6 +15,7 @@
   },
   "include": [
     "src/strict-json.ts",
+    "src/canonical-action-identifier.ts",
     "src/time-attestation.ts",
     "src/evidence-record.ts",
     "src/authority-proof.ts",

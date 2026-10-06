@@ -47,7 +47,7 @@
     "@version": "EP-GATE-TRUST-PROGRAM-PROFILE-v1",
     "program_id": "tp_private_treasury_release_1",
     "version": 1,
-    "root_caid": "caid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    "root_caid": "canactid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
     "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "valid_from": "2026-07-21T15:59:00.000Z",
     "expires_at": "2026-07-21T17:00:00.000Z",
@@ -184,7 +184,7 @@
             "instance_id": "tpi_positive",
             "program_id": "tp_private_treasury_release_1",
             "program_version": 1,
-            "root_caid": "caid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+            "root_caid": "canactid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
             "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "stage_id": "heterogeneous_review",
             "predecessor_receipt_digests": []
@@ -236,7 +236,7 @@
             "execution_status": "claimed",
             "authorization_binding_fields": {
               "instance_id": "tpi_positive",
-              "root_caid": "caid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+              "root_caid": "canactid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
               "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "consequence_mode": "receipt-program",
               "capability_template_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
@@ -434,7 +434,7 @@
             "subjects": ["human:alice"],
             "key_fingerprints": ["key:alice:1"],
             "binding_overrides": {
-              "root_caid": "caid:1:payment.release.1:jcs-sha256:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+              "root_caid": "canactid:1:payment.release.1:jcs-sha256:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             }
           },
           "expect": {

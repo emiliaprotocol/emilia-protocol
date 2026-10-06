@@ -235,7 +235,7 @@ describe('EP-SCITT-STATEMENT-v2 hostile matrix', () => {
     const headers = (decodeDeterministicCbor8949(protectedBytes, { textKeysOnly: false }) as
       { ok: true; value: Map<unknown, unknown> }).value;
     const cwt = headers.get(15) as Map<unknown, unknown>;
-    cwt.set(2, `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`);
+    cwt.set(2, `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`);
     const forged = reencodeHalf(headers, payload, signature);
     const result = await verifyEpScittSignedStatementHybrid(
       { classical: forged, pq: pair.pq }, VERIFY_OPTS,
@@ -254,7 +254,7 @@ describe('EP-SCITT-STATEMENT-v2 hostile matrix', () => {
 
   it('the protected-header builder refuses a non-registered algorithm set', () => {
     expect(() => epScittV2ProtectedHeader(
-      COSE_ALG_EDDSA, KID, ISS, 'caid:1:a.b.1:jcs-sha256:x', [COSE_ALG_ML_DSA_65],
+      COSE_ALG_EDDSA, KID, ISS, 'canactid:1:a.b.1:jcs-sha256:x', [COSE_ALG_ML_DSA_65],
     )).toThrow(/registered EP-SCITT-STATEMENT-v2 set/);
   });
 

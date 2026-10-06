@@ -28,11 +28,11 @@
     "domain_separation": "none",
     "digest_hex": "3e67d028ee448a775ac8f540380ac44633e8b2e53627d43b56038474e071b3c5",
     "digest_base64url_unpadded": "PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
-    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U"
+    "caid": "canactid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U"
   },
   "authorization_receipt": {
     "@version": "EP-RECEIPT-v1",
-    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
+    "caid": "canactid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
     "action_type": "travel.cancel-notify.1",
     "action": {
       "primary_action": "!CANCEL",
@@ -60,8 +60,8 @@
     "credential": {
       "subject": {
         "authorization_binding": {
-          "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
-          "receipt_hash": "0c0dea42b483e1f47fa1bc931f0e7a20d6b6f191e59c6e65ba3567fa821c3d3a",
+          "caid": "canactid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
+          "receipt_hash": "55fd30644f847ebf930d2f2d67dbb5f81e458c4018aee6f7835ec2357c99b198",
           "format": "EP-RECEIPT-v1"
         }
       }
@@ -87,7 +87,7 @@
     {
       "id": "caid-mismatch-refuses",
       "mutations": [
-        { "path": "/succession_receipt/credential/subject/authorization_binding/caid", "value": "caid:1:travel.cancel-notify.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }
+        { "path": "/succession_receipt/credential/subject/authorization_binding/caid", "value": "canactid:1:travel.cancel-notify.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }
       ],
       "expect": { "present": true, "valid": false, "asserts_binding": false, "reasons": ["caid_mismatch"] }
     },

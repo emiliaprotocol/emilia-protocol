@@ -93,7 +93,7 @@
       "passed": true,
       "observed": {
         "mapping": "MATCH",
-        "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+        "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
         "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
         "reasons": []
       }
@@ -762,5 +762,5 @@
     "No receipt lifecycle deployment, independent key distribution, provider execution, or effect verification is exercised.",
     "The private fixture key is public deterministic test material."
   ],
-  "report_digest": "sha256:0755ac5a15f51b8e2c3a321d82dfa5ceff9ff8ef2b229a1161444d76f261e018"
+  "report_digest": "sha256:c50c45a760b24eeb90cded3a0aa78c4bf76c32d3bc544860e0785950ede0af8f"
 }

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// mapping.go - the CAID Action-Mapping Profile v1 (draft -04 Section 8).
+// mapping.go - the CAID Action-Mapping Profile v1 (draft -05 Section 8).
 //
 // A mapping result is a content-correlation result, not authorization. The
 // caller pins the exact profile hash and source descriptor. Missing material
 // fields, unregistered transforms and unpinned profiles abstain; no mapping
 // failure ever becomes equivalence.
 //
-// Reason order is normative (draft -04 Sections 8.3 and 8.4,
+// Reason order is normative (draft -05 Sections 8.3 and 8.4,
 // caid/spec/core.json mapping.stages):
 //
 //	A  profile checks. A profile that is not an object in the data model (so

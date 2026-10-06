@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package caid is the Go implementation of the Canonical Action Identifier,
-// draft-schrock-canonical-action-identifier-04. It uses the standard library
+// draft-schrock-canonical-action-identifier-05. It uses the standard library
 // only.
 //
 // The draft is the normative text. The grammar, limits, reason codes, reason
@@ -22,7 +22,7 @@
 //
 // JSON text received from anywhere MUST go through a JSON text entry point:
 // ComputeCaidJSON, VerifyCaidJSON, or DecodeJSON followed by the host-value
-// entry point. They apply draft -04 Section 2.4 (see DecodeJSON) and refuse
+// entry point. They apply draft -05 Section 2.4 (see DecodeJSON) and refuse
 // any other text as malformed_json. Decoding received text with encoding/json
 // and passing the result here is not conforming: encoding/json replaces an
 // unpaired surrogate escape with U+FFFD and keeps the last of duplicate
@@ -54,6 +54,15 @@
 //
 // Every entry point returns refusals with reasons. None panics on any input,
 // including cyclic and very deep host values.
+//
+// # CAID-04 compatibility
+//
+// Current ComputeCaid, ParseCaid and VerifyCaid entry points use only the
+// canactid: scheme provisionally registered by IANA and fail closed on the
+// obsolete caid: spelling. ParseLegacyCaidV04, VerifyLegacyCaidV04 and
+// VerifyLegacyCaidV04JSON are separately named verification-only entry points
+// for immutable CAID-04 artifacts. They never mint or rewrite an identifier.
+// Provisional registration is not IETF endorsement.
 package caid
 
 import (
@@ -76,7 +85,7 @@ import (
 var implementedSuites = map[string]bool{"jcs-sha256": true}
 
 // hostVisitLimit bounds the number of values one canonicalization visits,
-// counting a value once for every path that reaches it (draft -04 Sections
+// counting a value once for every path that reaches it (draft -05 Sections
 // 2.5 and 2.6); past it the value is refused as unsupported_value alone. A
 // reference back to an enclosing map or slice counts as one value, and
 // nothing beyond it is visited. No value DecodeJSON produces from a text
@@ -91,7 +100,7 @@ const hostVisitLimit = specLimitValueCount
 const uncappedOutputLimit = specLimitDocumentCanonicalOctets
 
 // matchPattern is the whole-string match of a generated pattern, with its
-// length limit, if it has one, checked first (draft -04 Section 2.6). Every
+// length limit, if it has one, checked first (draft -05 Section 2.6). Every
 // string such a pattern matches is ASCII, so its length in bytes is its
 // length in octets.
 func matchPattern(id, s string) bool {
@@ -117,7 +126,7 @@ type ComputeResult struct {
 
 // VerifyDetail is one verification detail: the reason, the field it names
 // (nil for none), the rule it broke, and the JSON kind observed (nil for
-// none). The shape is closed; draft -04 Appendix B and caid/spec/core.json
+// none). The shape is closed; draft -05 Appendix B and caid/spec/core.json
 // define the values for each reason.
 type VerifyDetail struct {
 	Reason   string  `json:"reason"`
@@ -362,7 +371,7 @@ func (r hostRef) bucket() int {
 // path. It reports false when v is already open there: a reference back to
 // an enclosing map or slice (a cycle), which counts as one value and is
 // outside the data model, as in the JavaScript and Python ports and the
-// spec oracle (draft -04 Section 2.5). An empty slice holds nothing that
+// spec oracle (draft -05 Section 2.5). An empty slice holds nothing that
 // could refer back to it, so it is not tracked.
 func (c *canonicalizer) enter(v interface{}, isMap bool, n int) bool {
 	if !isMap && n == 0 {
@@ -652,7 +661,7 @@ func canonicalize(value interface{}, maxOut int) CanonicalizeResult {
 // package documentation), including nesting beyond the nesting limit and
 // more values than the value budget. It applies the document ceiling, not
 // the action-object canonical limit, which ComputeCaid and VerifyCaid apply
-// themselves. The limits are those of draft -04 Section 2.6, generated into
+// themselves. The limits are those of draft -05 Section 2.6, generated into
 // spec_gen.go.
 func Canonicalize(value interface{}) CanonicalizeResult {
 	return canonicalize(value, uncappedOutputLimit)
@@ -676,7 +685,7 @@ func hashJSON(value interface{}) string {
 }
 
 // ---------------------------------------------------------------------------
-// Definitions: conformance, digest, resolution (draft -04 Section 4.2)
+// Definitions: conformance, digest, resolution (draft -05 Section 4.2)
 // ---------------------------------------------------------------------------
 
 var fieldTypeRequiredMembers = func() map[string][][2]string {
@@ -777,7 +786,7 @@ func fieldEntries(d map[string]interface{}, list string) []interface{} {
 	return entries
 }
 
-// definitionConforms is draft -04 definition conformance.
+// definitionConforms is draft -05 definition conformance.
 func definitionConforms(d map[string]interface{}) bool {
 	at, ok := d["action_type"].(string)
 	if !ok || !matchPattern("action_type", at) {
@@ -881,7 +890,7 @@ func resolveDefinition(actionType string, definitions []interface{}) resolution 
 }
 
 // ---------------------------------------------------------------------------
-// Field types (draft -04 Section 4.3) and enum resolution (Section 4.4)
+// Field types (draft -05 Section 4.3) and enum resolution (Section 4.4)
 // ---------------------------------------------------------------------------
 
 func daysInMonth(year, month int) int {
@@ -1080,7 +1089,7 @@ func checkField(value interface{}, field map[string]interface{}, enumSnapshots [
 }
 
 // ---------------------------------------------------------------------------
-// Computation (draft -04 Section 5)
+// Computation (draft -05 Section 5)
 // ---------------------------------------------------------------------------
 
 type rankedReason struct {
@@ -1205,7 +1214,7 @@ func ComputeCaidJSON(data []byte, opts ComputeOptions) ComputeResult {
 }
 
 // ---------------------------------------------------------------------------
-// Parsing (draft -04 Section 3.4)
+// Parsing (draft -05 Section 3.4)
 // ---------------------------------------------------------------------------
 
 // ParseCaid strict-parses a CAID string and yields exactly one reason on
@@ -1234,8 +1243,32 @@ func ParseCaid(input string) ParseResult {
 	return ParseResult{OK: true, Caid: &ParsedCaid{Version: parts[1], ActionType: parts[2], Suite: suite, Digest: digest}}
 }
 
+// ParseLegacyCaidV04 strictly parses the obsolete caid:1 spelling emitted
+// through CAID-04. It is deliberately separate from ParseCaid, which accepts
+// only the canactid scheme provisionally registered by IANA and used for new
+// issuance. Provisional registration is not IETF endorsement.
+func ParseLegacyCaidV04(input string) ParseResult {
+	if len(input) > specLimitCaidOctets {
+		return ParseResult{Refusals: []string{"malformed_caid"}}
+	}
+	parts := strings.Split(input, specIdentifierSeparator)
+	if len(parts) != specIdentifierParts || parts[0] != specIdentifierLegacyV04Scheme || parts[1] != specIdentifierVersion ||
+		!matchPattern("action_type", parts[2]) || !matchPattern("suite", parts[3]) || !matchPattern("digest", parts[4]) {
+		return ParseResult{Refusals: []string{"malformed_caid"}}
+	}
+	suite, digest := parts[3], parts[4]
+	digestPattern, registered := specSuiteDigestPatterns[suite]
+	if !registered {
+		return ParseResult{Refusals: []string{"unknown_suite"}}
+	}
+	if !digestPattern.MatchString(digest) {
+		return ParseResult{Refusals: []string{"malformed_caid"}}
+	}
+	return ParseResult{OK: true, Caid: &ParsedCaid{Version: parts[1], ActionType: parts[2], Suite: suite, Digest: digest}}
+}
+
 // ---------------------------------------------------------------------------
-// Verification (draft -04 Section 6)
+// Verification (draft -05 Section 6)
 // ---------------------------------------------------------------------------
 
 func stringPtr(s string) *string { return &s }
@@ -1381,6 +1414,29 @@ func VerifyCaid(actionObject interface{}, caidString string, opts VerifyOptions)
 // malformed_json; otherwise the result is VerifyCaid over the decoded value.
 func VerifyCaidJSON(data []byte, caidString string, opts VerifyOptions) VerifyResult {
 	parsed := ParseCaid(caidString)
+	if !parsed.OK {
+		return refusedVerify(parsed.Refusals, nil)
+	}
+	value, err := DecodeJSON(data)
+	if err != nil {
+		return refusedVerify([]string{ReasonMalformedJSON}, nil)
+	}
+	return verifyParsed(value, parsed.Caid, opts)
+}
+
+// VerifyLegacyCaidV04 verifies an immutable CAID-04 caid: identifier through
+// the explicit legacy profile. It never mints or rewrites an identifier.
+func VerifyLegacyCaidV04(actionObject interface{}, caidString string, opts VerifyOptions) VerifyResult {
+	parsed := ParseLegacyCaidV04(caidString)
+	if !parsed.OK {
+		return refusedVerify(parsed.Refusals, actionObject)
+	}
+	return verifyParsed(actionObject, parsed.Caid, opts)
+}
+
+// VerifyLegacyCaidV04JSON is the JSON-text form of VerifyLegacyCaidV04.
+func VerifyLegacyCaidV04JSON(data []byte, caidString string, opts VerifyOptions) VerifyResult {
+	parsed := ParseLegacyCaidV04(caidString)
 	if !parsed.OK {
 		return refusedVerify(parsed.Refusals, nil)
 	}

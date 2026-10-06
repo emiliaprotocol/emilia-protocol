@@ -14,10 +14,11 @@ const registry = JSON.parse(readFileSync(new URL('../caid/registry/action-types.
 
 describe('CAID Action-Mapping Profile', () => {
   it('passes every shared material-equivalence vector', () => {
-    // Mapping corpus v2 pins an exact reason list per vector in the -04
-    // stage order; the fixed count catches a silently dropped vector. Four
+    // Mapping corpus v3 pins an exact reason list per vector in the -05
+    // stage order and current canactid scheme; the fixed count catches a
+    // silently dropped vector. Four
     // vectors build an array of 2^24 elements, which takes seconds each.
-    expect(corpus['@version']).toBe('CAID-ACTION-MAPPING-VECTORS-v2');
+    expect(corpus['@version']).toBe('CAID-ACTION-MAPPING-VECTORS-v3');
     const results = runMappingVectors(corpus);
     expect(results).toHaveLength(corpus.vectors.length);
     expect(results).toHaveLength(86);
@@ -79,7 +80,7 @@ describe('CAID Action-Mapping Profile', () => {
     for (const side of [result.left, result.right]) {
       expect(side.ok).toBe(true);
       expect(side.action).toEqual(expect.objectContaining({ action_type: 'order.place.1' }));
-      expect(side.caid).toMatch(/^caid:1:order\.place\.1:jcs-sha256:/);
+      expect(side.caid).toMatch(/^canactid:1:order\.place\.1:jcs-sha256:/);
       expect(side.suite).toBe('jcs-sha256');
       expect(side.profile_hash).toMatch(/^sha256:[0-9a-f]{64}$/);
       expect(side.source_digest).toMatch(/^sha256:[0-9a-f]{64}$/);

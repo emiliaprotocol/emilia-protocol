@@ -27,7 +27,7 @@ import {
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const D = (character: string) => `sha256:${character.repeat(64)}`;
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'C'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'C'.repeat(43)}`;
 const NOW = '2026-09-04T12:03:00.000Z';
 const PROVIDER_ENTRY_AT = '2026-09-04T12:00:00.000Z';
 const SOURCES = [{

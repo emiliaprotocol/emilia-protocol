@@ -39,7 +39,7 @@ test('one exact call.recording.start request verifies, satisfies the RP requirem
     admission: 'RESERVED',
     reason: 'reserved_for_execution',
   });
-  assert.match(valid.caid, /^caid:1:call\.recording\.start\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+  assert.match(valid.caid, /^canactid:1:call\.recording\.start\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
 });
 
 test('participant, purpose, destination, and time-window substitutions fail exact-action matching', () => {

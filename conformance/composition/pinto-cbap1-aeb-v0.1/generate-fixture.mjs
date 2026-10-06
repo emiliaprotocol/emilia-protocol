@@ -390,6 +390,21 @@ function writeFixture() {
   process.stdout.write('wrote and sealed deterministic Pinto CBAP-1 workspace\n');
 }
 
+function refreshFixture() {
+  const temporaryParent = mkdtempSync(join(tmpdir(), 'pinto-cbap1-refresh-'));
+  const temporaryWorkspace = join(temporaryParent, 'workspace');
+  try {
+    mkdirSync(temporaryWorkspace, { mode: 0o700 });
+    copyFileSync(join(WORKSPACE, 'adapter.mjs'), join(temporaryWorkspace, 'adapter.mjs'));
+    materialize(temporaryWorkspace, 'wx');
+    copyFileSync(join(temporaryWorkspace, 'artifact.json'), join(WORKSPACE, 'artifact.json'));
+    copyFileSync(join(temporaryWorkspace, 'workspace.json'), join(WORKSPACE, 'workspace.json'));
+  } finally {
+    rmSync(temporaryParent, { recursive: true, force: true });
+  }
+  process.stdout.write('refreshed and sealed deterministic Pinto CBAP-1 workspace\n');
+}
+
 function checkFixture() {
   const temporaryParent = mkdtempSync(join(tmpdir(), 'pinto-cbap1-fixture-'));
   const temporaryWorkspace = join(temporaryParent, 'workspace');
@@ -411,9 +426,10 @@ function checkFixture() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const mode = process.argv[2] ?? '--check';
   if (mode === '--write') writeFixture();
+  else if (mode === '--refresh') refreshFixture();
   else if (mode === '--check') checkFixture();
   else {
-    process.stderr.write('usage: node generate-fixture.mjs [--write|--check]\n');
+    process.stderr.write('usage: node generate-fixture.mjs [--write|--refresh|--check]\n');
     process.exitCode = 1;
   }
 }

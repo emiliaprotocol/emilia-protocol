@@ -9,7 +9,7 @@
   "fixture_file": "fixtures/truealter-fc10.synthetic.v2.json",
   "fixture_file_sha256": "95e9d734dd689e593352a9cd5fda49acbe2752da149879b34496e45e24951e2c",
   "fixture_action_jcs_sha256": "64586a77c5c3370e4a53c280ac016d0342a744e89aa1ef4178ce363164b6bda1",
-  "expected_caid": "caid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:EMNgSJJYCF_yMFagPhMj-miIiTxVzdfhJ-ds4sc0hqc",
+  "expected_caid": "canactid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:EMNgSJJYCF_yMFagPhMj-miIiTxVzdfhJ-ds4sc0hqc",
   "expected_caid_digest": "sha256:10c360489258085ff23056a03e1323fa6888893c55cdd7e127e76ce2c73486a7",
   "collaborator_confirmation": "confirmed-by-truealter-2026-09-25",
   "claim_boundary": "This jointly confirmed interoperability-local pin makes the test input reproducible. It is not a public CAID registry entry, authority, execution evidence, physical-effect evidence, or a claim that either party has validated the other's full implementation."

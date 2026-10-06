@@ -13,7 +13,7 @@ function d(label) {
     return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 }
 function caid(label) {
-    return `caid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
+    return `canactid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
 }
 function owner(index) {
     return `admission-owner:v2:${Buffer.alloc(32, index).toString('base64url')}`;

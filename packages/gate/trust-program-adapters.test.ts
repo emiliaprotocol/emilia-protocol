@@ -19,7 +19,7 @@ import { TRUST_PROGRAM_VERSION, trustProgramDigest } from './trust-program.js';
 const HASH = (character: string) => `sha256:${character.repeat(64)}`;
 const POLICY_DIGEST = HASH('a');
 const NOW = '2026-07-21T18:00:00.000Z';
-const ROOT_CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const ROOT_CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 
 function requirement(overrides: Record<string, unknown> = {}) {
   return {

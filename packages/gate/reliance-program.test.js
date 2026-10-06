@@ -8,7 +8,7 @@ import { RELIANCE_PROGRAM_SOURCE_VERSION, RELIANCE_PROGRAM_VERSION, RelianceProg
 import { hashCanonical } from './execution-binding.js';
 import { trustProgramDigest, validateTrustProgram } from './trust-program.js';
 const D = (character) => `sha256:${character.repeat(64)}`;
-const C = (character) => `caid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
+const C = (character) => `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
 function profile(id = 'rp:admissibility:human-review:v1', evidence = 'human_authorization') {
     const body = {
         id,

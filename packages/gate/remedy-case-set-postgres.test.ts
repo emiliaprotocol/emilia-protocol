@@ -14,7 +14,7 @@ import {
 
 const VERSION = 'EP-GATE-REMEDY-CASE-SET-v1';
 const HASH = (char: string) => `sha256:${char.repeat(64)}`;
-const CAID = (char: string) => `caid:1:remedy.perform.1:jcs-sha256:${char.repeat(43)}`;
+const CAID = (char: string) => `canactid:1:remedy.perform.1:jcs-sha256:${char.repeat(43)}`;
 
 function digest(value: unknown) {
   return `sha256:${createHash('sha256').update(canonicalize(value)).digest('hex')}`;

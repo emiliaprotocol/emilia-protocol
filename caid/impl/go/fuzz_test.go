@@ -36,7 +36,7 @@ func FuzzJSONTextEntryPoints(f *testing.F) {
 		}
 		caidString := got.Caid
 		if caidString == "" {
-			caidString = "caid:1:test.text.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE"
+			caidString = "canactid:1:test.text.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE"
 		}
 		vopts := VerifyOptions{Definitions: fuzzDefinitions}
 		v := VerifyCaidJSON(data, caidString, vopts)

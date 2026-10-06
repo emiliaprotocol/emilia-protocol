@@ -114,7 +114,7 @@ test('fail-closed means refusal with a reason, proven against the bad inputs, ne
   assert.equal(reclassified.reason, 'caid_refused:missing_material_field:beneficiary_account');
 
   const approvedAction = typedSourceAction(corpus.fixtures.benign_call);
-  for (const junk of ['caid:junk', '', null, 42, 'caid:1:payment.release.1:jcs-sha256:short']) {
+  for (const junk of ['caid:junk', '', null, 42, 'canactid:1:payment.release.1:jcs-sha256:short']) {
     const check = relyingCheck({
       observedAction: approvedAction,
       presentedCaid: junk,

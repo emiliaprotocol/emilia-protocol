@@ -126,12 +126,12 @@ npm run caid:conformance
 npx vitest run caid/interop/consequential-action-v1/*.test.mjs
 ```
 
-Under draft -04 the profile features these profiles use, the
+Under draft -05 the profile features these profiles use, the
 `omitted_source_fields` member, the `declared-source-semantic-loss` loss
 policy and the `sha256-hex-to-digest` transform, are specified (Section 8),
 with UTF-8 octet limits and the normative reason order. The corpus bytes and
 expectations are unchanged: all 100 vectors give their recorded verdicts and
-reasons under the -04 mapping oracle
+reasons under the -05 mapping oracle
 (`caid/conformance/tools/mapping-oracle.mjs`), and the differential fuzz
 (`caid/fuzz`) mutates every one of them.
 

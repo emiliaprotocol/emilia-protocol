@@ -3,6 +3,7 @@
 
 insert into entities(entity_id) values ('entity-mobile-continuity');
 insert into entities(entity_id) values ('entity-mobile-continuity-peer');
+insert into entities(entity_id) values ('entity-mobile-continuity-legacy-expand');
 insert into mobile_sessions(
   session_id, token_hash, entity_ref, approver_id, profile_id, platform, app_id, expires_at
 ) values (
@@ -14,9 +15,11 @@ insert into mobile_sessions(
 do $$
 declare
   caid_one constant text :=
-    'caid:1:emilia.mobile.authorized-action.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+    'canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
   caid_two constant text :=
-    'caid:1:emilia.mobile.authorized-action.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
+    'canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
+  legacy_caid constant text :=
+    'caid:1:emilia.mobile.authorized-action.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC';
   digest_one constant text := 'sha256:' || repeat('a', 64);
   digest_two constant text := 'sha256:' || repeat('b', 64);
   executor_id constant text := 'provider-continuity';
@@ -26,6 +29,7 @@ declare
   presentation_two constant jsonb :=
     '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release corrected funds.","risk":"high","consequence":"Funds move.","material_fields":{"amount":"11.00","currency":"USD"}}';
   created boolean;
+  legacy_created boolean;
   consumed jsonb;
   replayed jsonb;
   uncertain jsonb;
@@ -39,6 +43,40 @@ declare
   listed jsonb;
   provider_evidence jsonb;
 begin
+  -- Phase A must be safe before the current-only application promotion. An
+  -- old instance can still persist a legacy issuance while it is being drained;
+  -- Phase B removes this compatibility path after deployment.
+  legacy_created := create_mobile_demo_action_v2(
+    'mag_00000000000000000000000000000000',
+    'mobact_00000000000000000000000000000000',
+    'entity-mobile-continuity-legacy-expand',
+    'approver-continuity-legacy',
+    'agent-continuity-legacy',
+    '{"action_type":"payment.release.1","amount":"9.00","currency":"USD"}',
+    presentation_one,
+    '{"policy_id":"policy-continuity-legacy","required_approvals":1}',
+    'policy-continuity-legacy',
+    legacy_caid,
+    'sha256:' || repeat('c', 64),
+    now() + interval '1 day',
+    now()
+  );
+  if legacy_created is not true then
+    raise exception 'Phase A refused a legacy writer before issuer promotion';
+  end if;
+  if not exists (
+    select 1
+    from mobile_action_groups as action_group
+    join mobile_action_revisions as revision
+      on revision.group_id = action_group.group_id
+     and revision.revision = 1
+    where action_group.group_id = 'mag_00000000000000000000000000000000'
+      and action_group.current_action_caid = legacy_caid
+      and revision.action_caid = legacy_caid
+  ) then
+    raise exception 'Phase A rewrote or failed to persist the legacy identifier';
+  end if;
+
   created := create_mobile_demo_action_v2(
     'mag_11111111111111111111111111111111',
     'mobact_11111111111111111111111111111111',

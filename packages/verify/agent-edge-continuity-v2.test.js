@@ -16,7 +16,7 @@ import test from 'node:test';
 import { AGENT_CONTINUITY_VERSION, AGENT_CONTINUITY_V2_VERSION, createAgentContinuityEnvelope, createAgentContinuityEnvelopeV2, verifyAgentContinuityEnvelope, verifyAgentContinuityEnvelopeV2, verifyAgentContinuityEnvelopeAny, } from './agent-edge-continuity.js';
 import { digestAeb, canonicalizeAeb } from './aeb-adapter-contract.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
-const CAID = `caid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = digestAeb({ action_type: 'order.purchase.1', order_id: 'o-1', amount_minor: '1000' });
 const NOW = '2026-07-22T12:00:00Z';
 const TOPOLOGY = {

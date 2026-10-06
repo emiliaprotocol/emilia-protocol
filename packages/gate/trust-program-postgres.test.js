@@ -20,7 +20,7 @@ function initialState(tenantId = 'tenant-1', instanceId = 'instance-1', rootMark
         program_id: 'program-1',
         program_version: 1,
         program_digest: `sha256:${'11'.repeat(32)}`,
-        root_caid: `caid:1:trust.root.1:jcs-sha256:${rootMarker.repeat(43)}`,
+        root_caid: `canactid:1:trust.root.1:jcs-sha256:${rootMarker.repeat(43)}`,
         action_digest: digest(`root-action-${rootMarker}`),
         status: 'active',
         revision: 0,

@@ -6,7 +6,7 @@
     "id": "org:synthetic-audit-firm.example",
     "key_id": "key:synthetic-audit-firm:reliance-program:v1"
   },
-  "root_caid": "caid:1:audit.human-authorization-proof.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "root_caid": "canactid:1:audit.human-authorization-proof.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "action_digest": "sha256:1222222222222222222222222222222222222222222222222222222222222222",
   "valid_from": "2026-07-28T00:00:00.000Z",
   "expires_at": "2026-10-28T00:00:00.000Z",

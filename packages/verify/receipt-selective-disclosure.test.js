@@ -221,4 +221,21 @@ describe('fail-closed behavior (refusal, never a crash)', () => {
         assert.equal(res.ok, false);
         assert.deepEqual(res.refusals, ['missing_caid']);
     });
+    it('refuses legacy caid identifiers in the current presentation profile', () => {
+        const prep = prepareSelectiveDisclosure({
+            ...vectors.source_payload,
+            caid: vectors.source_payload.caid.replace(/^canactid:/, 'caid:'),
+        }, vectors.disclosable_paths, vectors.salts);
+        assert.equal(prep.ok, true);
+        if (!prep.ok)
+            return;
+        const res = verifySelectiveDisclosurePresentation({
+            '@version': EP_SD_PRESENTATION_VERSION,
+            receipt: signedReceipt(prep.payload),
+            disclosed: [],
+            binding: { audience: 'auditor.example', nonce: 'n-legacy', created_at: '2026-08-16T12:00:00Z' },
+        }, issuerPublic, { audience: 'auditor.example', nonce: 'n-legacy' });
+        assert.equal(res.ok, false);
+        assert.deepEqual(res.refusals, ['caid_malformed']);
+    });
 });

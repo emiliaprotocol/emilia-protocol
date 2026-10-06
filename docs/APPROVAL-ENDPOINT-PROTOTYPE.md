@@ -38,7 +38,7 @@ The server also computes `action_caid` using the registered CAID action type
 `payment.release.1` and the `jcs-sha256` suite. Its shape is:
 
 ```text
-caid:1:payment.release.1:jcs-sha256:<43-character unpadded base64url digest>
+canactid:1:payment.release.1:jcs-sha256:<43-character unpadded base64url digest>
 ```
 
 For the CAID typed content, the server maps:
@@ -92,7 +92,7 @@ A successful `201` response has this shape:
 {
   "receipt_id": "tr_<32-lowercase-hex>",
   "action_hash": "<64-lowercase-hex>",
-  "action_caid": "caid:1:payment.release.1:jcs-sha256:<43-character-base64url>",
+  "action_caid": "canactid:1:payment.release.1:jcs-sha256:<43-character-base64url>",
   "expires_at": "2026-07-20T00:00:00.000Z",
   "signoff_id": "sig_<32-lowercase-hex>",
   "approver_id": "approver:cfo@example.com",

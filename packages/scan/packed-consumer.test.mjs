@@ -17,8 +17,8 @@ import {
 import { tmpdir } from 'node:os';
 import { basename, join, sep } from 'node:path';
 
-const MCP_GUARD_VERSION = '0.6.1';
-const REQUIRE_RECEIPT_VERSION = '0.8.2';
+const MCP_GUARD_VERSION = '0.7.0';
+const REQUIRE_RECEIPT_VERSION = '0.9.0';
 const VERIFY_VERSION = '3.21.0';
 const VERIFY_TARBALL_SHA256 = 'bd9adc23c7d859994ca6532e4104d2d3eb608348a53e81d6b8ebeba6aceb3af4';
 const REGISTRY_CUTOFF = '2026-08-16T23:59:59.000Z';
@@ -108,7 +108,7 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
   assert.equal(blankVerify.status, 1, `${blankVerify.stdout}\n${blankVerify.stderr}`);
   assert.match(
     `${blankVerify.stdout}${blankVerify.stderr}`,
-    /npm install --save-exact @emilia-protocol\/mcp-guard@0\.6\.1/,
+    /npm install --save-exact @emilia-protocol\/mcp-guard@0\.7\.0/,
   );
   assert.equal(readdirSync(consumer).includes('emilia'), false,
     'missing runtime preflight must refuse before writing a starter');

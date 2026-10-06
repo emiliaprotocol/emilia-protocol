@@ -33,7 +33,7 @@ import { canonicalize } from './execution-binding.js';
 
 const D = (character: string) => `sha256:${character.repeat(64)}`;
 const C = (character: string) => (
-  `caid:1:devops.infrastructure-change.1:jcs-sha256:${character.repeat(43)}`
+  `canactid:1:devops.infrastructure-change.1:jcs-sha256:${character.repeat(43)}`
 );
 const PROGRAM_NOW = '2026-07-29T20:00:00.000Z';
 const REPORT_END = '2026-07-29T20:30:00.000Z';

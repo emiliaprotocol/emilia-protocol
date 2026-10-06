@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { canonicalize, hashCanonical } from './execution-binding.js';
 import { signAgileSet, verifyAgileSignatureSet, ML_DSA_65_PUBLIC_KEY_BYTES, } from '@emilia-protocol/verify/pq-signature-agility';
 export const RISK_DIGEST = /^sha256:[0-9a-f]{64}$/;
-export const RISK_CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+export const RISK_CAID = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 export const RISK_ID = /^[A-Za-z0-9][A-Za-z0-9:_.@/+\-]{0,511}$/;
 const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?Z$/;
 export function riskRecord(value) {

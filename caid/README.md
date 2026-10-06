@@ -24,7 +24,7 @@ CAID addresses both problems with one small object and one string:
 }
 ```
 
-    caid:1:payment.release.1:jcs-sha256:Kq3v...N9w
+    canactid:1:payment.release.1:jcs-sha256:Kq3v...N9w
 
 - **Typed**: `action_type` is inside the digested content and names an
   entry in the action-type registry (or a local definitions file in the
@@ -81,11 +81,26 @@ the object's low-entropy fields can recompute the identifier (the draft's
 Privacy Considerations). Composition joins on the identifier; no verifier
 ever ingests another verifier's evidence into its own trust boundary.
 
+## Identifier migration
+
+Current issuers emit only `canactid:1:...`. Current parsers and verifiers
+fail closed on the obsolete, unregistered `caid:1:...` spelling. Existing
+signed artifacts are not rewritten: a caller that must verify one uses the
+separately named CAID-04 legacy API and retains the original identifier
+bytes. There is deliberately no legacy compute API, so compatibility cannot
+silently create new identifiers with the obsolete spelling.
+
+IANA provisionally registered the `canactid` URI scheme on 2026-10-05 with
+reference CAID-05. Provisional registration gives implementations a stable
+scheme name while the work develops. It is not permanent registration, an
+RFC, IETF working-group adoption, or IETF endorsement.
+
 ## Layout
 
-- `../standards/posted/draft-schrock-canonical-action-identifier-04.xml` —
-  the Internet-Draft, posted on 2026-09-28, which is the normative text; its
-  publication provenance packet is `../standards/staged/NEXT-CAID-04/`
+- `../standards/posted/draft-schrock-canonical-action-identifier-05.xml` —
+  the current Internet-Draft, posted on 2026-10-02, which is the normative
+  text for current issuance; the published -04 revision and its provenance
+  packet remain immutable historical inputs
 - `DESIGN.md` — where each rule lives now; no longer normative
 - `spec/` — derived from the draft: `caid.abnf` (Appendix A), `core.json`
   (limits, reasons and ranks, field types, mapping closed sets), `gen.mjs`
@@ -94,7 +109,7 @@ ever ingests another verifier's evidence into its own trust boundary.
 - `registry/` — action-type registry (version 5), suites, value sets, frozen
   history, definition digests, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 616 core vectors (corpus version 5): every
+- `conformance/vectors.json` — 616 core vectors (corpus version 6): every
   compute and verify input as exact JSON text with native/byte parity, a
   native lane for host values no decoder produces, the JSON text rules and
   size limits, number rounding, reason order, verification details,
@@ -104,7 +119,7 @@ ever ingests another verifier's evidence into its own trust boundary.
 - `conformance/grammar-vectors.json` — 1,966 grammar boundary cases driven
   through the public parse and compute entry points
 - `conformance/mapping-vectors.json` — 86 mapping vectors
-  (version 2) with exact reason lists in the -04 stage order, including the
+  (version 3) with exact reason lists in the -05 stage order, including the
   SILP IR to CAID `CANCEL+EMAIL` profile
 - `fuzz/` — the differential fuzz: about 88,000 seeded cases through the
   JavaScript, vendored Verify, Python and Go entry points against the spec
@@ -117,8 +132,9 @@ ever ingests another verifier's evidence into its own trust boundary.
   agent-authorization drafts, AGTP, EMILIA receipts, Continuum)
 
 Stewardship: maintained by the EMILIA Protocol maintainers as initial
-editors. The -04 draft asks IANA to create the CAID registries; until it
-does, `registry/` is the reference copy (`registry/GOVERNANCE.md`).
+editors. CAID-05 asks IANA to create the CAID registries; until it does,
+`registry/` is the reference copy (`registry/GOVERNANCE.md`). The provisional
+URI-scheme registration does not create those registries.
 
 ## Changing a rule, a field type or a suite
 
@@ -149,17 +165,14 @@ generated region or file by hand; the checks fail on it.
    Then `npm run caid:corpus`.
 4. Run `node caid/spec/abnf-check.mjs`, `npm run caid:conformance` and
    `npm run caid:fuzz`.
-5. Update the draft. -04 is posted, so its packet
-   (`standards/staged/NEXT-CAID-04`) is publication provenance and is not
-   edited. `node scripts/check-caid-04.mjs` fails when a change here
-   contradicts what -04 states (Appendix A against `caid.abnf`, the
-   generated tables, Appendix D, the recomputed examples). Such a change
-   belongs in a new revision packet built the way the -04 packet was:
-   `node scripts/check-caid-04.mjs --emit` prints every generated table,
-   the two Appendix D listings, and the Appendix C.1 cbor-sha256 example,
-   a processing change needs a `chg-` item mapped to vectors in
+5. Update the draft and its current revision checker. The published -04
+   packet (`standards/staged/NEXT-CAID-04`) is immutable publication
+   provenance: its checker reads frozen -04 inputs, not the current -05
+   sources. A processing change needs a `chg-` item mapped to vectors in
    `CHANGES-VECTORS.json`, and the renders follow the procedure in the
-   packet's `VALIDATION.md`.
+   current packet's `VALIDATION.md`. Run both `npm run check:caid-04` and
+   `npm run check:caid-05`; the former protects history and the latter checks
+   the current transition independently.
 6. A change to the vendored copy moves pins outside `caid/`: the source
    locks of the composition profiles that pin `vendor/caid.mjs`
    (`conformance/composition/*/source-lock.json`),

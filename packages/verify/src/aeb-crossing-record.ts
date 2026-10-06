@@ -433,7 +433,7 @@ export interface AebCrossingAuthorityAdapter<T> {
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/#-]{0,511}$/;
 const CAID =
-  /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+  /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const REASON_CODE = /^[a-z][a-z0-9_]{0,127}$/;
 const NATIVE_VERIFICATIONS = new Set<CrossingNativeVerification>([
   "VERIFIED",

@@ -4,7 +4,7 @@
     "id": "pinto:cbap1-contestability-binding",
     "version": "0.1.0",
     "module": "adapter.mjs",
-    "module_digest": "sha256:b5536489a2fabcb45c058ff83824dae6ac4dc523a8b80ebc2eaa5416ecc1074c"
+    "module_digest": "sha256:15ae25ae32fadc50894dafb729bbffb18513ed4f91fd9da66537c0970aac26d6"
   },
   "artifact": "artifact.json",
   "artifact_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
@@ -173,7 +173,7 @@
     "requirement_ref": "requirement:historical-contestability-binding",
     "profile_id": "pinto:cbap1-account-suspension",
     "artifact_ref": "artifact:pinto-cbap1:001",
-    "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+    "caid": "canactid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
     "status": {
       "checked_at": "2026-08-29T23:59:00Z",
       "expires_at": "2026-08-30T12:00:00Z",

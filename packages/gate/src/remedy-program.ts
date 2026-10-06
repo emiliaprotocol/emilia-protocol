@@ -14,7 +14,7 @@ import { canonicalize } from '../execution-binding.js';
 export const REMEDY_PROGRAM_VERSION = 'EP-GATE-REMEDY-PROGRAM-PROFILE-v1';
 
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
-const CAID = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID = /^canactid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const MAX_CONTEXT_BYTES = 512;
 const MAX_REMEDY_ATTEMPTS = 1024;

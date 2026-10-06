@@ -28,7 +28,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -46,7 +46,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -96,7 +96,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -114,7 +114,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "FAILED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -166,7 +166,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -184,7 +184,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -236,7 +236,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -254,7 +254,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -306,7 +306,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -332,7 +332,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "machine-permit",
             "principal_kind": "MACHINE",
@@ -384,7 +384,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -402,7 +402,7 @@
             "wrapper_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
             "native_replay_unit": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -418,7 +418,7 @@
             "wrapper_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
             "native_replay_unit": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -470,7 +470,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -488,7 +488,7 @@
             "wrapper_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
             "native_replay_unit": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -540,7 +540,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -558,7 +558,7 @@
             "wrapper_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
             "native_replay_unit": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -610,7 +610,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -628,7 +628,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -680,7 +680,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -698,7 +698,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -750,7 +750,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -768,7 +768,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -820,7 +820,7 @@
           "provider_id": "provider:payments",
           "initiator_id": "agent:initiator:1",
           "executor_id": "executor:payments:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -838,7 +838,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -888,7 +888,7 @@
         "operation": {
           "operation_id": "operation:no-reservation:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -908,7 +908,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -958,7 +958,7 @@
         "operation": {
           "operation_id": "operation:replayed:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -978,7 +978,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -997,7 +997,7 @@
           "prior_operations": [
             {
               "operation_id": "operation:replayed:1",
-              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "custody": "TERMINAL",
               "provider_outcome": "COMMITTED",
@@ -1037,7 +1037,7 @@
         "operation": {
           "operation_id": "operation:rewrapped:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -1057,7 +1057,7 @@
             "wrapper_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -1109,7 +1109,7 @@
         "operation": {
           "operation_id": "operation:timeout:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -1129,7 +1129,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -1148,7 +1148,7 @@
           "prior_operations": [
             {
               "operation_id": "operation:timeout:1",
-              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "custody": "INVOKING",
               "provider_outcome": "NOT_INVOKED",
@@ -1192,7 +1192,7 @@
         "operation": {
           "operation_id": "operation:blind-retry:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -1212,7 +1212,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -1231,7 +1231,7 @@
           "prior_operations": [
             {
               "operation_id": "operation:blind-retry:1",
-              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "custody": "INVOKING",
               "provider_outcome": "INDETERMINATE",
@@ -1271,7 +1271,7 @@
         "operation": {
           "operation_id": "operation:reconcile-refused:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -1291,7 +1291,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -1310,7 +1310,7 @@
           "prior_operations": [
             {
               "operation_id": "operation:reconcile-refused:1",
-              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "custody": "INVOKING",
               "provider_outcome": "INDETERMINATE",
@@ -1324,7 +1324,7 @@
           "authenticated": false,
           "provider_id": "provider:payments",
           "operation_id": "operation:reconcile-refused:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "provider_outcome": "COMMITTED",
           "effect_relation": "OBSERVED_AS_REQUESTED"
@@ -1358,7 +1358,7 @@
         "operation": {
           "operation_id": "operation:reconcile-executed:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -1378,7 +1378,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -1397,7 +1397,7 @@
           "prior_operations": [
             {
               "operation_id": "operation:reconcile-executed:1",
-              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "custody": "INVOKING",
               "provider_outcome": "INDETERMINATE",
@@ -1411,7 +1411,7 @@
           "authenticated": true,
           "provider_id": "provider:payments",
           "operation_id": "operation:reconcile-executed:1",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "provider_outcome": "COMMITTED",
           "effect_relation": "OBSERVED_AS_REQUESTED"
@@ -1445,7 +1445,7 @@
         "operation": {
           "operation_id": "operation:diverged:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -1465,7 +1465,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -1484,7 +1484,7 @@
           "prior_operations": [
             {
               "operation_id": "operation:diverged:1",
-              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "custody": "INVOKING",
               "provider_outcome": "NOT_INVOKED",
@@ -1528,7 +1528,7 @@
         "operation": {
           "operation_id": "operation:unknown:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -1548,7 +1548,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -1567,7 +1567,7 @@
           "prior_operations": [
             {
               "operation_id": "operation:unknown:1",
-              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "custody": "INVOKING",
               "provider_outcome": "NOT_INVOKED",
@@ -1611,7 +1611,7 @@
         "operation": {
           "operation_id": "operation:not-committed:1",
           "provider_id": "provider:payments",
-          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
           "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "requirements": [
             {
@@ -1631,7 +1631,7 @@
             "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "native_verification": "VERIFIED",
-            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "role": "human-authorization",
             "principal_kind": "HUMAN",
@@ -1650,7 +1650,7 @@
           "prior_operations": [
             {
               "operation_id": "operation:not-committed:1",
-              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "custody": "INVOKING",
               "provider_outcome": "NOT_INVOKED",

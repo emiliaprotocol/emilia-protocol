@@ -56,7 +56,7 @@ const SHARED_ROLES = [...GENERIC_ROLES, ...MANAGED_ROLES];
 
 const digest = (character: string): string =>
   `sha256:${character.repeat(64)}`;
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const PROGRAM_ID = 'program:open-exposure';
 const PROGRAM_VERSION = 'program-v1';
 const PROGRAM_SOURCE_DIGEST = digest('1');

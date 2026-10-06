@@ -86,7 +86,7 @@ const VERIFICATION_KEYS = [
 ] as const;
 
 const ACTION = Object.freeze({
-  caid: "caid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  caid: "canactid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   action_digest: `sha256:${"11".repeat(32)}`,
 });
 const BOUNDARY = Object.freeze({
@@ -743,7 +743,7 @@ export async function buildReferenceReport() {
   );
 
   const unrelated = evaluationFor("op-UNRELATED", {
-    caid: "caid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    caid: "canactid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
   });
   const unrelatedRecord = await issue(bcr, {
     record_id: "crossing:finance:0003",

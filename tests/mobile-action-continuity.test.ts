@@ -16,11 +16,13 @@ import {
 import { mobileActionView } from '@/lib/mobile/action-view.js';
 import {
   consumeMobileAction,
+  listMobileActions,
   listMobileActionHistory,
   markMobileActionIndeterminate,
   reconcileMobileActionOperation,
   recordMobileActionAlignment,
   registerMobileExecutorKey,
+  resolveMobileAction,
   resolveMobileExecutorKey,
   resolveMobileOperation,
   supersedeMobileAction,
@@ -131,7 +133,7 @@ describe('mobile CAID and Action Evidence Boundary continuity', () => {
 
     expect(first).toEqual(reordered);
     expect(first.action_caid).toMatch(
-      /^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/,
+      /^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/,
     );
     expect(first.action_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(first.fingerprint).toMatch(/^[0-9A-F]{4}(?:-[0-9A-F]{4}){3}$/);
@@ -257,7 +259,7 @@ describe('mobile CAID and Action Evidence Boundary continuity', () => {
   it('exports a bounded decision passport with evidence digests, not secret evidence bytes', () => {
     const passport = buildDecisionPassport({
       action_reference: 'mobact_11111111111111111111111111111111',
-      action_caid: 'caid:1:emilia.mobile.authorized-action.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      action_caid: 'canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       action_digest: `sha256:${'a'.repeat(64)}`,
       decision_challenge_id: 'challenge-42',
       decision_verdict: 'verified',
@@ -402,7 +404,7 @@ describe('mobile CAID and Action Evidence Boundary continuity', () => {
   it('rejects unbound passport rows and bounds every optional export field', () => {
     const validRow = {
       action_reference: ACTION_REFERENCE,
-      action_caid: `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_caid: `canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
       action_digest: `sha256:${'a'.repeat(64)}`,
     };
     for (const row of [
@@ -622,7 +624,8 @@ describe('mobile action-continuity store contracts', () => {
   };
 
   it('normalizes complete and legacy history rows without upgrading uncertain evidence', async () => {
-    const actionCaid = `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`;
+    const actionCaid = `canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`;
+    const legacyActionCaid = actionCaid.replace(/^canactid:/, 'caid:');
     const actionDigest = `sha256:${'a'.repeat(64)}`;
     const base = {
       action_reference: ACTION_REFERENCE,
@@ -689,6 +692,17 @@ describe('mobile action-continuity store contracts', () => {
         events: [],
         operation: {},
       },
+      {
+        ...base,
+        action_reference: 'mobact_44444444444444444444444444444444',
+        status: 'pending',
+        action_caid: legacyActionCaid,
+        action_digest: actionDigest,
+        change_set: [],
+        alignments: [],
+        events: [],
+        operation: null,
+      },
     ];
     const client = queryClient({
       rpcResult: { data: rows, error: null },
@@ -697,7 +711,7 @@ describe('mobile action-continuity store contracts', () => {
       entityRef: 'entity-1',
       approverId: 'approver-1',
     });
-    expect(history).toHaveLength(4);
+    expect(history).toHaveLength(5);
     expect(history[0]).toMatchObject({
       identity: null,
       changes: [],
@@ -724,6 +738,28 @@ describe('mobile action-continuity store contracts', () => {
       continuity: { state: 'AUTHORIZED' },
       can_withdraw: false,
     });
+    expect(history[4]).toMatchObject({
+      identity: {
+        action_caid: legacyActionCaid,
+        profile: 'legacy-caid-v04',
+        fingerprint: expect.stringMatching(/^[0-9A-F-]{19}$/),
+      },
+      can_withdraw: false,
+    });
+    expect(history[4]).not.toHaveProperty('passport');
+
+    const inbox = await listMobileActions(client, {
+      entityRef: 'entity-1',
+      approverId: 'approver-1',
+    });
+    expect(inbox.every((item) => item.identity?.profile === 'caid-05')).toBe(true);
+    expect(inbox.some((item) => item.action_caid === legacyActionCaid)).toBe(false);
+
+    await expect(resolveMobileAction(client, {
+      entityRef: 'entity-1',
+      approverId: 'approver-1',
+      actionReference: 'mobact_44444444444444444444444444444444',
+    })).resolves.toBeNull();
     await expect(listMobileActionHistory({}, {
       entityRef: 'entity-1',
       approverId: 'approver-1',
@@ -766,7 +802,7 @@ describe('mobile action-continuity store contracts', () => {
       group_id: 'group-2',
       revision: 2,
       identity: {
-        action_caid: expect.stringMatching(/^caid:1:/),
+        action_caid: expect.stringMatching(/^canactid:1:/),
         action_digest: expect.stringMatching(/^sha256:/),
       },
       changes: [

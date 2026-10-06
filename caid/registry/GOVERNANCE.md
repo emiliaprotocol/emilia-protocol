@@ -5,7 +5,7 @@ This document governs the registries in this directory:
 (canonicalization and digest suites), together with the value-set files
 under `value-sets/`, the frozen registry versions under `history/`, and
 `digests.json`. The processing rules themselves are normative in
-`draft-schrock-canonical-action-identifier-04`; `../spec/` holds the same
+`draft-schrock-canonical-action-identifier-05`; `../spec/` holds the same
 rules as derived, machine-read data (`core.json`) and grammar (`caid.abnf`).
 
 One sentence of scope before anything else: CAID and its registries carry
@@ -306,10 +306,13 @@ product without permission or attribution.
 This registry is maintained by the EMILIA Protocol maintainers as its
 initial editors; that is the extent of any product affiliation.
 
-The -04 revision of the CAID draft asks IANA to create seven registries:
+The -05 revision of the CAID draft asks IANA to create seven registries:
 CAID Suites, CAID Action Types, CAID Field Types, CAID Code Formats, CAID
-Reason Codes, CAID Mapping Transforms, and CAID Mapping Loss Policies. It
-also asks IANA to register the `caid` URI scheme. Until IANA creates the
+Reason Codes, CAID Mapping Transforms, and CAID Mapping Loss Policies.
+IANA provisionally registered the separate `canactid` URI scheme on
+2026-10-05 with CAID-05 as its reference. Provisional scheme registration
+does not create these registries, constitute permanent registration, or
+signal IETF adoption or endorsement. Until IANA creates the
 registries, the reference copies are `suites.json` and `action-types.json`
 in this directory for the first two, and `../spec/core.json` with
 `../spec/caid.abnf` for the other five. The registry format has been kept

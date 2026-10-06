@@ -35,7 +35,7 @@ function buildResolution() {
         status: 'active',
         issued_at: '2026-06-01T00:00:00Z',
     };
-    const caid = `caid:1:example.com.1:jcs-sha256:${'A'.repeat(43)}`;
+    const caid = `canactid:1:example.com.1:jcs-sha256:${'A'.repeat(43)}`;
     const action = { op: 'transfer' };
     const actionDigest = digestDiscoveryPermit(action);
     const binding = { ...discovery, '@type': DISCOVERY_PERMIT_BINDING_VERSION, caid, action_digest: actionDigest };

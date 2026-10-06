@@ -44,7 +44,7 @@ Each minimized record contains exactly:
 ```json
 {
   "record_id": "pas:effect:PA-1002",
-  "caid": "caid:1:...",
+  "caid": "canactid:1:...",
   "action_digest": "sha256:...",
   "classification": "effect"
 }

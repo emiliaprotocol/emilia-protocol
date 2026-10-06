@@ -29,7 +29,7 @@
   },
   "result": {
     "evidence_role": "human-authorization",
-    "caid": "caid:1:payment.transfer.1:jcs-sha256:e1jA_T8cqXmp4cnmGD7L0eHpgWxkmnacLdP7W9X7PlE",
+    "caid": "canactid:1:payment.transfer.1:jcs-sha256:e1jA_T8cqXmp4cnmGD7L0eHpgWxkmnacLdP7W9X7PlE",
     "action_digest": "sha256:7b58c0fd3f1ca979a9e1c9e6183ecbd1e1e9816c649a769c2dd3fb5bd5fb3e51",
     "replay_unit": "sha256:9cbd1b5c23ac3a162af3056a660c4010b901462cbc31f84b6ef0ba78005069c3"
   },
@@ -44,7 +44,7 @@
       "id": "CHAP-AEB-02",
       "description": "override patch result maps to the exact expected action and CAID",
       "passed": true,
-      "observed": "MATCH/caid:1:payment.transfer.1:jcs-sha256:e1jA_T8cqXmp4cnmGD7L0eHpgWxkmnacLdP7W9X7PlE"
+      "observed": "MATCH/canactid:1:payment.transfer.1:jcs-sha256:e1jA_T8cqXmp4cnmGD7L0eHpgWxkmnacLdP7W9X7PlE"
     },
     {
       "id": "CHAP-AEB-03",
@@ -109,5 +109,5 @@
     "A passing mapping does not authorize or execute the action."
   ],
   "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference CHAP-to-AEB composition at 9e7af2b811d3368b4afba7c6d318764959c2fd0d: 11/11 pinned checks passed. This was an external execution of the EMILIA reference runner, not an independent implementation.",
-  "report_digest": "sha256:a895d986ebd10c5f6bc20f9796d8ba7ca43fa350e8eb1eb68089353e4c208618"
+  "report_digest": "sha256:fa050a5a16ce21e942b3120fbd69f72a59f755c48692635163dc390ad076041b"
 }

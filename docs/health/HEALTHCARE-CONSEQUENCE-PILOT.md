@@ -110,7 +110,7 @@ There are no optional CAID fields. For the fixed synthetic action in
 are:
 
 ```text
-caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:NrSSZNCIjm7jMWQufBWCRkXixrr8zuuG2c1Zm9qjzx8
+canactid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:NrSSZNCIjm7jMWQufBWCRkXixrr8zuuG2c1Zm9qjzx8
 sha256:36b49264d0888e6ee331642e7c15824645e2c6bafcceeb86d9cd599bdaa3cf1f
 ```
 

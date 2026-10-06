@@ -1205,7 +1205,7 @@ components:
       properties:
         action_caid:
           type: string
-          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
           description: |
             Server-recomputed CAID for the exact payment material. CAID
             identifies content and does not establish authorization.
@@ -1378,7 +1378,7 @@ components:
                   pattern: '^sha256:[a-f0-9]{64}$'
                 action_caid:
                   type: string
-                  pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+                  pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
                 challenge_hash:
                   type: string
                   pattern: '^sha256:[a-f0-9]{64}$'
@@ -1980,7 +1980,7 @@ components:
           pattern: '^[a-f0-9]{64}$'
         action_caid:
           type: string
-          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
           description: |
             Server-computed identifier for exact `payment.release.1` typed
             action content. CAID does not establish authorization.
@@ -2019,7 +2019,7 @@ components:
           nullable: true
         action_caid:
           type: string
-          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
           description: |
             Server-computed typed-content identifier; not an authorization
             decision or proof.

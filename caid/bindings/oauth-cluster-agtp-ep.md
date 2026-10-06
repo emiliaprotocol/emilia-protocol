@@ -60,7 +60,7 @@ Pitch (email-ready, to the draft authors):
     Your evidence record signs what was displayed and how the user
     confirmed, and audit_trail correlates by minted URN UUIDs. Consider
     one more member: a canonical action identifier (CAID), a typed digest
-    of the confirmed action object, caid:1:<action_type>:jcs-sha256:<digest>.
+    of the confirmed action object, canactid:1:<action_type>:jcs-sha256:<digest>.
     UUIDs correlate only where the minting namespace is shared; a CAID is
     recomputed by anyone holding the action object, so evidence records
     join with permits, receipts, and logs from systems that never saw your

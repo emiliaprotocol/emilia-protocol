@@ -46,7 +46,7 @@ const PRESENTATION = Object.freeze({
 function signedDecisionEvidence({
   decision = 'approved',
   actionReference = 'mobile-action-reference-0001',
-  actionCaid = `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+  actionCaid = `canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
   actionDigest = `sha256:${'c'.repeat(64)}`,
   actionHash = `sha256:${'a'.repeat(64)}`,
   profileHash = `sha256:${'b'.repeat(64)}`,
@@ -1225,7 +1225,7 @@ describe('durable mobile storage adapters', () => {
       created_at: '2026-07-20T00:00:00.000Z',
       group_id: `mag_${'1'.repeat(32)}`,
       revision: 1,
-      action_caid: `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_caid: `canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
       action_digest: `sha256:${'a'.repeat(64)}`,
       group_state: 'open',
       required_approvals: 1,
@@ -1260,7 +1260,7 @@ describe('durable mobile storage adapters', () => {
     expect(rpc).toHaveBeenCalledWith('create_mobile_demo_action_v2', expect.objectContaining({
       p_entity_ref: 'entity-1',
       p_action_reference: demo.action_reference,
-      p_action_caid: expect.stringMatching(/^caid:1:/),
+      p_action_caid: expect.stringMatching(/^canactid:1:/),
       p_action_digest: expect.stringMatching(/^sha256:/),
     }));
 
@@ -1343,7 +1343,7 @@ describe('durable mobile storage adapters', () => {
     expect(rpc).toHaveBeenCalledWith('create_grace_mobile_action_group_v2', expect.objectContaining({
       p_entity_ref: 'entity-1',
       p_group_id: expect.stringMatching(/^mag_[0-9a-f]{32}$/),
-      p_action_caid: expect.stringMatching(/^caid:1:/),
+      p_action_caid: expect.stringMatching(/^canactid:1:/),
       p_assignments: expect.arrayContaining([
         expect.objectContaining({ approver_id: 'ep:approver:grid' }),
       ]),

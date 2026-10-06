@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createAdmissionPostgresStore, } from './admission-store-postgres.js';
 import { createAdmissionSnapshot, } from './admission-store.js';
 const HASH = (character) => `sha256:${character.repeat(64)}`;
-const CAID = 'caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const CAID = 'canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 const SQL_PATH = fileURLToPath(new URL('./sql/gate-qualification-v2.sql', import.meta.url));
 const require = createRequire(import.meta.url);
 function canonical(value) {

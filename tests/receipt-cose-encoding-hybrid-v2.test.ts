@@ -254,7 +254,7 @@ describe('EP-COSE-ENCODING-v0.2 hostile matrix', () => {
   });
 
   it('the protected-header builder refuses a non-registered algorithm set', () => {
-    expect(() => coseHybridProtectedHeader(COSE_ALG_EDDSA, KID, 'caid:1:a.b.1:jcs-sha256:x', [COSE_ALG_EDDSA]))
+    expect(() => coseHybridProtectedHeader(COSE_ALG_EDDSA, KID, 'canactid:1:a.b.1:jcs-sha256:x', [COSE_ALG_EDDSA]))
       .toThrow(/registered EP-COSE-ENCODING-v0.2 set/);
   });
 

@@ -9,7 +9,7 @@
     "payment_instruction_id": "pi_scitt_cpb_001",
     "memo": "approved supplier invoice"
   },
-  "caid": "caid:1:payment.release.1:jcs-sha256:2T5-O1AdRybGGJ5i6L-XuvLSdxClk29qkLHPmkIDDh0",
+  "caid": "canactid:1:payment.release.1:jcs-sha256:2T5-O1AdRybGGJ5i6L-XuvLSdxClk29qkLHPmkIDDh0",
   "reference": {
     "type": "caid-action-object",
     "digest_alg": "SHA-256",

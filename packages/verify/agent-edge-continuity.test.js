@@ -8,7 +8,7 @@ import test from 'node:test';
 import { AGENT_CONTINUITY_VERSION, authorizeAgentContinuityExecution, authorizeAgentContinuityExecutionDurable, createA2AHandoffContinuity, createAgentContinuityEnvelope, createEffectContinuity, createMcpToolContinuity, verifyAgentContinuityEnvelope, verifyAgentContinuityGraph, } from './agent-edge-continuity.js';
 import { digestAeb, InMemoryAebConsumptionStore } from './aeb-adapter-contract.js';
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/agent-edge-continuity.v1.json', import.meta.url), 'utf8'));
-const CAID = `caid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = digestAeb({ action_type: 'order.purchase.1', order_id: 'o-1', amount_minor: '1000' });
 const OTHER_ACTION = digestAeb({ action_type: 'order.purchase.1', order_id: 'o-2', amount_minor: '1000' });
 const NOW = '2026-07-22T12:00:00Z';

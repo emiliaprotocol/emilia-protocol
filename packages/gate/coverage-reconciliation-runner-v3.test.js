@@ -14,7 +14,7 @@ import { COVERAGE_SOURCE_INVENTORY_VERSION, COVERAGE_SOURCE_INVENTORY_V3_VERSION
 import { COVERAGE_RECONCILIATION_ATTESTATION_V3_VERSION, verifyCoverageReconciliationAttestationV3, } from './coverage-reconciliation-attestation.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const D = (character) => `sha256:${character.repeat(64)}`;
-const C = (character) => (`caid:1:health.medical-prior-authorization-review.1:jcs-sha256:${character.repeat(43)}`);
+const C = (character) => (`canactid:1:health.medical-prior-authorization-review.1:jcs-sha256:${character.repeat(43)}`);
 const PERIOD = { start: '2026-07-01T00:00:00Z', end: '2026-08-01T00:00:00Z' };
 const PROGRAM = { program_id: 'rp.payer.pas.1', version: 3, source_digest: D('1'), program_digest: D('2') };
 const NOW = '2026-08-02T00:00:00Z';

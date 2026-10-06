@@ -281,7 +281,7 @@ describe('EP Model-to-Matter action and profile', () => {
     const a = action();
     const computed = modelToMatterCaid(a);
     expect(a.action_type).toBe(M2M_CAID_ACTION_TYPE);
-    expect(computed.caid).toMatch(/^caid:1:science\.bio\.experiment\.execute\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+    expect(computed.caid).toMatch(/^canactid:1:science\.bio\.experiment\.execute\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
     expect(computed.digest).toBe(modelToMatterActionDigest(a));
     // -04 verify results always carry details and, once a conforming
     // definition resolves, its definition_sha256 (Section 4.2.2).
@@ -857,7 +857,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
         label: 'CAID family',
         build() {
           return relianceProgram(a, p, {
-            root_caid: `caid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`,
+            root_caid: `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`,
           }).compiled;
         },
         reason: /Model-to-Matter CAID/i,

@@ -50,7 +50,7 @@ const RECONCILIATION_NOT_ACCEPTED_REASONS = new Set([
 ]);
 const AMOUNT = /^(?:0|[1-9][0-9]{0,17})(?:\.[0-9]{1,2})?$/;
 const CURRENCY = /^[A-Z]{3}$/;
-const CAID = /^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID = /^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 
 function caidMatchesActionDigest(caid, actionDigest) {
   if (!CAID.test(caid ?? '') || !/^sha256:[0-9a-f]{64}$/.test(actionDigest ?? '')) return false;

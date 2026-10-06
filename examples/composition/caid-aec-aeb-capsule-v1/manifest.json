@@ -7,9 +7,9 @@
   "drafts": [
     {
       "role": "CAID",
-      "revision": "draft-schrock-canonical-action-identifier-01",
-      "url": "https://www.ietf.org/archive/id/draft-schrock-canonical-action-identifier-01.txt",
-      "sha256": "sha256:067fe16bcb6026794306c916d92ca5f9229aba2d2ff9e678a1f380e0315bb73d"
+      "revision": "draft-schrock-canonical-action-identifier-05",
+      "url": "https://www.ietf.org/archive/id/draft-schrock-canonical-action-identifier-05.txt",
+      "sha256": "sha256:a077a99964977f0d027f9f2391996e23cd12393bcfbd11881566d7e18657374a"
     },
     {
       "role": "AEC",
@@ -47,7 +47,7 @@
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
-      "sha256": "sha256:9723d33087744b2ffe319209cac1d4cb3fad4f1e78c7aa9a4cdb41406377cbad"
+      "sha256": "sha256:51a7af501683e0e3f163b198752aa14aac0c38577ec98ac60fdd221f6b6a55c7"
     },
     {
       "path": "packages/verify/evidence-chain.js",
@@ -63,7 +63,7 @@
     },
     {
       "path": "examples/composition/caid-aec-aeb-capsule-v1/run.mts",
-      "sha256": "sha256:e7946aa1fe743a932c83a42aa7ab7418ce77bdaedb443fad1bcc36021bd7e273"
+      "sha256": "sha256:f5989ee88a942b9e5cd857ec9a37fb6af53a80e2add4c5f9725bf461e8d1cae5"
     }
   ],
   "capsule_verifier_scope": {

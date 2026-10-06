@@ -411,7 +411,7 @@ export function createReceiptRequiredEdgeHandler(options) {
                 if (caidSelector) {
                     const caid = projected[caidSelector.field];
                     if (typeof caid !== 'string'
-                        || !/^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/.test(caid)) {
+                        || !/^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/.test(caid)) {
                         throw new Error('observed_action_caid_invalid');
                     }
                 }

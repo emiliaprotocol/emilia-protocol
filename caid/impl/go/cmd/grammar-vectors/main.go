@@ -16,9 +16,9 @@
 //
 //	pattern:caid              ParseCaid(input)
 //	pattern:action_type       ComputeCaid and ParseCaid
-//	pattern:suite             ParseCaid("caid:1:a.b.1:<input>:<digest>")
-//	pattern:digest            ParseCaid("caid:1:a.b.1:jcs-sha256:<input>")
-//	suite_digest:<suite>      ParseCaid("caid:1:a.b.1:<suite>:<input>")
+//	pattern:suite             ParseCaid("canactid:1:a.b.1:<input>:<digest>")
+//	pattern:digest            ParseCaid("canactid:1:a.b.1:jcs-sha256:<input>")
+//	suite_digest:<suite>      ParseCaid("canactid:1:a.b.1:<suite>:<input>")
 //	pattern:amount_string     ComputeCaid, field type amount-string
 //	pattern:digest_field      ComputeCaid, field type digest
 //	pattern:timestamp         ComputeCaid, field type timestamp
@@ -57,7 +57,7 @@ type obj = map[string]interface{}
 
 var registeredSuites = map[string]int{}
 
-// maxOctets holds the length limits of draft -04 Section 2.6, read from
+// maxOctets holds the length limits of draft -05 Section 2.6, read from
 // caid/spec/core.json: each is checked before any pattern runs.
 var maxOctets = map[string]int{}
 
@@ -307,14 +307,14 @@ func check(rule, input string, match bool) string {
 		if accepted != (got.Caid != "") || (!accepted && !sameReasons(got.Refusals, "invalid_action_type")) {
 			return fmt.Sprintf("ComputeCaid = %v %q", got.Refusals, got.Caid)
 		}
-		return expectParse("caid:1:"+input+":jcs-sha256:"+validDigest, match && !strings.Contains(input, ":"), "jcs-sha256", validDigest)
+		return expectParse("canactid:1:"+input+":jcs-sha256:"+validDigest, match && !strings.Contains(input, ":"), "jcs-sha256", validDigest)
 	case rule == "pattern:suite":
-		return expectParse("caid:1:a.b.1:"+input+":"+validDigest, match, input, validDigest)
+		return expectParse("canactid:1:a.b.1:"+input+":"+validDigest, match, input, validDigest)
 	case rule == "pattern:digest":
-		return expectParse("caid:1:a.b.1:jcs-sha256:"+input, match, "jcs-sha256", input)
+		return expectParse("canactid:1:a.b.1:jcs-sha256:"+input, match, "jcs-sha256", input)
 	case strings.HasPrefix(rule, "suite_digest:"):
 		suite := strings.TrimPrefix(rule, "suite_digest:")
-		got := parseReasons("caid:1:a.b.1:" + suite + ":" + input)
+		got := parseReasons("canactid:1:a.b.1:" + suite + ":" + input)
 		if match != (got == nil) || (!match && !sameReasons(got, "malformed_caid")) {
 			return fmt.Sprintf("ParseCaid = %v", got)
 		}

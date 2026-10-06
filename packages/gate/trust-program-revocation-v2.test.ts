@@ -30,7 +30,7 @@ const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
 const NOW = Date.parse('2026-08-17T12:00:00.000Z');
 const DIGEST = (character: string) => `sha256:${character.repeat(64)}`;
-const ROOT_CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const ROOT_CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 
 function canonicalDigest(value: unknown): string {
   return `sha256:${crypto.createHash('sha256').update(canonicalize(value)).digest('hex')}`;

@@ -48,7 +48,7 @@ const SIGNER = {
   pq_public_key: pqPubB64u,
 };
 
-const CAID = `caid:1:payment.transfer.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.transfer.1:jcs-sha256:${'A'.repeat(43)}`;
 
 const BODY: AebNativeVerificationAttestationV2Body = {
   '@version': AEB_NATIVE_VERIFICATION_ATTESTATION_V2_VERSION,

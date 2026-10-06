@@ -71,7 +71,7 @@ async function fixture() {
     head_sha: headSha,
     mandate_digest: mandateDigest,
   };
-  const caid = `caid:1:${action.action_type}:jcs-sha256:${crypto.createHash('sha256').update(canonicalize(action)).digest('base64url')}`;
+  const caid = `canactid:1:${action.action_type}:jcs-sha256:${crypto.createHash('sha256').update(canonicalize(action)).digest('base64url')}`;
   const payload = {
     receipt_id: 'receipt:merge:acme-payments:1',
     issuer: 'customer:acme:security',
@@ -123,6 +123,16 @@ test('admits a signed exact-head merge inside the base-pinned mandate', async ()
   assert.equal(result.caid, item.caid);
   assert.equal(result.diff.changed_files, 1);
   assert.deepEqual(result.diff.paths, ['src/app.js']);
+});
+
+test('refuses a newly signed receipt that silently uses the legacy URI scheme', async () => {
+  const item = await fixture();
+  await rewriteReceipt(item, (payload) => {
+    payload.claim.caid = payload.claim.caid.replace(/^canactid:/, 'caid:');
+  });
+  const result = await evaluate(item);
+  assert.equal(result.admitted, false);
+  assert.equal(result.reason, 'receipt_caid_mismatch');
 });
 
 test('refuses head substitution and receipt tampering', async () => {

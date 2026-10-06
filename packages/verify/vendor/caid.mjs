@@ -1,6 +1,6 @@
 // caid.mjs - CAID v1 reference implementation (JavaScript, ESM).
 //
-// Implements draft-schrock-canonical-action-identifier-04. The draft is the
+// Implements draft-schrock-canonical-action-identifier-05. The draft is the
 // normative text. Every grammar, limit, reason code, reason rank, field type
 // and definition rule this file applies comes from the generated region
 // below, which caid/spec/gen.mjs compiles from the draft's Appendix A
@@ -17,16 +17,21 @@
 // identity, or authorization.
 //
 // Entry points:
-//   decodeCaidJson(bytes)             strict JSON text decoder (-04 2.4)
+//   decodeCaidJson(bytes)             strict JSON text decoder (-05 2.4)
 //   decodeCaidDocument(bytes)         the same rules without the size cap,
 //                                     for definitions, registries, enum
 //                                     snapshots and mapping profiles
 //   computeCaidJson(bytes, options)   compute over received JSON text
 //   verifyCaidJson(bytes, caid, opts) verify over received JSON text
 //   computeCaid(value, options)       compute over a host value the
-//                                     application constructed (-04 2.5)
+//                                     application constructed (-05 2.5)
 //   verifyCaid(value, caid, options)  verify over such a host value
 //   parseCaid(string)                 strict identifier parser
+//   parseLegacyCaidV04(string)        explicit obsolete-scheme parser
+//   verifyLegacyCaidV04(value, caid, options)
+//                                     explicit immutable -04 verification
+//   verifyLegacyCaidV04Json(bytes, caid, options)
+//                                     its received-JSON-text form
 //   definitionSha256(definition)      the definition digest
 //   canonicalize(value)               RFC 8785 over the data model
 //
@@ -56,15 +61,16 @@ function caidSpecData(value) {
 
 // Rule data. Every object is frozen and has a null prototype.
 export const CAID_SPEC = caidSpecData({
-  draft: "draft-schrock-canonical-action-identifier-04",
+  draft: "draft-schrock-canonical-action-identifier-05",
   identifier: {
-    scheme: "caid",
+    scheme: "canactid",
+    legacy_v04_scheme: "caid",
     version: "1",
     separator: ":",
     parts: 5,
   },
   patterns: {
-    caid: "caid\\x3a1\\x3a(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*\\x3a[a-z][\\x2d0-9a-z]*\\x3a[\\x2d0-9A-Z\\x5fa-z]+",
+    caid: "canactid\\x3a1\\x3a(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*\\x3a[a-z][\\x2d0-9a-z]*\\x3a[\\x2d0-9A-Z\\x5fa-z]+",
     action_type: "(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*",
     suite: "[a-z][\\x2d0-9a-z]*",
     digest: "[\\x2d0-9A-Z\\x5fa-z]+",
@@ -896,7 +902,7 @@ export const CAID_SPEC = caidSpecData({
 // including a final line feed, does not match. Test only strings: RegExp
 // test() converts any other value to a string first.
 export const CAID_PATTERNS = caidSpecData({
-  caid: /^(?:caid\x3a1\x3a(?:[a-z][\x2d0-9a-z]*\x2e)+[1-9][0-9]*\x3a[a-z][\x2d0-9a-z]*\x3a[\x2d0-9A-Z\x5fa-z]+)$/,
+  caid: /^(?:canactid\x3a1\x3a(?:[a-z][\x2d0-9a-z]*\x2e)+[1-9][0-9]*\x3a[a-z][\x2d0-9a-z]*\x3a[\x2d0-9A-Z\x5fa-z]+)$/,
   action_type: /^(?:(?:[a-z][\x2d0-9a-z]*\x2e)+[1-9][0-9]*)$/,
   suite: /^(?:[a-z][\x2d0-9a-z]*)$/,
   digest: /^(?:[\x2d0-9A-Z\x5fa-z]+)$/,
@@ -971,7 +977,7 @@ const IMPLEMENTED_SUITES = new Set(["jcs-sha256"]);
 
 // Canonicalization reads at most this many values, counting a value once
 // for every path that reaches it; past it the value is refused as
-// unsupported_value alone (-04 Section 2.6). No JSON text within the text
+// unsupported_value alone (-05 Section 2.6). No JSON text within the text
 // limit holds that many values, so the bound refuses only host values in
 // which one object is reached through many paths.
 const VALUE_BUDGET = LIMITS.value_count;
@@ -1069,7 +1075,7 @@ function outsideModelString(s) {
 }
 
 // Whole-string match of a generated pattern, with its length limit, if it
-// has one, checked first (-04 Section 2.6). Every string such a pattern
+// has one, checked first (-05 Section 2.6). Every string such a pattern
 // matches is ASCII, so its length in UTF-16 code units is its length in
 // octets. The limit also keeps a long string from exhausting the regular
 // expression engine's backtracking stack.
@@ -1214,7 +1220,7 @@ function readPin(options, key) {
 }
 
 // ---------------------------------------------------------------------------
-// Host values (-04 Section 2.5)
+// Host values (-05 Section 2.5)
 //
 // snapshot(value) copies a host value into the data model. It is iterative,
 // never throws and never invokes a getter: members are read through
@@ -1241,7 +1247,7 @@ function readPin(options, key) {
 // Values are counted once for every path that reaches them. Past the value
 // budget no further container is entered (containers keep their kind), the
 // result is marked exceeded, and canonicalization refuses it as
-// unsupported_value alone (-04 Section 2.6). The members of the outermost
+// unsupported_value alone (-05 Section 2.6). The members of the outermost
 // object are always read, so the checks of computation phases 1 through 4,
 // which never look inside a member, see the whole value.
 //
@@ -1720,7 +1726,7 @@ export function toCaidDataWithCanonical(value) {
 }
 
 // ---------------------------------------------------------------------------
-// Strict JSON text (-04 Section 2.4)
+// Strict JSON text (-05 Section 2.4)
 //
 // The input is octets (a Uint8Array, which includes a Node Buffer); any
 // other type is refused, including a string, whose re-encoding would
@@ -2055,7 +2061,7 @@ function decodeWith(bytes, capOctets) {
  * decodeCaidJson(bytes) -> {ok: true, value} | {ok: false, refusals: ["malformed_json"]}
  *
  * The strict decoder for an action object or mapping source received as
- * JSON text (-04 Section 2.4), including the 33554432-octet cap. Objects in
+ * JSON text (-05 Section 2.4), including the 33554432-octet cap. Objects in
  * the result are plain, with every member an own data property.
  *
  * @param {unknown} bytes
@@ -2077,7 +2083,7 @@ export function decodeCaidDocument(bytes) {
 }
 
 // ---------------------------------------------------------------------------
-// Definitions (-04 Section 4.2): conformance, digest, resolution
+// Definitions (-05 Section 4.2): conformance, digest, resolution
 // ---------------------------------------------------------------------------
 
 function validFieldName(name) {
@@ -2087,7 +2093,7 @@ function validFieldName(name) {
   return true;
 }
 
-// The validation projection of a data-model definition (-04 4.2.2), or null
+// The validation projection of a data-model definition (-05 4.2.2), or null
 // when a field list is not an array.
 function projectionOf(d) {
   const out = {};
@@ -2159,7 +2165,7 @@ function isPlainHostObject(value) {
 }
 
 // A host definition copied into the data model, or UNSUPPORTED. Only what
-// the validation projection reads is read (-04 Section 2.5): action_type,
+// the validation projection reads is read (-05 Section 2.5): action_type,
 // given here as the value already read once for matching, and the two field
 // lists, each entry without the members the projection excludes (notes).
 // Members outside the projection are never read, so they are never checked
@@ -2228,7 +2234,7 @@ function definitionData(entry, actionType) {
   return snap.clean ? snap.value : UNSUPPORTED;
 }
 
-// Resolution (-04 4.2.3): collect the definitions whose action_type equals
+// Resolution (-05 4.2.3): collect the definitions whose action_type equals
 // the object's; none is unknown_action_type; any nonconforming candidate, or
 // two whose definition_sha256 differ, is invalid_definition; candidates
 // with equal projections count once.
@@ -2296,7 +2302,7 @@ export function resolveCaidDefinition(actionType, definitions) {
 }
 
 // ---------------------------------------------------------------------------
-// Field validation (-04 Section 4.3, 4.4)
+// Field validation (-05 Section 4.3, 4.4)
 // ---------------------------------------------------------------------------
 
 function validEnumValues(values) {
@@ -2384,7 +2390,7 @@ function checkField(value, field, enumSnapshots) {
 }
 
 // ---------------------------------------------------------------------------
-// Computation (-04 Section 5): gates, then every check, in rank order
+// Computation (-05 Section 5): gates, then every check, in rank order
 // ---------------------------------------------------------------------------
 
 // Runs compute after the entry gate over a data-model value. Returns the
@@ -2484,7 +2490,7 @@ export function computeCaidJson(bytes, options) {
 }
 
 // ---------------------------------------------------------------------------
-// parseCaid (-04 Section 3.4)
+// parseCaid (-05 Section 3.4)
 // ---------------------------------------------------------------------------
 
 /**
@@ -2511,8 +2517,39 @@ export function parseCaid(input) {
   return { ok: true, caid: { version, action_type: actionType, suite, digest } };
 }
 
+/**
+ * parseLegacyCaidV04(input)
+ *
+ * Strictly parses the obsolete `caid:1:` spelling emitted through CAID-04.
+ * This deliberately separate entry point exists only to verify immutable
+ * historical artifacts. New issuance and the default parse/verify entry
+ * points use the `canactid:` scheme provisionally registered by IANA and
+ * refuse `caid:`. Provisional registration is not IETF endorsement.
+ *
+ * @param {*} input
+ * @returns {CaidParseResult}
+ */
+export function parseLegacyCaidV04(input) {
+  const legacyScheme = ID.legacy_v04_scheme;
+  if (typeof input !== "string" || Buffer.byteLength(input, "utf8") > LIMITS.caid_octets) {
+    return { ok: false, refusals: ["malformed_caid"] };
+  }
+  const parts = input.split(ID.separator);
+  if (parts.length !== ID.parts || parts[0] !== legacyScheme || parts[1] !== ID.version) {
+    return { ok: false, refusals: ["malformed_caid"] };
+  }
+  const [, version, actionType, suite, digest] = parts;
+  if (!matchesPattern("action_type", actionType) || !matchesPattern("suite", suite) || !matchesPattern("digest", digest)) {
+    return { ok: false, refusals: ["malformed_caid"] };
+  }
+  const digestPattern = CAID_SUITE_DIGEST_PATTERNS[suite];
+  if (digestPattern === undefined) return { ok: false, refusals: ["unknown_suite"] };
+  if (!digestPattern.test(digest)) return { ok: false, refusals: ["malformed_caid"] };
+  return { ok: true, caid: { version, action_type: actionType, suite, digest } };
+}
+
 // ---------------------------------------------------------------------------
-// Verification (-04 Section 6)
+// Verification (-05 Section 6)
 // ---------------------------------------------------------------------------
 
 // The closed-shape detail of one reason: {reason, field, rule, observed}.
@@ -2639,6 +2676,31 @@ export function verifyCaid(actionObject, caidString, options) {
  */
 export function verifyCaidJson(bytes, caidString, options) {
   const parsed = parseCaid(caidString);
+  if (!parsed.ok) return refusedVerify(parsed.refusals, undefined, caidString);
+  const decoded = decodeCaidJson(bytes);
+  if (!decoded.ok) return refusedVerify(decoded.refusals, undefined, caidString);
+  return verifyData(decoded.value, false, false, caidString, parsed.caid, options);
+}
+
+/**
+ * Explicit CAID-04 legacy verification. These entry points accept only the
+ * obsolete `caid:` scheme and never mint or rewrite an identifier.
+ *
+ * @param {*} actionObject
+ * @param {*} caidString
+ * @param {*} [options]
+ * @returns {CaidVerifyResult}
+ */
+export function verifyLegacyCaidV04(actionObject, caidString, options) {
+  const parsed = parseLegacyCaidV04(caidString);
+  if (!parsed.ok) return refusedVerify(parsed.refusals, undefined, caidString);
+  const snap = snapshot(actionObject, true);
+  return verifyData(snap.value, snap.outside, snap.exceeded, caidString, parsed.caid, options);
+}
+
+/** @param {unknown} bytes @param {*} caidString @param {*} [options] @returns {CaidVerifyResult} */
+export function verifyLegacyCaidV04Json(bytes, caidString, options) {
+  const parsed = parseLegacyCaidV04(caidString);
   if (!parsed.ok) return refusedVerify(parsed.refusals, undefined, caidString);
   const decoded = decodeCaidJson(bytes);
   if (!decoded.ok) return refusedVerify(decoded.refusals, undefined, caidString);

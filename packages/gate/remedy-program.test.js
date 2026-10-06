@@ -12,7 +12,7 @@ function digest(value) {
 }
 function original(overrides = {}) {
     return {
-        caid: 'caid:1:payments.refund.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        caid: 'canactid:1:payments.refund.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
         action_digest: HASH('a'),
         operation_id: 'payment-op-1',
         consequence_mode: 'receipt-program',
@@ -154,7 +154,7 @@ async function authorize(subject, units, suffix = '1', overrides = {}) {
             evidence_id: `authorization-${suffix}`,
             evidence_digest: digest(`authorization-${suffix}`),
             remedy_operation_id: `refund-op-${suffix}`,
-            remedy_caid: `caid:1:payments.refund.1:jcs-sha256:${caidChar.repeat(43)}`,
+            remedy_caid: `canactid:1:payments.refund.1:jcs-sha256:${caidChar.repeat(43)}`,
             remedy_action_digest: digest(`refund-action-${suffix}`),
             consequence_mode: 'receipt-program',
             capability_template_digest: HASH('6'),
@@ -326,7 +326,7 @@ test('accepts an indeterminate original for petition intake and requires authent
             evidence_id: 'authorization-uncertain',
             evidence_digest: digest('authorization-uncertain'),
             remedy_operation_id: 'refund-op-uncertain',
-            remedy_caid: 'caid:1:payments.refund.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+            remedy_caid: 'canactid:1:payments.refund.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
             remedy_action_digest: digest('refund-action-uncertain'),
             consequence_mode: 'receipt-program',
             capability_template_digest: HASH('6'),
@@ -358,7 +358,7 @@ test('accepts an indeterminate original for petition intake and requires authent
             evidence_id: 'authorization-after-reconcile',
             evidence_digest: digest('authorization-after-reconcile'),
             remedy_operation_id: 'refund-op-after-reconcile',
-            remedy_caid: 'caid:1:payments.refund.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+            remedy_caid: 'canactid:1:payments.refund.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
             remedy_action_digest: digest('refund-action-after-reconcile'),
             consequence_mode: 'receipt-program',
             capability_template_digest: HASH('6'),
@@ -396,7 +396,7 @@ test('proved-no-effect reconciliation closes an indeterminate original without i
         authorization: {
             evidence_id: 'should-not-authorize', evidence_digest: HASH('1'),
             remedy_operation_id: 'should-not-run',
-            remedy_caid: 'caid:1:payments.refund.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+            remedy_caid: 'canactid:1:payments.refund.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
             remedy_action_digest: HASH('2'), consequence_mode: 'receipt-program',
             capability_template_digest: HASH('6'), escrow_profile_digest: null,
             units: 1, authorized_at: '2026-07-21T18:27:00.000Z',
@@ -481,7 +481,7 @@ test('refuses one remedy operation, action, or CAID reused across same-tenant ca
     });
     const common = {
         remedy_operation_id: 'globally-one-use-remedy',
-        remedy_caid: 'caid:1:payments.refund.1:jcs-sha256:EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE',
+        remedy_caid: 'canactid:1:payments.refund.1:jcs-sha256:EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE',
         remedy_action_digest: HASH('6'), consequence_mode: 'receipt-program',
         capability_template_digest: HASH('a'), escrow_profile_digest: null,
         units: 1_000, authorized_at: '2026-07-21T18:25:00.000Z',

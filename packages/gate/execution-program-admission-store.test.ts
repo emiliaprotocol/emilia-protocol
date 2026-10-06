@@ -30,7 +30,7 @@ function d(label: string): `sha256:${string}` {
 }
 
 function caid(label: string): string {
-  return `caid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
+  return `canactid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
 }
 
 function owner(index: number): string {

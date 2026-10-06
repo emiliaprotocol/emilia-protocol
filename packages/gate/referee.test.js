@@ -10,7 +10,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { REFEREE_EVALUATION_VERSION, REFEREE_RESULT_VERSION, REFEREE_RUNNER_OUTPUT_VERSION, REFEREE_RUNNER_REQUEST_VERSION, RefereeValidationError, evaluateReferee, } from './referee.js';
 import { REFEREE_RUNNER_MAX_INPUT_BYTES, REFEREE_RUNNER_MAX_OUTPUT_BYTES, runPinnedProtocolRunner, runReferee, } from './referee-runner.js';
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION_DIGEST = `sha256:${'1'.repeat(64)}`;
 const NODE_EXECUTABLE_SHA256 = executableDigest(process.execPath);
 function runnerRequest(overrides = {}) {
@@ -203,7 +203,7 @@ describe('offline EMILIA Referee core', () => {
         const result = evaluateReferee(evaluation(runnerOutput({
             native_verification: 'INDETERMINATE',
             rp_acceptance: 'REJECTED',
-            caid: `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`,
+            caid: `canactid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`,
             aec_satisfaction: 'NOT_SATISFIED',
             provider_outcome: 'INDETERMINATE',
             effect_relation: 'DIVERGED',

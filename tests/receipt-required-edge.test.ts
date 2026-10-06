@@ -116,7 +116,7 @@ describe('runtime-neutral Receipt Required edge enforcement', () => {
       amount: 200,
       currency: 'USD',
       beneficiary_account_hash: `sha256:${'b'.repeat(64)}`,
-      action_caid: `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_caid: `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
     };
     const verifyReceipt = vi.fn(async (_carrier, context) => ({
       ok: true,

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Dev-time oracle for the -04 JSON text input rules (draft Section 2.4),
+// Dev-time oracle for the -05 JSON text input rules (draft Section 2.4),
 // used to build and check the conformance corpora and as the fuzz oracle.
 // It is not a port and ships in no package.
 //

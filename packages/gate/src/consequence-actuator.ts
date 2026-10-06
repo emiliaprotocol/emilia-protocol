@@ -56,7 +56,7 @@ const MAX_CONFIGURED_TTL_MS = 5 * 60_000;
 const MAX_CLOCK_SKEW_MS = 30_000;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const CAID_PATTERN =
-  /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+  /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 const ENVELOPE_KEYS = ['payload', 'signature'] as const;

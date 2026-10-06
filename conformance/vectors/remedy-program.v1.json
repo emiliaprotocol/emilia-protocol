@@ -9,7 +9,7 @@
   "materialization": {
     "$digest": "A one-character lowercase hexadecimal value expands to sha256: followed by that character 64 times.",
     "$sha256": "A string expands to sha256: followed by the lowercase SHA-256 of its UTF-8 bytes.",
-    "$caid": "A one-character base64url value expands to caid:1:payments.refund.1:jcs-sha256: followed by that character 43 times."
+    "$caid": "A one-character base64url value expands to canactid:1:payments.refund.1:jcs-sha256: followed by that character 43 times."
   },
   "required_coverage": [
     "executed-original",

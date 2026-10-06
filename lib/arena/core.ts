@@ -204,7 +204,7 @@ export function deriveArenaActionBinding(action: unknown): ArenaActionBinding {
   const canonical = canonicalize(action);
   const digest = createHash('sha256').update(canonical, 'utf8').digest();
   return Object.freeze({
-    caid: `caid:1:${action.action_type}:jcs-sha256:${digest.toString('base64url')}`,
+    caid: `canactid:1:${action.action_type}:jcs-sha256:${digest.toString('base64url')}`,
     action_digest: `sha256:${digest.toString('hex')}`,
   });
 }

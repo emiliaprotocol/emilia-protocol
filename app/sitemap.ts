@@ -45,6 +45,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/standards',             priority: 0.85, changeFrequency: 'monthly' },
     { path: '/proof',                 priority: 0.95, changeFrequency: 'weekly' },
     { path: '/conformance',           priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/caid',                  priority: 0.9, changeFrequency: 'monthly' },
     { path: '/verify',                priority: 0.9, changeFrequency: 'monthly' },
     { path: '/verify-live',           priority: 0.85, changeFrequency: 'weekly' },
     { path: '/spec/trust-receipt',    priority: 0.85, changeFrequency: 'monthly' },

@@ -21,7 +21,7 @@ function options() {
         verifyParallelAllocation: ({ parallel_id }) => (vector.native_results.parallel_allocations[parallel_id]),
         verifyRootActionBinding: () => ({
             valid: true,
-            root_caid: `caid:1:${vector.root_action.action_type}:jcs-sha256:${rootActionHash.toString('base64url')}`,
+            root_caid: `canactid:1:${vector.root_action.action_type}:jcs-sha256:${rootActionHash.toString('base64url')}`,
             root_action_digest: `sha256:${rootActionHash.toString('hex')}`,
         }),
     };

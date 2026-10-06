@@ -43,7 +43,7 @@ const clone = (value) => structuredClone(value);
  */
 const digest = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 const caid = (label) => (
-  `caid:1:reference.synthetic-action.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`
+  `canactid:1:reference.synthetic-action.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`
 );
 
 function deterministicEd25519(label) {

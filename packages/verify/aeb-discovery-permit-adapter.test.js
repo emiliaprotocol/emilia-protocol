@@ -7,7 +7,7 @@ import test from 'node:test';
 import { DISCOVERY_PERMIT_BINDING_VERSION, DISCOVERY_PERMIT_DISCOVERY_VERSION, DISCOVERY_PERMIT_RESOLVER_ATTESTATION_DOMAIN, canonicalizeDiscoveryPermit, digestDiscoveryPermit, digestDiscoveryPermitRaw, evaluateDiscoveryPermitContinuity, pinDiscoveryPermitTrust, signDiscoveryPermitResolverAttestation, } from './discovery-permit-contract.js';
 import { AEB_DISCOVERY_PERMIT_ADAPTER_ID, AEB_DISCOVERY_PERMIT_ADAPTER_VERSION, AEB_DISCOVERY_PERMIT_CONFIG_VERSION, DISCOVERY_PERMIT_EVIDENCE_ROLE, createAebDiscoveryPermitAdapter, } from './aeb-discovery-permit-adapter.js';
 const NOW = '2026-07-24T12:00:00Z';
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = Object.freeze({
     action_type: 'payment.release.1',
     amount: '125000.00',

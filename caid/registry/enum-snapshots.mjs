@@ -27,7 +27,7 @@ const SNAPSHOT_PATH = /^value-sets\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 
 /**
- * Reads a registry document under the strict JSON text rules of -04
+ * Reads a registry document under the strict JSON text rules of -05
  * Section 2.4 (without the size limit): a registry or snapshot that fails
  * them is never used.
  *
@@ -35,7 +35,7 @@ const DIGEST = /^sha256:[0-9a-f]{64}$/;
  */
 export function readStrictRegistryDocument(url) {
   const decoded = decodeCaidDocument(readFileSync(url));
-  if (!decoded.ok) throw new Error(`CAID registry document ${url.pathname} is not strict JSON text (-04 Section 2.4)`);
+  if (!decoded.ok) throw new Error(`CAID registry document ${url.pathname} is not strict JSON text (-05 Section 2.4)`);
   return decoded.value;
 }
 

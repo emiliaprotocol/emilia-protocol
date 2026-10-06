@@ -154,7 +154,7 @@ function makeHarness({
 async function prepareReady(harness, action = ACTION, authorizationOver = {}) {
   const prepared = await harness.engine.prepare({ action: clone(action) });
   expect(prepared).toMatchObject({ ok: true });
-  expect(prepared.action_caid).toMatch(/^caid:/);
+  expect(prepared.action_caid).toMatch(/^canactid:/);
   const authorization = makeAuthorization(prepared.action_caid, authorizationOver);
   const ready = await harness.engine.precheck({
     action: clone(action),
@@ -499,7 +499,7 @@ describe('Health Program Integrity hostile contract', () => {
     const authorization = makeAuthorization(collisionPrepared.action_caid);
 
     stored = {
-      action_caid: `caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_caid: `canactid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:${'A'.repeat(43)}`,
       decision: 'READY',
     };
     const mismatched = await collision.engine.precheck({

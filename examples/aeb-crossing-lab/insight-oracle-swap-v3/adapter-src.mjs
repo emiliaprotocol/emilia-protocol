@@ -791,7 +791,7 @@ export function mapAction(verified, expectedAction) {
         reason: 'expected action router_call differs from decoded calldata',
       });
     const actionDigest = sha256PrefixedJcs(actionObject);
-    const caid = `caid:1:${internal.profile.mappingOutput.versionedActionType}:jcs-sha256:${base64urlSha256Jcs(actionObject)}`;
+    const caid = `canactid:1:${internal.profile.mappingOutput.versionedActionType}:jcs-sha256:${base64urlSha256Jcs(actionObject)}`;
     return mappingResult({
       mapping: 'MATCH',
       code: 'MATCH',

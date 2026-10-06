@@ -370,7 +370,7 @@ test('real Ed25519 WIT, WPT, OAuth Txn, SPT intent, and HTTP signature map to on
         definitions: definition.definitions,
     });
     assert.equal(mapped.caid, independentlyComputed.caid);
-    assert.match(mapped.caid ?? '', /^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+    assert.match(mapped.caid ?? '', /^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
     assert.equal(WIMSE_WPT_REVISION, 'draft-ietf-wimse-wpt-02');
     assert.equal(WIMSE_HTTP_SIGNATURE_REVISION, 'draft-ietf-wimse-http-signature-06');
     assert.equal(WIMSE_WORKLOAD_CREDS_REVISION, 'draft-ietf-wimse-workload-creds-02');

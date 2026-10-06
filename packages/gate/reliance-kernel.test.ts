@@ -7,7 +7,7 @@ import { verifyActionRefusalStatement } from './action-refusal-statement.js';
 import { createRelianceKernel } from './reliance-kernel.js';
 
 const DIGEST = (character: string) => `sha256:${character.repeat(64)}`;
-const CAID = 'caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo';
+const CAID = 'canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo';
 
 function runtime(overrides: Record<string, unknown> = {}) {
   const keys = crypto.generateKeyPairSync('ed25519');

@@ -118,7 +118,7 @@ per DESIGN.md section 3):
 
 The issuing side (Shopping Agent or merchant surface) extracts these
 fields from the Checkout payload it already has, computes
-`caid:1:order.place.1:jcs-sha256:<digest>`, and carries the string
+`canactid:1:order.place.1:jcs-sha256:<digest>`, and carries the string
 ALONGSIDE the mandate: as an additional claim next to `checkout_hash`
 where AP2 schema rules permit extension claims, or, with zero spec
 changes, in each party's own transaction records keyed to the mandate.
@@ -155,7 +155,7 @@ This value exists with zero other adopters.
 
 Proposal: carry an optional Canonical Action IDentifier (CAID)
 alongside the Checkout Mandate. A CAID is a typed content digest
-(caid:1:order.place.1:jcs-sha256:...) computed over the order's
+(canactid:1:order.place.1:jcs-sha256:...) computed over the order's
 material fields (merchant, line items, amount, currency) under RFC
 8785 JCS + SHA-256. It carries no trust semantics: it is not
 authorization, not identity, and it does not touch or replace

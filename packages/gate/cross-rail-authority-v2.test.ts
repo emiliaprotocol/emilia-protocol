@@ -24,7 +24,7 @@ import {
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
 const D = (label: string) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
-const CAID = `caid:1:commerce.payment.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
+const CAID = `canactid:1:commerce.payment.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
 const NOW = Date.parse('2026-08-03T18:00:00.000Z');
 
 function material() {

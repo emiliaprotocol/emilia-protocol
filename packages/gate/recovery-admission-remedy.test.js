@@ -17,8 +17,8 @@ const TENANT = 'tenant-1';
 const INSTANCE = 'remedy-1';
 const ORIGINAL_OPERATION = 'payment-op-1';
 const REMEDY_OPERATION = 'refund-op-1';
-const ORIGINAL_CAID = 'caid:1:payments.capture.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-const REMEDY_CAID = 'caid:1:payments.refund.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
+const ORIGINAL_CAID = 'canactid:1:payments.capture.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const REMEDY_CAID = 'canactid:1:payments.refund.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
 function d(label) {
     return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 }

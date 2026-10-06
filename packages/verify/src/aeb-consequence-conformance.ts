@@ -49,7 +49,7 @@ export const AEB_CONSEQUENCE_LIMITS = Object.freeze({
 });
 
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
-const CAID_RE = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID_RE = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{0,255}$/;
 const ROLE_RE = /^[a-z][a-z0-9-]{0,127}$/;
 const TOKEN_RE = /^[a-z][a-z0-9_-]{0,127}$/;

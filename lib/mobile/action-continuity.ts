@@ -20,7 +20,8 @@ export const MOBILE_DECISION_PASSPORT_VERSION = 'EP-MOBILE-DECISION-PASSPORT-v1'
 export const MOBILE_PROVIDER_OUTCOME_VERSION = 'EP-MOBILE-PROVIDER-OUTCOME-v1';
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
-const CAID = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID = /^canactid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const LEGACY_CAID_V04 = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const B64URL = /^[A-Za-z0-9_-]+$/;
 const ALIGNMENT_VERDICTS = new Set([
   'EQUIVALENT_UNDER_PROFILE',
@@ -50,6 +51,24 @@ function canonicalDigest(value: any) {
 
 function boundedString(value: any, maximum: any = 256) {
   return typeof value === 'string' && value.length > 0 && value.length <= maximum;
+}
+
+/**
+ * Render the digest fingerprint of an immutable CAID-04 record without
+ * accepting that obsolete scheme on any current issuance or execution path.
+ */
+export function legacyMobileActionFingerprintV04(actionCaid: string): string | null {
+  if (!LEGACY_CAID_V04.test(actionCaid || '')) return null;
+  try {
+    const digest = actionCaid.split(':').at(-1);
+    if (!digest) return null;
+    const hex = Buffer.from(digest, 'base64url').toString('hex').slice(0, 16).toUpperCase();
+    if (!/^[0-9A-F]{16}$/.test(hex)) return null;
+    const groups = hex.match(/.{4}/g);
+    return groups ? groups.join('-') : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -15,7 +15,7 @@ import { REMEDY_PROGRAM_EVIDENCE_VERSION, REMEDY_PROGRAM_EVIDENCE_V2_VERSION, RE
 import { canonicalize } from './execution-binding.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const HASH = (character) => `sha256:${character.repeat(64)}`;
-const CAID = (operation, character) => `caid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`;
+const CAID = (operation, character) => `canactid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`;
 const TENANT = 'tenant-a';
 const ENVIRONMENT = 'production';
 const AUDIENCE = 'remedy-auditor';

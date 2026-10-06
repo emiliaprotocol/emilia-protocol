@@ -14,7 +14,7 @@ import test from 'node:test';
 import { BOUNDED_EXECUTION_PROGRAM_V2_VERSION, EXECUTION_PROGRAM_CLAIM_BOUNDARY, executionProgramDigest, signBoundedExecutionProgram, signBoundedExecutionProgramV2, verifyBoundedExecutionProgram, verifyBoundedExecutionProgramV2, } from './bounded-execution-program.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const D = (character) => `sha256:${character.repeat(64)}`;
-const C = (character) => (`caid:1:devops.infrastructure-change.1:jcs-sha256:${character.repeat(43)}`);
+const C = (character) => (`canactid:1:devops.infrastructure-change.1:jcs-sha256:${character.repeat(43)}`);
 const NOW = '2026-07-29T20:00:00.000Z';
 function keyMaterial() {
     const pair = generateKeyPairSync('ed25519');

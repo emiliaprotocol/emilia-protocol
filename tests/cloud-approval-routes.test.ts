@@ -53,7 +53,7 @@ const TENANT_ID = '33333333-3333-4333-8333-333333333333';
 const RECEIPT_ID = `tr_${'a'.repeat(32)}`;
 const ACTION_HASH = 'b'.repeat(64);
 const DESTINATION_HASH = `sha256:${'d'.repeat(64)}`;
-const ACTION_CAID = 'caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const ACTION_CAID = 'canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 function request(method = 'GET', body, token = 'ept_live_approval') {
   return new Request('https://www.emiliaprotocol.ai/api/cloud/approvals', {

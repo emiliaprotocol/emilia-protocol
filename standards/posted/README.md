@@ -42,7 +42,7 @@ authoritative for rendered forms.
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-operation-continuity-00`
 - `draft-schrock-agent-qualification-statements-00`
-- `draft-schrock-canonical-action-identifier-04`
+- `draft-schrock-canonical-action-identifier-05`
 - `draft-schrock-emilia-eye-00`
 - `draft-schrock-ep-architecture-03`
 - `draft-schrock-ep-authority-introduction-03`
@@ -81,7 +81,7 @@ subordinate, or demote any active draft.
 ## Separate runtime execution spine
 
 The runtime path is [Architecture-03](draft-schrock-ep-architecture-03.xml) →
-[CAID-04](draft-schrock-canonical-action-identifier-04.xml) →
+[CAID-05](draft-schrock-canonical-action-identifier-05.xml) →
 [AEC-06](draft-schrock-ep-authorization-evidence-chain-06.xml) →
 [AEB-07](draft-schrock-action-evidence-boundary-07.xml): system boundaries,
 exact material-action matching, evidence satisfaction, then executor-side
@@ -419,3 +419,19 @@ upload candidate. Its XML is byte-for-byte identical to the posted source.
 CAID-03 is retained in `../archive/`. Publication does not establish
 protocol-owner review, independent implementation, working-group adoption, RFC
 status, or IETF endorsement.
+
+## October 2, 2026 CAID revision and October 5 URI registration
+
+`draft-schrock-canonical-action-identifier-05` was posted as an active
+individual Internet-Draft through Datatracker submission 169802 (Datatracker
+time 2026-10-02T19:53:38Z). Its XML and TXT are byte-for-byte identical to the
+immutable IETF archive artifacts. -05 changes the literal URI-scheme prefix
+from the unregistered `caid:` form to `canactid:` and leaves the action object,
+canonicalization, suite, digest bytes, mapping algorithm, and registry version
+unchanged. The transition is wire-breaking: legacy and current complete
+identifiers are unequal, legacy signed artifacts are never rewritten, and
+legacy acceptance requires an explicit -04 verification profile.
+
+IANA provisionally registered `canactid` on 2026-10-05 with CAID-05 as its
+reference. This is not permanent registration, IETF adoption, IETF
+endorsement, certification, implementation evidence, or deployment evidence.

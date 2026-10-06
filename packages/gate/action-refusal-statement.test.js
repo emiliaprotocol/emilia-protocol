@@ -8,7 +8,7 @@ import test from 'node:test';
 import { ACTION_REFUSAL_CLAIM_BOUNDARY, ACTION_REFUSAL_STATEMENT_VERSION, acceptActionRefusalStatement, actionRefusalStatementDigest, createMemoryActionRefusalReplayStore, signActionRefusalStatement, verifyActionRefusalExternalEvidence, verifyActionRefusalStatement, } from './action-refusal-statement.js';
 const NOW = Date.parse('2026-07-28T18:00:00.000Z');
 const D = (character) => `sha256:${character.repeat(64)}`;
-const CAID = `caid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`;
 function statementInput() {
     return {
         refusal_id: 'refusal:synthetic-pas:001',

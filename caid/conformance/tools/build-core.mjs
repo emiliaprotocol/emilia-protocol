@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 //
-// Builds the CAID core conformance corpus, version 5
+// Builds the CAID core conformance corpus, version 6
 // (caid/conformance/vectors.json), from:
 //   - the frozen version 4 corpus (caid/conformance/history/vectors.v4.json),
 //     every vector converted to exact JSON text input;
@@ -11,6 +11,12 @@
 //   node caid/conformance/tools/build-core.mjs           write vectors.json
 //   node caid/conformance/tools/build-core.mjs --check   exit 1 unless the
 //                                                        file is current
+//
+// Version 6 moves new issuance to the `canactid:` scheme provisionally
+// registered by IANA. Provisional registration is not IETF endorsement.
+// The frozen version 4 corpus remains byte-identical; identifiers that were
+// valid under it are carried into the current corpus with only their scheme
+// changed. Explicit legacy verification is covered by each port's unit tests.
 //
 // Every expectation is computed by the spec oracle (./oracle.mjs) and then
 // checked against what the case states: a version 4 vector must keep its
@@ -34,6 +40,10 @@ const ROOT = path.resolve(HERE, '../../..');
 const OUT = path.join(ROOT, 'caid/conformance/vectors.json');
 const V4_PATH = 'caid/conformance/history/vectors.v4.json';
 const V4_SHA256 = 'sha256:7a201c872737ad83be8151b80374f720a82d2d5f8bbc597165737bbe2d40a66f';
+const V5_SHA256 = 'sha256:91bc038843e50354191568477946964fedfb6c13dbf510b92f8679c50e47f3ed';
+const V5_VECTORS = 616;
+const currentIdentifier = (value) => typeof value === 'string' && value.startsWith('caid:')
+  ? `canactid:${value.slice('caid:'.length)}` : value;
 
 // Version 4 vectors whose result changes under -04, and the rule that
 // changes it. Every other version 4 vector keeps its result exactly.
@@ -115,7 +125,7 @@ function cborCompute(bytes, definitions) {
   const canonical = encodeCbor(d.value);
   const digest = createHash('sha256').update(canonical).digest();
   return {
-    result: { caid: `caid:1:${d.value.action_type}:cbor-sha256:${digest.toString('base64url')}`, digest: `sha256:${digest.toString('hex')}`, definition_sha256: r.definition_sha256 },
+    result: { caid: `canactid:1:${d.value.action_type}:cbor-sha256:${digest.toString('base64url')}`, digest: `sha256:${digest.toString('hex')}`, definition_sha256: r.definition_sha256 },
     canonical_hex: canonical.toString('hex'),
   };
 }
@@ -153,14 +163,15 @@ v4.vectors.forEach((old, index) => {
     if (raw === undefined) throw new Error(`no raw text for ${old.id}`);
     input.json = minify(raw);
   }
-  for (const [k, x] of Object.entries(old.input)) if (k !== 'object') input[k] = x;
+  for (const [k, x] of Object.entries(old.input)) if (k !== 'object') input[k] = k === 'caid' ? currentIdentifier(x) : x;
   const r = evaluate(old.kind, input, old.definitions);
   const expect = shapeExpect(old.kind, r);
   // Compare with the version 4 result.
   if (old.kind === 'compute') {
     if (old.expect.caid !== undefined) {
-      if (expect.caid !== old.expect.caid || expect.digest !== old.expect.digest) problem(old.id, `version 4 CAID ${old.expect.caid} not reproduced: ${JSON.stringify(expect)}`);
-      else v4Results.set(old.id, old.expect.caid);
+      const current = currentIdentifier(old.expect.caid);
+      if (expect.caid !== current || expect.digest !== old.expect.digest) problem(old.id, `version 4 digest was not reproduced under current scheme ${current}: ${JSON.stringify(expect)}`);
+      else v4Results.set(old.id, current);
     } else if (!same(expect.refusals, change ? change.to : old.expect.refusals)) problem(old.id, `refusals ${JSON.stringify(expect.refusals)}, version 4 ${JSON.stringify(old.expect.refusals)}`);
   } else if (old.kind === 'verify') {
     if (expect.valid !== (change ? false : old.expect.valid) || !same(expect.reasons, change ? change.to : old.expect.reasons)) problem(old.id, `verify ${JSON.stringify(expect.reasons)}, version 4 ${JSON.stringify(old.expect.reasons)}`);
@@ -168,7 +179,9 @@ v4.vectors.forEach((old, index) => {
     const want = change ? { ok: false, refusals: change.to } : old.expect;
     if (!same(expect, want)) problem(old.id, `parse ${JSON.stringify(expect)}, version 4 ${JSON.stringify(old.expect)}`);
   }
-  const description = change ? `${old.description} Version 5: ${change.rule}` : old.description;
+  const migrated = old.expect?.caid || old.input?.caid?.startsWith?.('caid:');
+  const migrationNote = migrated ? ' Version 6 uses canactid: for current issuance; the immutable caid: form remains in the frozen corpus and verifies only through the explicit legacy-v04 profile.' : '';
+  const description = (change ? `${old.description} Version 5: ${change.rule}` : old.description) + migrationNote;
   const out = { id: old.id, kind: old.kind, description };
   if (old.definitions && old.kind !== 'parse') out.definitions = old.definitions;
   out.input = input;
@@ -331,8 +344,8 @@ for (const v of vectors) {
 }
 const envelope = {
   '@version': 'CAID-CORE-VECTORS',
-  version: 5,
-  suite_note: 'Shared cross-language CAID conformance vectors for draft-schrock-canonical-action-identifier-04. Each vector carries its own inline type definitions and never references the public registry, except the registry-* vectors, which copy one registry entry each. CAID carries no trust semantics: these vectors test identification only, not authorization, identity, or proof.',
+  version: 6,
+  suite_note: 'Shared cross-language CAID conformance vectors for draft-schrock-canonical-action-identifier-05. Current issuance uses the provisionally registered canactid: URI scheme. Immutable caid: identifiers from CAID-04 are outside the default parser and verifier and are accepted only by the separately named legacy-v04 verification profile. Each vector carries its own inline type definitions and never references the public registry, except the registry-* vectors, which copy one registry entry each. CAID carries no trust semantics: these vectors test identification only, not authorization, identity, or proof.',
   format: {
     kinds: 'decode: decode the input octets as JSON text (Section 2.4); expect {ok} or {ok:false, refusals:["malformed_json"]}. parse: strict CAID parse of input.caid. compute: compute over the input with options suite (input.suite, passed as given, whatever its JSON type; absent means no suite), definitions (the vector member, passed as given) and enum_snapshots (this file: the registry value-set files as published, whose members other than values_ref, values_snapshot, values_sha256 and values never affect resolution); expect {caid, digest, definition_sha256} or {refusals}. verify: verify the input against input.caid with definitions, enum_snapshots and, when present, expected_definition_sha256 (passed as given); expect {valid, reasons, details, definition_sha256?}. definition: definition_sha256 of input.definition; expect {definition_sha256} or {refusals:["invalid_definition"]}.',
     inputs: 'Exactly one input form: input.json is a string whose UTF-8 encoding is the JSON text; input.json_b64 is the exact octets, base64; input.json_repeat {prefix, unit, count, suffix} is UTF-8(prefix) + count copies of UTF-8(unit) + UTF-8(suffix); input.native is a native-lane value (caid/conformance/runners/native.mjs describes the encoding). A runner calls the byte entry point for the first three forms and, when the octets decode, also the native entry point on the decoded value, and requires identical results. For input.native it builds the host value and calls the native entry point only.',
@@ -350,6 +363,12 @@ const envelope = {
       history: V4_PATH,
       note: `Byte digest of the version 4 corpus as last published on main (pull request #815), kept byte for byte at ${V4_PATH}. Version 5 carries every version 4 vector under the same id with its object as exact JSON text; each of the ${v4Results.size} version 4 vectors that computed a CAID reproduces it (checked by caid/conformance/check-v4.mjs). Results change for six vectors, each by a named -04 rule: three unpaired-surrogate vectors are malformed_json on the byte path (their native-lane twins keep unsupported_value), and the three unregistered-suite vectors are unknown_suite at parse. Every successful compute adds definition_sha256, and every verification adds details and, when a definition resolved, definition_sha256.`,
     },
+    {
+      version: 5,
+      vectors: V5_VECTORS,
+      sha256: V5_SHA256,
+      note: 'Byte digest of the version 5 corpus as last published on main before the canactid: migration. Version 6 preserves its action objects, canonical digests, definition digests, refusal order and verification semantics, while changing current identifier issuance from the unregistered caid: spelling to the provisionally registered canactid: URI scheme. Existing signed caid: artifacts are never rewritten and require the explicit legacy-v04 verifier.',
+    },
   ],
   enum_snapshots: enumSnapshots,
 };
@@ -366,8 +385,8 @@ if (process.argv.includes('--check')) {
     process.stderr.write('build-core: caid/conformance/vectors.json is not current; run node caid/conformance/tools/build-core.mjs\n');
     process.exit(1);
   }
-  console.log(`PASS core corpus v5 is current (${vectors.length} vectors, ${JSON.stringify(counts)})`);
+  console.log(`PASS core corpus v6 is current (${vectors.length} vectors, ${JSON.stringify(counts)})`);
 } else {
   writeFileSync(OUT, text);
-  console.log(`wrote caid/conformance/vectors.json: ${vectors.length} vectors ${JSON.stringify(counts)}; ${v4Results.size} version 4 CAIDs reproduced`);
+  console.log(`wrote caid/conformance/vectors.json: ${vectors.length} vectors ${JSON.stringify(counts)}; ${v4Results.size} version 4 digests carried into canactid identifiers`);
 }

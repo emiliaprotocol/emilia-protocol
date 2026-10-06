@@ -10,7 +10,7 @@ import { capabilityActionDigest, createMemoryCapabilityStore, } from './capabili
 import { riskDigest } from './dist/reliance-risk-crypto.js';
 const NOW = Date.parse('2026-08-03T18:00:00.000Z');
 const D = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
-const CAID = `caid:1:commerce.payment.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
+const CAID = `canactid:1:commerce.payment.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
 function signer(issuer = 'customer:security', keyId = 'key:authority') {
     const pair = generateKeyPairSync('ed25519');
     const publicKey = pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');

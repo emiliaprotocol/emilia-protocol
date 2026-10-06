@@ -3,7 +3,7 @@
 // Package jsontext is the one JSON text decoder of the CAID Go port.
 //
 // Package caid exposes it only in its strict form (caid.DecodeJSON and
-// friends): the profile of draft-schrock-canonical-action-identifier-04
+// friends): the profile of draft-schrock-canonical-action-identifier-05
 // Section 2.4, which is an I-JSON message [RFC7493] with no byte order mark,
 // exactly one JSON text, and a nesting bound. The host form, which keeps
 // unpaired surrogate escapes as generalized UTF-8 and permits noncharacters,

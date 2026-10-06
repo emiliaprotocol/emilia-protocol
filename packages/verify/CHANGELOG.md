@@ -5,6 +5,30 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 8.0.0 (2026-10-06)
+
+Version type: major. Current issuance, parsing, and verification use the
+`canactid:` URI scheme from CAID-05. The scheme is provisionally registered by
+IANA; provisional registration is not IETF endorsement. The default profile
+now refuses the obsolete `caid:` spelling, so callers must not expect a value
+accepted by 7.x to remain valid under the current profile.
+
+### Breaking: current CAID scheme
+
+- New CAIDs are emitted as
+  `canactid:1:<action-type>:<suite>:<digest>`. Active AEB, AEC, AP2, SCITT,
+  continuity, evidence-chain, selective-disclosure, and Crossing Lab paths
+  validate that spelling and refuse `caid:`.
+- Historical CAID-04 evidence remains byte-immutable. It is available only
+  through the explicit legacy boundary (`LEGACY_CAID_V04_PROFILE` and the
+  separately named `parseLegacyCaidV04`, `verifyLegacyCaidV04`, and
+  `verifyLegacyCaidV04Json` CAID routines). Those paths accept only `caid:`
+  evidence and never translate, relabel, or reissue it as `canactid:`.
+- `isCanonicalActionIdentifier()` and the default
+  `parseCanonicalActionIdentifier()` profile accept current `canactid:` values
+  only. Select `LEGACY_CAID_V04_PROFILE` deliberately when parsing an immutable
+  historical identifier.
+
 ## 7.0.0 (2026-10-04)
 
 Version type: major. The structured evaluator now emits

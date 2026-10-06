@@ -368,7 +368,7 @@ export async function evaluateMergeGate({
   const policyResult = checkDiff(diffResult.diff, mandate);
   if (!policyResult.admitted) return policyResult;
   const action = actionFor({ repository, baseRef, baseSha, headSha, mandateDigest });
-  const caid = `caid:1:${ACTION_TYPE}:jcs-sha256:${digest(action, 'base64url')}`;
+  const caid = `canactid:1:${ACTION_TYPE}:jcs-sha256:${digest(action, 'base64url')}`;
   let receiptRaw;
   try {
     const resolvedReceiptPath = path.isAbsolute(receiptPath ?? '')

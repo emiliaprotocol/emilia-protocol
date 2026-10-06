@@ -186,7 +186,7 @@ describe('Da Vinci PAS medical-review binding', () => {
     });
     expect(first.action_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(first.caid).toMatch(
-      /^caid:1:health\.medical-prior-authorization-review\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/,
+      /^canactid:1:health\.medical-prior-authorization-review\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/,
     );
 
     const portable = JSON.stringify(first);

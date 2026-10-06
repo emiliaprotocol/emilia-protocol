@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// The spec oracle (./oracle.mjs) behind the JavaScript port's -04 entry
+// The spec oracle (./oracle.mjs) behind the JavaScript port's -05 entry
 // point names, so the JavaScript runner can check the corpora against the
 // oracle itself:
 //

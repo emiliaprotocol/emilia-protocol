@@ -82,7 +82,7 @@ attributes of a Resource").
   "action":   {"name": "release_payment",
                "properties": {"amount": "1250.00", "currency": "EUR"}},
   "resource": {"type": "payment_instruction", "id": "pi_9912"},
-  "context":  {"caid": "caid:1:payment.release.1:jcs-sha256:Ftw...9aA"}
+  "context":  {"caid": "canactid:1:payment.release.1:jcs-sha256:Ftw...9aA"}
 }
 ```
 
@@ -181,7 +181,7 @@ its typed content digest:
   "type": "protectmcp:decision",
   "tool_name": "release_payment",
   "decision": "allow",
-  "caid": "caid:1:payment.release.1:jcs-sha256:Ftw...9aA",
+  "caid": "canactid:1:payment.release.1:jcs-sha256:Ftw...9aA",
   "action_ref": "9c2f...44d1",
   "issued_at": "2026-07-08T10:11:12Z",
   "issuer_id": "sb:issuer:4Kpm7Q3wXx2b"

@@ -9,7 +9,7 @@ import { expectedRemedyProgramReceiptBindings, issueRemedyProgramReceipt, } from
 import { REMEDY_CASE_SET_VERSION, createRemedyCaseSetCoordinator, } from './remedy-case-set.js';
 const NOW = Date.parse('2026-07-22T19:00:00.000Z');
 const HASH = (char) => `sha256:${char.repeat(64)}`;
-const CAID = (char, action = 'remedy.perform') => (`caid:1:${action}.1:jcs-sha256:${char.repeat(43)}`);
+const CAID = (char, action = 'remedy.perform') => (`canactid:1:${action}.1:jcs-sha256:${char.repeat(43)}`);
 function keyPair() {
     const pair = crypto.generateKeyPairSync('ed25519');
     return {

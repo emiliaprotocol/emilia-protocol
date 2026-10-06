@@ -50,7 +50,7 @@
     },
     "actionCaid": {
       "type": "string",
-      "pattern": "^caid:1:emilia\\.mobile\\.authorized-action\\.1:jcs-sha256:[A-Za-z0-9_-]{43}$"
+      "pattern": "^canactid:1:emilia\\.mobile\\.authorized-action\\.1:jcs-sha256:[A-Za-z0-9_-]{43}$"
     },
     "sha256Digest": {
       "type": "string",

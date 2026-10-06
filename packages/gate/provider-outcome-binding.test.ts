@@ -14,7 +14,7 @@ import {
 
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const D = (character: string) => `sha256:${character.repeat(64)}`;
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const NOW = '2026-09-04T12:03:00.000Z';
 const SOURCE = {
   role: 'system_of_record' as const,
@@ -158,7 +158,7 @@ test('every exact provider-context substitution is refused', async (t) => {
     ['admission_id', 'admission:other'],
     ['operation_id', 'operation:other'],
     ['snapshot_digest', D('5')],
-    ['caid', `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`],
+    ['caid', `canactid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`],
     ['action_digest', D('6')],
     ['effect_request_digest', D('7')],
     ['provider', 'provider:other'],

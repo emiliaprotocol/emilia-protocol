@@ -39,7 +39,7 @@ export const PROPOSAL_TO_EFFECT_VERSION = 'EMILIA-PROPOSAL-TO-EFFECT-v1';
 type JsonObject = Record<string, any>;
 type FetchLike = typeof fetch;
 
-const CAID_PATTERN = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const CAID_PATTERN = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const PROPOSAL_INTEGRITY_DOMAIN = `${PROPOSAL_TO_EFFECT_VERSION}:INTEGRITY\0`;

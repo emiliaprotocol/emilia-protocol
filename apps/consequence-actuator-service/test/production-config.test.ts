@@ -203,7 +203,7 @@ describe('actuator production startup requirements', () => {
       request_digest: `sha256:${'1'.repeat(64)}`,
       attempt_id: 'attempt:0000000000000001',
       operation_id: 'operation:0000000000000001',
-      caid: `caid:1:github.issue.update.1:jcs-sha256:${'A'.repeat(43)}`,
+      caid: `canactid:1:github.issue.update.1:jcs-sha256:${'A'.repeat(43)}`,
       action_digest: `sha256:${'2'.repeat(64)}`,
     };
     const calls: Array<{ text: string; values: readonly unknown[] }> = [];

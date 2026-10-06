@@ -32,7 +32,7 @@ const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
 const NOW = Date.parse('2026-08-17T18:00:00.000Z');
 const D = (c: string) => `sha256:${c.repeat(64)}`;
-const CAID = `caid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`;
 
 const ISSUER_ID = 'gate:synthetic-payer:prod';
 const KEY_ID = 'gate-refusal-key-1';

@@ -20,10 +20,11 @@ Gate is not an identity provider, a replacement PDP, or proof of a provider's
 physical effect. Its prevention claim covers only configured paths the
 deployment completely mediates.
 
-Gate 0.29.0 pins `@emilia-protocol/verify@7.0.0` and
-`@emilia-protocol/require-receipt@0.8.2`; published Gate 0.28.0 pinned Verify
-5.0.0. Its authorization-chain adapters use Verify's legacy string API and
-refuse malformed or unsupported whitespace in configured expressions.
+Gate 0.30.0 pins `@emilia-protocol/verify@8.0.0` and
+`@emilia-protocol/require-receipt@0.9.0`. Its current action paths issue and
+accept the IANA-provisionally-registered `canactid:` scheme from CAID-05 and
+refuse the obsolete `caid:` spelling. Preserve immutable historical evidence
+with its original verifier; Gate does not translate or relabel it.
 
 This upgrade also takes Verify 6's CAID -04 and AEB mapping changes. Regenerate
 mapping profiles made by Verify 5's adapter helpers: their definitions declare
@@ -515,7 +516,7 @@ Build and download a plan at `https://www.emiliaprotocol.ai/protect`, then sign
 that exact plan locally with a customer-owned Ed25519 key:
 
 ```bash
-npx --package @emilia-protocol/gate@0.29.0 ep-protect activate plan.json \
+npx --package @emilia-protocol/gate@0.30.0 ep-protect activate plan.json \
   --private-key owner.pem \
   --tenant my-tenant \
   --gateway my-mcp-gateway \
@@ -886,13 +887,13 @@ compliance, external effect truth, program safety, or complete mediation. See
 
 ### Install the Gate Qualification v2 SQL artifact
 
-Pin the package artifact to `@emilia-protocol/gate@0.29.0` and verify the exact
+Pin the package artifact to `@emilia-protocol/gate@0.30.0` and verify the exact
 shipped migration before applying it. The SHA-256 below identifies this source
 artifact; it is not a statement that the migration is already deployed:
 
 ```bash
 GATE_SQL_PATH=node_modules/@emilia-protocol/gate/sql/gate-qualification-v2.sql
-test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.29.0"
+test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.30.0"
 printf '%s  %s\n' \
   'e9b55e29c90cf7061bd62a8afd7c97402927e1eeb87649d4a38952a4b08df6b3' \
   "$GATE_SQL_PATH" | shasum -a 256 -c -

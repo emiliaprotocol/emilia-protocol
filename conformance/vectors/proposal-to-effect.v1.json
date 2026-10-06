@@ -15,7 +15,7 @@
     "beneficiary_account_hash": "sha256:eg1-beneficiary"
   },
   "expected": {
-    "caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "caid": "canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "action_digest": "sha256:4593a48d22290c383cdb2dca8b8136a213151ad323b7eca79904ca88901a18f0",
     "aeb_action_digest": "sha256:4593a48d22290c383cdb2dca8b8136a213151ad323b7eca79904ca88901a18f0"
   },

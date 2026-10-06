@@ -7,7 +7,7 @@ private let fixedNow = ISO8601DateFormatter().date(from: "2026-07-14T19:02:00Z")
 private let appAttestKeyID = "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eH/8="
 private let actionReference = "mobact_0123456789abcdef0123456789abcdef"
 private let actionCAID =
-    "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM"
+    "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM"
 private let case9482ActionDigest =
     "sha256:f6a151156b476ece29dab84266ab4a94abd81bd683a222942681d2850cb26f4e"
 
@@ -287,6 +287,16 @@ private func reboundChallenge(
     #expect(identity.fingerprint == "5EEA-5198-17C2-EBBF")
 }
 
+@Test func currentActionIdentityRefusesTheLegacySchemeWithoutExplicitMigration() {
+    #expect(throws: EmiliaActionContinuityError.invalidActionIdentity) {
+        try EmiliaActionIdentity(
+            actionCAID:
+                "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM",
+            actionDigest: case9482ActionDigest
+        )
+    }
+}
+
 @Test func controlledPresentationMatchesSharedMappingVectors() throws {
     let repository = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -416,7 +426,7 @@ private func reboundChallenge(
     }
 
     let differentIdentity = try EmiliaActionIdentity(
-        actionCAID: "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        actionCAID: "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
         actionDigest: challenge.actionHash
     )
     #expect(throws: EmiliaMobileError.contextMismatch) {
@@ -435,7 +445,7 @@ private func reboundChallenge(
     let substitutedCAID = try reboundChallenge(
         original,
         signedActionCAID:
-            "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+            "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
     )
     #expect(throws: EmiliaMobileError.actionMismatch) {
         try EmiliaMobileChallengeValidator.decodeAndValidate(substitutedCAID, now: fixedNow)
@@ -574,7 +584,7 @@ private func reboundChallenge(
             "fingerprint": .string("5EEA-5198-17C2-EBBF"),
         ]),
         "supersedes_action_caid": .string(
-            "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+            "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
         ),
         "changes": .array([
             .object([

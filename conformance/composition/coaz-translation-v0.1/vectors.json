@@ -67,8 +67,8 @@
         "context": { "agent": "$token.?client_id" }
       }
     },
-    "expected_caid_benign": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
-    "expected_caid_substituted": "caid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo"
+    "expected_caid_benign": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+    "expected_caid_substituted": "canactid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo"
   },
   "cases": [
     {
@@ -144,7 +144,7 @@
       "approved_action_from": "benign_call",
       "expect": {
         "constructed": true,
-        "context_caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+        "context_caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
         "pdp_decision": true,
         "relying_check": { "allowed": true, "reason": null }
       }
@@ -156,7 +156,7 @@
       "approved_action_from": "benign_call",
       "expect": {
         "constructed": true,
-        "context_caid": "caid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo",
+        "context_caid": "canactid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo",
         "caid_differs_from_approved": true,
         "pdp_decision": true,
         "relying_check": { "allowed": false, "reason": "caid_mismatch:beneficiary_account" }

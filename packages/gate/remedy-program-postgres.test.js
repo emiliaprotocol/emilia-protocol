@@ -33,7 +33,7 @@ function authorizedAttempt(suffix, overrides = {}) {
     return {
         remedy_operation_id: `remedy-operation-${suffix}`,
         remedy_action_digest: digest(`remedy-action-${suffix}`),
-        remedy_caid: `caid:1:payments.refund.1:jcs-sha256:${suffix[0].repeat(43)}`,
+        remedy_caid: `canactid:1:payments.refund.1:jcs-sha256:${suffix[0].repeat(43)}`,
         status: 'authorized',
         ...overrides,
     };

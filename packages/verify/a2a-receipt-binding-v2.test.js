@@ -29,7 +29,7 @@ const INITIATING_MESSAGE = {
 };
 const PROOF_MESSAGE = { messageId: 'm2', role: 'ROLE_USER', taskId: 'task1', contextId: 'ctx1', parts: [{ text: 'proof' }] };
 const RECEIPT = { receipt_id: 'r1' };
-const CAID = `caid:1:x.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:x.1:jcs-sha256:${'A'.repeat(43)}`;
 async function buildV2Presentation() {
     return createA2AReceiptPresentationV2({
         protocol_version: '1.0',

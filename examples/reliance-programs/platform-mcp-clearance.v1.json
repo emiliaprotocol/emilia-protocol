@@ -6,7 +6,7 @@
     "id": "org:synthetic-platform.example",
     "key_id": "key:synthetic-platform:reliance-program:v1"
   },
-  "root_caid": "caid:1:mcp.tool-call.1:jcs-sha256:MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+  "root_caid": "canactid:1:mcp.tool-call.1:jcs-sha256:MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
   "action_digest": "sha256:1333333333333333333333333333333333333333333333333333333333333333",
   "valid_from": "2026-07-28T00:00:00.000Z",
   "expires_at": "2026-08-04T00:00:00.000Z",

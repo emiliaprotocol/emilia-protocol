@@ -17,7 +17,7 @@ import {
 
 const NOW = Date.parse('2026-07-28T18:00:00.000Z');
 const D = (character: string) => `sha256:${character.repeat(64)}`;
-const CAID = `caid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`;
 
 function statementInput(): Record<string, any> {
   return {

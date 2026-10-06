@@ -16,7 +16,7 @@ import {
 } from './discovery-permit-contract.js';
 
 const NOW = '2026-07-24T12:00:00Z';
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = Object.freeze({
   action_type: 'payment.release.1',
   amount: '125000.00',
@@ -198,7 +198,7 @@ test('discovery and permit sources, schema pins, mapping, CAID, and action must 
       binding: { mapping_digest: `sha256:${'8'.repeat(64)}` },
     }],
     ['caid_mismatch', {
-      binding: { caid: `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}` },
+      binding: { caid: `canactid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}` },
     }],
     ['action_digest_mismatch', {
       binding: { action_digest: `sha256:${'7'.repeat(64)}` },

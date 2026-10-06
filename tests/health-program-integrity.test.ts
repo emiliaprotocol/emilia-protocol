@@ -54,7 +54,7 @@ describe('synthetic Medi-Cal hospice program integrity', () => {
     const result = evaluateHospiceProgramIntegrity(first);
     expect(result.decision).toBe('approved');
     expect(result.operation_id).toBe('hospice-op-001');
-    expect(result.caid).toMatch(/^caid:1:[a-z0-9.-]+\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+    expect(result.caid).toMatch(/^canactid:1:[a-z0-9.-]+\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
     expect(result.requirements).toEqual([
       'provider_npi',
       'pairwise_member_ref',

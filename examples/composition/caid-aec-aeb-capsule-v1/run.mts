@@ -878,9 +878,9 @@ function sourceManifest(): RecordValue {
     drafts: [
       {
         role: 'CAID',
-        revision: 'draft-schrock-canonical-action-identifier-01',
-        url: 'https://www.ietf.org/archive/id/draft-schrock-canonical-action-identifier-01.txt',
-        sha256: 'sha256:067fe16bcb6026794306c916d92ca5f9229aba2d2ff9e678a1f380e0315bb73d',
+        revision: 'draft-schrock-canonical-action-identifier-05',
+        url: 'https://www.ietf.org/archive/id/draft-schrock-canonical-action-identifier-05.txt',
+        sha256: 'sha256:a077a99964977f0d027f9f2391996e23cd12393bcfbd11881566d7e18657374a',
       },
       {
         role: 'AEC',

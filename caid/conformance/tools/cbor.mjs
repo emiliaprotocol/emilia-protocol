@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Deterministic CBOR (RFC 8949 Section 4.2.1, core deterministic encoding)
-// over the CAID data model, as draft-schrock-canonical-action-identifier-04
+// over the CAID data model, as draft-schrock-canonical-action-identifier-05
 // Section 3.1 maps it for the cbor-sha256 suite: an object is a map whose
 // keys are text strings, an array an array, a string a text string, a
 // number (always an integer of magnitude at most 2^53-1) major type 0 or 1,

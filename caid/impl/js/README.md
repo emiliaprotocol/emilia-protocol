@@ -1,7 +1,7 @@
 # CAID reference implementation (JavaScript)
 
 Pure ESM, `node:crypto` only, zero dependencies. Implements
-draft-schrock-canonical-action-identifier-04; the draft is the normative
+draft-schrock-canonical-action-identifier-05; the draft is the normative
 text. The grammars, limits, reason codes, reason ranks, field types and
 definition rules come from the generated region of `caid.mjs`, which
 `node caid/spec/gen.mjs --write` compiles from the draft's ABNF
@@ -29,6 +29,9 @@ signatures, identity, or authorization.
 | `computeCaid(value, options)` | a value the application constructed | as `computeCaidJson` |
 | `verifyCaid(value, caid, options)` | a value the application constructed | as `verifyCaidJson` |
 | `parseCaid(string)` | an identifier | `{ok: true, caid}` or `{ok: false, refusals: [one reason]}` |
+| `parseLegacyCaidV04(string)` | an existing CAID-04 `caid:` identifier | the same parse result, explicitly profiled as legacy |
+| `verifyLegacyCaidV04(value, caid, options)` | a host value and existing CAID-04 identifier | the normal verification result without rewriting the identifier |
+| `verifyLegacyCaidV04Json(bytes, caid, options)` | received JSON text and existing CAID-04 identifier | the normal byte-path verification result without rewriting the identifier |
 | `definitionSha256(definition)` | a type definition | `{definition_sha256}` or `{refusals: ["invalid_definition"]}` |
 | `resolveCaidDefinition(type, definitions)` | an action type and definitions | `{ok: true, definition, definition_sha256}` or one refusal |
 | `canonicalize(value)` | any document | `{ok: true, canonical}` or `{ok: false, refusals}` |
@@ -38,6 +41,10 @@ Options: `suite`, `definitions` and `enumSnapshots` for compute;
 `definitions`, `enumSnapshots` and `expectedDefinitionSha256` for verify. An
 option of the wrong type counts as absent. Every entry point refuses junk
 with reasons and never throws.
+
+Current compute, parse, and verify APIs use only `canactid:`. They fail closed
+on `caid:`. The three separately named legacy functions exist only to verify
+already signed CAID-04 artifacts in place; there is no legacy compute API.
 
 **Received JSON text must go through the byte entry points.**
 `computeCaid(JSON.parse(text))` is not conforming for received text:
@@ -150,7 +157,7 @@ const action = {
 
 const options = { suite: "jcs-sha256", definitions, enumSnapshots: [iso4217] };
 const out = computeCaid(action, options);
-// { caid: "caid:1:payment.release.1:jcs-sha256:<b64url>", digest: "sha256:<hex>",
+// { caid: "canactid:1:payment.release.1:jcs-sha256:<b64url>", digest: "sha256:<hex>",
 //   definition_sha256: "sha256:<hex>" }
 
 const fromText = computeCaidJson(Buffer.from(JSON.stringify(action)), options);
@@ -169,7 +176,7 @@ snapshot, a present currency field refuses with `mistyped_field:currency`.
 
 ## Mapping profiles
 
-`mapping.mjs` implements the Action-Mapping Profile of -04 Section 8:
+`mapping.mjs` implements the Action-Mapping Profile of -05 Section 8:
 `omitted_source_fields`, the `no-material-field-loss` and
 `declared-source-semantic-loss` policies, the `copy`, `sha256-utf8`,
 `sha256-jcs` and `sha256-hex-to-digest` transforms, limits in UTF-8 octets,
@@ -187,7 +194,7 @@ with `decodeCaidJson` first.
 
 ```
 node --test unit-tests.mjs                      # unit tests
-node ../../conformance/runners/run.mjs          # core corpus v5 and grammar corpus
+node ../../conformance/runners/run.mjs          # core corpus v6 and grammar corpus
 node run-grammar-vectors.mjs [--corpus FILE]    # grammar cases through the public API
 node run-mapping-vectors.mjs [--corpus FILE]    # mapping and interoperability corpora
 ```

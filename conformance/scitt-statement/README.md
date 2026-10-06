@@ -46,7 +46,7 @@ Protected header, in CBOR extended diagnostic notation:
   4: h'...',                         / kid                       /
   15: {                              / CWT Claims (RFC 9597)     /
     1: "ep:issuer:<name>",           / iss                       /
-    2: "caid:1:<action_type>:jcs-sha256:<digest>"  / sub         /
+    2: "canactid:1:<action_type>:jcs-sha256:<digest>"  / sub         /
   }
 }
 ```
@@ -99,7 +99,7 @@ view of an Artifact changes "SHOULD Register a new Signed Statement using the
 same 15 CWT iss and sub Claims".
 
 For EMILIA the Artifact is the authorized ACTION, not the receipt document. The
-CAID (`caid:1:<action_type>:jcs-sha256:<digest>`) is a content-addressed
+CAID (`canactid:1:<action_type>:jcs-sha256:<digest>`) is a content-addressed
 identifier of exactly that action object. So `sub` is the CAID.
 
 Two properties follow, and both are the reason for the choice:

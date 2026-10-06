@@ -206,6 +206,10 @@ describe('public evidence surfaces have explicit rate policies', () => {
     expect(RATE_LIMITS.public_verify.max).toBeLessThan(RATE_LIMITS.read.max);
   });
 
+  it('meters the public CAID computation endpoint as bounded unauthenticated work', async () => {
+    expect(await tierFor('POST', 'https://ep.test/api/caid')).toBe('submit');
+  });
+
   it('keeps both public evidence surfaces fail-OPEN on a limiter outage', async () => {
     const source = fs.readFileSync(path.join(ROOT, 'lib', 'rate-limit.ts'), 'utf8');
     const failClosed = source.slice(

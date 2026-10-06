@@ -16,6 +16,7 @@ import {
   type AebEvaluationRecord,
   type AebEvaluationVerification,
 } from './aeb-adapter-contract.js';
+import { canonicalActionIdentifierMatchesActionType } from './canonical-action-identifier.js';
 
 type Obj = Record<string, unknown>;
 
@@ -252,7 +253,7 @@ export function verifyAebAcceptanceProfile(
 }
 
 function actionTypeMatches(caid: string, actionType: string): boolean {
-  return caid.startsWith(`caid:1:${actionType}:`);
+  return canonicalActionIdentifierMatchesActionType(caid, actionType);
 }
 
 function recordBindings(profile: AebAcceptanceProfile, record: AebEvaluationRecord): string[] {

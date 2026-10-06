@@ -90,9 +90,19 @@ const validVerifiers = {
 
 test('builds a local exact-purchase CAID without misusing payment.release.1', () => {
   const built = buildPurchaseAction({ checkoutTerms: terms(), paymentInstructionId: 'pi_checkout_001' });
-  assert.match(built.action_caid, /^caid:1:commerce\.purchase\.submit\.1:/);
+  assert.match(built.action_caid, /^canactid:1:commerce\.purchase\.submit\.1:/);
   assert.equal(built.action.checkout_digest, _internals.digest(terms()));
   assert.equal(built.action.amount, '96.12');
+});
+
+test('refuses the obsolete caid scheme on new checkout presentations', () => {
+  const checkoutTerms = terms();
+  const built = buildPurchaseAction({ checkoutTerms, paymentInstructionId: 'pi_checkout_001' });
+  assert.throws(() => buildStructuredPresentation({
+    checkoutTerms,
+    action: built.action,
+    actionCaid: built.action_caid.replace(/^canactid:/u, 'caid:'),
+  }), /actionCaid is invalid/u);
 });
 
 test('the approval presentation carries every checkout term, including extensions', () => {

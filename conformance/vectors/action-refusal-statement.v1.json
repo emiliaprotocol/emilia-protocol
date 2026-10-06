@@ -21,7 +21,7 @@
   "positive": {
     "now": "2026-07-28T18:00:00.000Z",
     "expected": {
-      "caid": "caid:1:health.prior-authorization-determination.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "caid": "canactid:1:health.prior-authorization-determination.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
       "action_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
       "relying_party_id": "payer:synthetic-example",
       "program_id": "rp.synthetic-payer.pas-adverse-determination.1",
@@ -33,7 +33,7 @@
     "statement": {
       "@version": "EP-ACTION-REFUSAL-STATEMENT-v1",
       "action_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-      "caid": "caid:1:health.prior-authorization-determination.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "caid": "canactid:1:health.prior-authorization-determination.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
       "challenge_digests": [
         "sha256:6666666666666666666666666666666666666666666666666666666666666666",
         "sha256:7777777777777777777777777777777777777777777777777777777777777777"
@@ -75,16 +75,16 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "gate-refusal-key-1",
-        "body_digest": "sha256:4882690aa70a70291b34f22437e263717d0fc6c39133a615578b1e60efe93c32",
-        "signature_b64u": "VGvtvpbLP3_-AYnzk_bZwEmX8iLj-MwGyQ_dujmCkSxqScGtUesQF6OGrDLnCK1HR5Yp2HwxqomE5Xymqui0CQ"
+        "body_digest": "sha256:25ecc4543b7eccad826233595d35a038be2d865b20e264dc11a78a54ac82b985",
+        "signature_b64u": "sU-CwvrI_z3nk8KwFibnGZS1Txj6GF6oLTolMypbtGj2xEI9NYUVIlOzRCSybpkbdKWpHn2qIp0RYMupiaf0AA"
       }
     },
-    "refusal_digest": "sha256:f7c25c9802ec41dd9e6baa21b1f99ab8565c80e497750a54cb663c46ff0a500b",
+    "refusal_digest": "sha256:19bde6cdff6495b9b041e75a2c78b753f1f8a072db2e015719f708f9504b6074",
     "expect": {
       "accepted": true,
       "verified": true,
       "reason": null,
-      "refusal_digest": "sha256:f7c25c9802ec41dd9e6baa21b1f99ab8565c80e497750a54cb663c46ff0a500b",
+      "refusal_digest": "sha256:19bde6cdff6495b9b041e75a2c78b753f1f8a072db2e015719f708f9504b6074",
       "relying_party_id": "payer:synthetic-example",
       "nonce": "CAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg",
       "semantics": {

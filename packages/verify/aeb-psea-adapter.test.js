@@ -199,7 +199,7 @@ test('valid PSEA -02 proof verifies and maps to the exact CAID action', () => {
         native,
     });
     assert.equal(mapping.mapping, 'MATCH');
-    assert.match(mapping.caid ?? '', /^caid:1:/);
+    assert.match(mapping.caid ?? '', /^canactid:1:/);
 });
 test('atomic replay store commits counter+jti together and refuses replay and rollback', async () => {
     const store = new InMemoryPseaReplayStore();

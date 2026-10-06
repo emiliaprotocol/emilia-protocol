@@ -61,10 +61,13 @@ const PARAM_KINDS = new Set(['none', 'field-name', 'source-path', 'compute-reaso
  * draft appendix could not carry verbatim.
  *
  * @param {string} root
+ * @param {string} [providedText] exact ABNF text for a frozen profile
  */
-export function loadCaidGrammar(root) {
-  const file = 'caid/spec/caid.abnf';
-  const text = readFileSync(path.join(root, file), 'utf8');
+export function loadCaidGrammar(root, providedText) {
+  const file = providedText === undefined ? 'caid/spec/caid.abnf' : 'provided caid.abnf';
+  const text = providedText === undefined
+    ? readFileSync(path.join(root, file), 'utf8')
+    : providedText;
   text.split('\n').forEach((line, i) => {
     if (/[^\x20-\x7e]/.test(line)) throw new Error(`caid/spec: ${file}:${i + 1} is not printable ASCII`);
     if (line.length > MAX_ABNF_COLUMNS) {
@@ -88,17 +91,19 @@ function maxCodePoint(node) {
  * view: the language-neutral data every generated file encodes.
  *
  * @param {string} root repository root
+ * @param {{core?: object, abnfText?: string, suites?: object}} [provided]
+ *   exact inputs for a frozen profile; omitted members use current files
  */
-export function buildSpec(root) {
+export function buildSpec(root, provided = {}) {
   const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
-  const core = JSON.parse(read('caid/spec/core.json'));
-  const suites = JSON.parse(read('caid/registry/suites.json'));
+  const core = provided.core ?? JSON.parse(read('caid/spec/core.json'));
+  const suites = provided.suites ?? JSON.parse(read('caid/registry/suites.json'));
   /** @param {string} msg @returns {never} */
   const fail = (msg) => { throw new Error(`caid/spec: ${msg}`); };
 
   if (core['@version'] !== 'CAID-SPEC-DATA-v1') fail('core.json @version is not CAID-SPEC-DATA-v1');
   if (core.grammar.file !== 'caid.abnf') fail('core.json grammar.file must be caid.abnf');
-  const { rules } = loadCaidGrammar(root);
+  const { rules } = loadCaidGrammar(root, provided.abnfText);
 
   // Compiled patterns: every one linear-time safe. A pattern with a length
   // limit (max_octets, a core.json limit id) is checked against that limit
@@ -661,6 +666,7 @@ export function emitGo(spec) {
   ];
   const add = (comment, decl) => { out.push(`// ${comment}`, decl, ''); };
   add('specIdentifierScheme is the caid rule\'s fixed scheme.', `const specIdentifierScheme = ${goString(view.identifier.scheme)}`);
+  add('specIdentifierLegacyV04Scheme is the obsolete CAID-04 scheme accepted only by explicit legacy verification.', `const specIdentifierLegacyV04Scheme = ${goString(view.identifier.legacy_v04_scheme)}`);
   add('specIdentifierVersion is the caid rule\'s caid-version.', `const specIdentifierVersion = ${goString(view.identifier.version)}`);
   add('specIdentifierSeparator separates the caid rule\'s parts.', `const specIdentifierSeparator = ${goString(view.identifier.separator)}`);
   add('specIdentifierParts is the number of separator-delimited parts of a CAID.', `const specIdentifierParts = ${view.identifier.parts}`);

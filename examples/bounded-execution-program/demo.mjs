@@ -45,9 +45,9 @@ function digest(label) {
   return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 }
 
-/** @returns {`caid:${string}`} */
+/** @returns {`canactid:${string}`} */
 function caid(label) {
-  return `caid:1:demo.synthetic-action.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
+  return `canactid:1:demo.synthetic-action.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
 }
 
 function keyMaterial() {

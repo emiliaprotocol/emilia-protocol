@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """CAID v1, Python port (standard library only).
 
-Implements draft-schrock-canonical-action-identifier-04. The rule data
+Implements draft-schrock-canonical-action-identifier-05. The rule data
 (grammar, code formats, limits, reason ranks, field types, definition and
 verification-detail rules) comes from caid_spec.py, which caid/spec/gen.mjs
 generates from caid/spec/caid.abnf and caid/spec/core.json. Nothing here
@@ -26,6 +26,9 @@ Entry points:
   compute_caid(value, options)      compute over a value the application built
   verify_caid(value, caid, options)
   parse_caid(caid)
+  parse_legacy_caid_v04(caid)        explicit obsolete-scheme parser
+  verify_legacy_caid_v04(value, caid, options)
+  verify_legacy_caid_v04_json(data, caid, options)
   definition_sha256(definition)
   canonicalize(value)               RFC 8785 over the data model
 
@@ -52,6 +55,7 @@ SUITE_DIGEST_PATTERNS = _generated.SUITE_DIGEST_PATTERNS
 LIMITS = _generated.LIMITS
 
 CAID_VERSION = SPEC["identifier"]["version"]
+LEGACY_CAID_V04_SCHEME = SPEC["identifier"]["legacy_v04_scheme"]
 SUPPORTED_SUITES = frozenset(["jcs-sha256"])
 REGISTERED_SUITE_DIGEST_OCTETS = dict(_generated.SUITE_DIGEST_OCTETS)
 
@@ -999,7 +1003,7 @@ def compute_caid(action_object, options=None):
         return {"refusals": evaluation.refusals}
     digest_bytes = _sha256(evaluation.canonical)
     return {
-        "caid": "caid:%s:%s:%s:%s" % (CAID_VERSION, evaluation.action_type, opts["suite"], _b64url(digest_bytes)),
+        "caid": "%s:%s:%s:%s:%s" % (SPEC["identifier"]["scheme"], CAID_VERSION, evaluation.action_type, opts["suite"], _b64url(digest_bytes)),
         "digest": "sha256:" + digest_bytes.hex(),
         "definition_sha256": evaluation.resolved.sha256,
     }
@@ -1033,6 +1037,34 @@ def parse_caid(caid_input):
         return {"ok": False, "refusals": ["malformed_caid"]}
     _, version, action_type, suite, digest = text.split(SPEC["identifier"]["separator"])
     if not _match("action_type", action_type):
+        return {"ok": False, "refusals": ["malformed_caid"]}
+    digest_pattern = SUITE_DIGEST_PATTERNS.get(suite)
+    if digest_pattern is None:
+        return {"ok": False, "refusals": ["unknown_suite"]}
+    if digest_pattern.match(digest) is None:
+        return {"ok": False, "refusals": ["malformed_caid"]}
+    return {
+        "ok": True,
+        "caid": {"version": version, "action_type": action_type, "suite": suite, "digest": digest},
+    }
+
+
+def parse_legacy_caid_v04(caid_input):
+    """Strictly parse the obsolete ``caid:1:`` CAID-04 spelling.
+
+    This explicit compatibility entry point is verification-only. New
+    issuance and the default parser use ``canactid:`` and refuse ``caid:``.
+    """
+    text = _plain_str(caid_input)
+    octets = _utf8_octets(text) if text is not None else None
+    if octets is None or octets > LIMITS["caid_octets"]:
+        return {"ok": False, "refusals": ["malformed_caid"]}
+    parts = text.split(SPEC["identifier"]["separator"])
+    if (len(parts) != SPEC["identifier"]["parts"] or
+            parts[0] != LEGACY_CAID_V04_SCHEME or parts[1] != CAID_VERSION):
+        return {"ok": False, "refusals": ["malformed_caid"]}
+    _, version, action_type, suite, digest = parts
+    if not (_match("action_type", action_type) and _match("suite", suite) and _match("digest", digest)):
         return {"ok": False, "refusals": ["malformed_caid"]}
     digest_pattern = SUITE_DIGEST_PATTERNS.get(suite)
     if digest_pattern is None:
@@ -1140,6 +1172,30 @@ def verify_caid_json(data, caid_string=_ABSENT, options=None):
     The CAID is parsed first; then the text is decoded (malformed_json)."""
     opts = _options(options)
     parsed = parse_caid(caid_string)
+    if not parsed["ok"]:
+        reason = parsed["refusals"][0]
+        return {"valid": False, "reasons": [reason], "details": [_detail(reason, None, caid_string)]}
+    decoded = decode_caid_json(data)
+    if not decoded["ok"]:
+        reason = decoded["refusals"][0]
+        return {"valid": False, "reasons": [reason], "details": [_detail(reason, None, caid_string)]}
+    return _verify_parsed(decoded["value"], parsed["caid"], caid_string, opts)
+
+
+def verify_legacy_caid_v04(action_object, caid_string=_ABSENT, options=None):
+    """Verify an immutable CAID-04 ``caid:`` identifier explicitly."""
+    opts = _options(options)
+    parsed = parse_legacy_caid_v04(caid_string)
+    if not parsed["ok"]:
+        reason = parsed["refusals"][0]
+        return {"valid": False, "reasons": [reason], "details": [_detail(reason, action_object, caid_string)]}
+    return _verify_parsed(action_object, parsed["caid"], caid_string, opts)
+
+
+def verify_legacy_caid_v04_json(data, caid_string=_ABSENT, options=None):
+    """Verify JSON text against an immutable CAID-04 ``caid:`` identifier."""
+    opts = _options(options)
+    parsed = parse_legacy_caid_v04(caid_string)
     if not parsed["ok"]:
         reason = parsed["refusals"][0]
         return {"valid": False, "reasons": [reason], "details": [_detail(reason, None, caid_string)]}

@@ -60,10 +60,10 @@ const oneField = (type, extra = {}) => {
 const DRIVERS = {
   caid: { rule: 'caid', source: 'pattern:caid', operation: 'parse', caid: { prefix: '', suffix: '' } },
   'action-type.compute': { rule: 'action-type', source: 'pattern:action_type', operation: 'compute', definition: { action_type: '$CASE', required_fields: [{ name: 'f', type: 'string' }] }, object: { action_type: '$CASE', f: 'x' } },
-  'action-type.parse': { rule: 'action-type', source: 'pattern:action_type', operation: 'parse', caid: { prefix: 'caid:1:', suffix: `:jcs-sha256:${VALID_DIGEST}` } },
-  'suite.parse': { rule: 'suite', source: 'pattern:suite', operation: 'parse', caid: { prefix: 'caid:1:a.1:', suffix: `:${VALID_DIGEST}` } },
+  'action-type.parse': { rule: 'action-type', source: 'pattern:action_type', operation: 'parse', caid: { prefix: 'canactid:1:', suffix: `:jcs-sha256:${VALID_DIGEST}` } },
+  'suite.parse': { rule: 'suite', source: 'pattern:suite', operation: 'parse', caid: { prefix: 'canactid:1:a.1:', suffix: `:${VALID_DIGEST}` } },
   'suite.compute': { rule: 'suite', source: 'pattern:suite', operation: 'compute', definition: { action_type: 'grammar.suite.1', required_fields: [{ name: 'f', type: 'string' }] }, object: { action_type: 'grammar.suite.1', f: 'x' }, suite: '$CASE' },
-  'digest-256.parse': { rule: 'digest-256', source: 'suite_digest:jcs-sha256', operation: 'parse', caid: { prefix: 'caid:1:a.1:jcs-sha256:', suffix: '' } },
+  'digest-256.parse': { rule: 'digest-256', source: 'suite_digest:jcs-sha256', operation: 'parse', caid: { prefix: 'canactid:1:a.1:jcs-sha256:', suffix: '' } },
   'amount-string': { rule: 'amount-string', source: 'pattern:amount_string', operation: 'compute', ...oneField('amount-string') },
   'digest-field': { rule: 'digest-field', source: 'pattern:digest_field', operation: 'compute', ...oneField('digest') },
   timestamp: { rule: 'timestamp', source: 'pattern:timestamp', operation: 'compute', ...oneField('timestamp') },
@@ -122,8 +122,8 @@ const EXTRAS = {
   // and a CAID of at most 1024, each checked before any pattern runs. Cases
   // at the limit and one octet over it, and strings of millions of
   // characters, which a backtracking engine could not match.
-  caid: [[rep('caid:1:', 'a', 510, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [rep('caid:1:', 'a', 511, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'],
-    [rep('caid:1:', 'a', 8000000, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [rep('caid:1:A', 'a', 70000, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [`caid:1:a.1:jcs-sha256:${VALID_DIGEST.slice(0, 42)}\u{1F600}`, 'text']],
+  caid: [[rep('canactid:1:', 'a', 510, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [rep('canactid:1:', 'a', 511, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'],
+    [rep('canactid:1:', 'a', 8000000, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [rep('canactid:1:A', 'a', 70000, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [`canactid:1:a.1:jcs-sha256:${VALID_DIGEST.slice(0, 42)}\u{1F600}`, 'text']],
   'action-type.compute': [[rep('a', 'b', 509, '.1'), 'text'], [rep('a', 'b', 510, '.1'), 'text'], [rep('a.', '9', 510), 'text'], [rep('a.', '9', 511), 'text'], [rep('a', 'b', 8000000, '.1'), 'text'],
     [rep('A', 'b', 70000, '.1'), 'text'], [rep('a', 'b', 70000, '.01'), 'text'], ['a\u{1F600}.1', 'text'], ['a.1\u{1F600}', 'text'], ['a\ud800.1', 'native'], ['a.\udfff1', 'native'], ['a￾.1', 'text']],
   'action-type.parse': [['a\ud800.1', 'native'], [rep('a', 'b', 509, '.1'), 'text'], [rep('a', 'b', 510, '.1'), 'text'], [rep('a', 'b', 8000000, '.1'), 'text'], [rep('a', 'b', 70000, '.1.'), 'text']],
@@ -285,7 +285,7 @@ for (const c of cases) counts[c.driver] = (counts[c.driver] ?? 0) + 1;
 const envelope = {
   '@version': 'CAID-GRAMMAR-VECTORS',
   version: 1,
-  description: 'Curated grammar boundary cases for draft-schrock-canonical-action-identifier-04 Appendix A, run through each implementation\'s public entry points (parse and compute with one-field type definitions), never its generated regular expressions. grammar is the ABNF interpreter\'s verdict for the case string alone; expect is the exact result, which the driver\'s other rules (suite registry, digest syntax, calendar, format registration, JSON text and data-model refusals) can decide first.',
+  description: 'Curated grammar boundary cases for draft-schrock-canonical-action-identifier-05 Appendix A, run through each implementation\'s public entry points (parse and compute with one-field type definitions), never its generated regular expressions. grammar is the ABNF interpreter\'s verdict for the case string alone; expect is the exact result, which the driver\'s other rules (suite registry, digest syntax, calendar, format registration, JSON text and data-model refusals) can decide first.',
   format: {
     drivers: 'A parse driver parses caid.prefix + CASE + caid.suffix. A compute driver computes over object with definitions [definition] and the suite (jcs-sha256 unless the driver names "$CASE"), where every string "$CASE", as a value or a member name, is replaced by the case string.',
     conditions: 'applies_when {suite_not_implemented: S} limits a case to implementations that do not implement the registered suite S (support for cbor-sha256 is OPTIONAL). A runner decides with suite_probe: computing suite_probe.object with definitions suite_probe.definitions, no enum snapshots and suite S yields a CAID exactly when the implementation implements S. A case whose condition does not hold is skipped and reported as skipped, never as passed.',

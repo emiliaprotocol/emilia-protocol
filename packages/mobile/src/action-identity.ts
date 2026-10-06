@@ -6,7 +6,7 @@ const { canonicalize, isCanonicalizable } = verifier as Record<string, any>;
 
 export const MOBILE_ACTION_CAID_TYPE = 'emilia.mobile.authorized-action.1';
 export const MOBILE_ACTION_CAID_PATTERN =
-  /^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+  /^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 
 const ACTION_REFERENCE = /^[A-Za-z0-9:_.@-]{8,256}$/;
 const DEFINITION = Object.freeze({
@@ -80,7 +80,7 @@ export function buildMobileActionIdentity({
   };
   const digestBytes = crypto.createHash('sha256')
     .update(canonicalize(wrapper), 'utf8').digest();
-  const actionCaid = `caid:1:${MOBILE_ACTION_CAID_TYPE}:jcs-sha256:${digestBytes.toString('base64url')}`;
+  const actionCaid = `canactid:1:${MOBILE_ACTION_CAID_TYPE}:jcs-sha256:${digestBytes.toString('base64url')}`;
   const fingerprint = mobileActionFingerprint(actionCaid);
   if (fingerprint === null) throw new TypeError('computed mobile action identity is malformed');
   return Object.freeze({

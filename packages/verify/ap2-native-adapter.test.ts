@@ -12,7 +12,7 @@ import {
 import { digestAeb } from './aeb-adapter-contract.js';
 
 const NOW = '2026-08-09T17:00:00.000Z';
-const CAID = 'caid:1:payment.release.1:jcs-sha256:Riz3t86C4OB-fE_5XB_yUQDIoi1tOSZUPgAd_inMBnc';
+const CAID = 'canactid:1:payment.release.1:jcs-sha256:Riz3t86C4OB-fE_5XB_yUQDIoi1tOSZUPgAd_inMBnc';
 const ACTION = Object.freeze({
   action_type: 'payment.release.1',
   payment_instruction_id: 'pi-ap2-1',

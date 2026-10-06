@@ -5,7 +5,8 @@
 // (standards/staged/NEXT-CAID-04), publication provenance for the -04
 // revision posted on 2026-09-28, against the sources it restates:
 //
-//   - Appendix A equals caid/spec/caid.abnf byte for byte;
+//   - Appendix A equals the frozen CAID-04 view derived from the current
+//     CAID-05 sources by reversing only the documented scheme migration;
 //   - Appendix D lists every type of reference registry version 5 with its
 //     definition_sha256 from digests.json, split into D.1, the initial
 //     entries IANA is asked to register, and D.2, the entries that are not
@@ -80,8 +81,31 @@ const htmlRel = `RENDERS/${DOC}.html`;
 const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
 const readJson = (rel) => JSON.parse(read(rel));
 
-const core = readJson('caid/spec/core.json');
-const abnfText = read('caid/spec/caid.abnf');
+const currentCore = readJson('caid/spec/core.json');
+const currentAbnfText = read('caid/spec/caid.abnf');
+
+// CAID-05 changed only the URI-scheme spelling in these normative inputs.
+// Derive the immutable -04 view explicitly rather than making the historical
+// checker read mutable current issuance rules. Every other member remains
+// checked against the -04 packet below, so a future processing change fails
+// this checker instead of silently changing history.
+const core = structuredClone(currentCore);
+if (core.draft === 'draft-schrock-canonical-action-identifier-05' && core.identifier?.scheme === 'canactid') {
+  core.draft = 'draft-schrock-canonical-action-identifier-04';
+  core.identifier.scheme = 'caid';
+  delete core.identifier.legacy_v04_scheme;
+} else if (core.draft !== 'draft-schrock-canonical-action-identifier-04' || core.identifier?.scheme !== 'caid') {
+  throw new Error('CAID-04: current core.json is neither the frozen -04 input nor the documented -05 scheme-only successor');
+}
+const currentSchemeRule = 'caid          = %s"canactid" ":" caid-version ":" action-type ":"';
+const legacySchemeRule = 'caid          = %s"caid" ":" caid-version ":" action-type ":"';
+const occurrences = currentAbnfText.split(currentSchemeRule).length - 1;
+const abnfText = occurrences === 1
+  ? currentAbnfText.replace(currentSchemeRule, legacySchemeRule)
+  : currentAbnfText;
+if (!abnfText.includes(legacySchemeRule) || abnfText.includes('%s"canactid"')) {
+  throw new Error('CAID-04: caid.abnf is not the frozen -04 input or the documented -05 scheme-only successor');
+}
 
 // ---------------------------------------------------------------------------
 // Generated tables (also printed by --emit)
@@ -506,7 +530,7 @@ function lossPolicyRows() {
 }
 
 let specCache;
-const specOnce = () => { specCache ??= buildSpec(root); return specCache; };
+const specOnce = () => { specCache ??= buildSpec(root, { core, abnfText }); return specCache; };
 
 const TABLES = {
   'tab-limits': () => tableXml('tab-limits', 'Limits', ['Limit', 'Value', 'Applies to', 'Refusal'], limitRows()),
@@ -1569,7 +1593,10 @@ check(!plain(section('iana-code-formats')).includes('nested quantifiers'), 'Sect
   const currentVersion = /^(\d+)\.(\d+)\.(\d+)$/.exec(pkg.version);
   check(currentVersion !== null && Number(currentVersion[1]) >= 6, `the current verification package ${pkg.version} predates the historical 6.0.0 release that vendors -04`);
   check(entry600 !== null && entry600[1].includes(DOC), `Section 13 calls 6.0.0 the release that vendors the -04 copy, but packages/verify/CHANGELOG.md has no dated 6.0.0 entry above 5.0.0 that names ${DOC}`);
-  check(read('packages/verify/vendor/caid.mjs').includes(`Implements ${DOC}`), 'the vendored copy the next major release will ship does not implement -04');
+  const currentVendor = read('packages/verify/vendor/caid.mjs');
+  const filingRecord = read(`${packetRel}/README.md`);
+  check(filingRecord.includes('2d8bde58c'), 'the CAID-04 packet no longer records the main commit whose implementation supported its Section 13 claim');
+  check(currentVendor.includes('verifyLegacyCaidV04') && currentVendor.includes('parseLegacyCaidV04'), 'the current vendored implementation no longer exposes the explicit CAID-04 legacy verification profile');
 }
 
 // BCP 14 (ART-JSON-6, ART-JSON-7, ED-16): every keyword outside code is
@@ -1835,4 +1862,4 @@ if (errors.length) {
   process.exit(1);
 }
 const { iana: d1, other: d2 } = split.counts;
-console.log(`CAID-04: Appendix A (${abnfText.split('\n').length - 1} lines) equals caid.abnf; Appendix B, detail, limits and IANA tables equal their sources; Appendix D lists registry v5 (${registry.types.length} types) as ${d1.total} initial IANA entries (${d1.active} active, ${d1.deprecated} deprecated) and ${d2.total} not requested of IANA; Appendix C (cbor-sha256 included) and the examples recompute; ${claimAnchors.length} change claims map to vectors; review wording, BCP 14 markup, references, renders${renderedFresh ? ' (equal to a fresh xml2rfc 3.34.0 render)' : ''}, checksums and the posted snapshot${prefiling ? ', and the filing gate against origin/main,' : ''} PASS.`);
+console.log(`CAID-04: Appendix A (${abnfText.split('\n').length - 1} lines) equals the frozen -04 view; Appendix B, detail, limits and IANA tables equal their sources; Appendix D lists registry v5 (${registry.types.length} types) as ${d1.total} initial IANA entries (${d1.active} active, ${d1.deprecated} deprecated) and ${d2.total} not requested of IANA; Appendix C (cbor-sha256 included) and the examples recompute; ${claimAnchors.length} change claims map to vectors; review wording, BCP 14 markup, references, renders${renderedFresh ? ' (equal to a fresh xml2rfc 3.34.0 render)' : ''}, checksums and the posted snapshot${prefiling ? ', and the filing gate against origin/main,' : ''} PASS.`);

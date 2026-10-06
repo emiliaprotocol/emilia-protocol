@@ -16,10 +16,10 @@
 // constants) for each case.
 //
 // Families:
-//   vec-core   structured mutations of every core corpus v5 vector
+//   vec-core   structured mutations of every core corpus v6 vector
 //              (native vectors that build more than 2^20 values are left
 //              to the conformance run)
-//   vec-map    structured mutations of every mapping vector (v2 + interop)
+//   vec-map    structured mutations of every mapping vector (v3 + interop)
 //   registry   a valid object per registry type, then per-field mutations
 //   grammar    every ASCII char at every position of short identifiers,
 //              control chars, Unicode separators, confusables, long strings
@@ -155,7 +155,7 @@ function emitVerify(fam, objNode, caid, defs, extra = {}) {
   c.snaps_ref = "iso";
   emit(fam, c);
 }
-// -04 specifies compute, verify and parse, not a separate canonicalize
+// -05 specifies compute, verify and parse, not a separate canonicalize
 // entry point; canonical bytes are checked through the CAID digest.
 /** @param {string} _fam @param {string} _text */
 function emitCanon(_fam, _text) {}
@@ -261,7 +261,7 @@ function familyVecCore() {
       if (v.input.json_b64 !== undefined) emitRawObj("vec-core", v.kind, Buffer.from(v.input.json_b64, "base64"), defs, v.kind === "compute" ? { suite: v.input.suite, note: v.id } : { caid: v.input.caid, note: v.id });
       continue;
     }
-    // The exact version 5 text first, then structured mutations of the
+    // The exact current-corpus text first, then structured mutations of the
     // decoded object where it survives a JSON round trip.
     const exact = Buffer.from(v.input.json, "utf8");
     emitRawObj("vec-core", v.kind, exact, defs, v.kind === "compute" ? { suite: v.input.suite, note: "exact " + v.id } : { caid: v.input.caid, note: "exact " + v.id });
@@ -272,7 +272,7 @@ function familyVecCore() {
       continue;
     }
     if (JSON.stringify(obj) === undefined || /null/.test(JSON.stringify(obj)) !== /null/.test(v.input.json)) continue;
-    // Full structured mutation for the version 4 vectors; the version 5
+    // Full structured mutation for the version 4 vectors; later-corpus
     // additions run exact (above) plus the definition and suite mutations.
     if (!V4_IDS.has(v.id) && rnd() < 0.85) continue;
     const suite = v.input.suite;
@@ -315,7 +315,7 @@ function familyVecCore() {
     } else {
       const c = v.input.caid;
       if (typeof c === "string") {
-        const variants = [c.slice(0, -1) + (c.endsWith("A") ? "E" : "A"), c.slice(0, -1) + "B", c.replace("jcs-sha256", "cbor-sha256"), c.toUpperCase(), c + "=", c.replace(":1:", ":2:"), c.replace("caid:", "CAID:")];
+        const variants = [c.slice(0, -1) + (c.endsWith("A") ? "E" : "A"), c.slice(0, -1) + "B", c.replace("jcs-sha256", "cbor-sha256"), c.toUpperCase(), c + "=", c.replace(":1:", ":2:"), c.replace("canactid:", "CANACTID:")];
         M("caid-variant");
         for (const cv of variants) emitVerify("vec-core", obj, cv, defs);
       }
@@ -500,7 +500,7 @@ function familyNative() {
 }
 
 // ================================================================ grammar
-// -04 refuses a definition with no required field, so a.1 has one.
+// -05 refuses a definition with no required field, so a.1 has one.
 const DEF_A1 = [{ action_type: "a.1", status: "active", required_fields: [{ name: "k", type: "string" }], optional_fields: [] }];
 const A1_OBJ = { action_type: "a.1", k: "v" };
 const DEF_ALL = [{
@@ -518,7 +518,7 @@ tables.defs.all = DEF_ALL;
 
 function familyGrammar() {
   const digest = b64urlDigest({ action_type: "a.1" });
-  const base = `caid:1:a.1:jcs-sha256:${digest}`;
+  const base = `canactid:1:a.1:jcs-sha256:${digest}`;
   M("every ASCII at every position of a CAID");
   for (let pos = 0; pos <= base.length; pos++) {
     for (let ch = 0; ch < 128; ch++) {
@@ -564,9 +564,9 @@ function familyGrammar() {
   }
   M("very long string");
   const long = (n, c = "a") => c.repeat(n);
-  emitParse("grammar", `caid:1:${long(100000)}.1:jcs-sha256:${digest}`);
-  emitParse("grammar", `caid:1:a.1:jcs-sha256:${long(1000000, "A")}`);
-  emitParse("grammar", `caid:1:a.1:${long(100000)}:${digest}`);
+  emitParse("grammar", `canactid:1:${long(100000)}.1:jcs-sha256:${digest}`);
+  emitParse("grammar", `canactid:1:a.1:jcs-sha256:${long(1000000, "A")}`);
+  emitParse("grammar", `canactid:1:a.1:${long(100000)}:${digest}`);
   emitCompute("grammar", { ...OBJ_ALL, amt: "1" + long(100000, "0") + ".5" }, "all", "jcs-sha256");
   emitCompute("grammar", { ...OBJ_ALL, s: long(1000000, "é") }, "all", "jcs-sha256");
   emitCompute("grammar", { ...OBJ_ALL, [long(100000, "k")]: 1 }, "all", "jcs-sha256");
@@ -1182,7 +1182,7 @@ function familyPins() {
     emit("pins", { op: "definition", definition: d });
     const obj = randomObjectFor(d);
     const digest = oracle.definitionSha256(d).definition_sha256;
-    const caid = computeRef(obj, [d]).caid ?? computeRef({ action_type: d.action_type }, [d]).caid ?? "caid:1:" + d.action_type + ":jcs-sha256:" + "A".repeat(43);
+    const caid = computeRef(obj, [d]).caid ?? computeRef({ action_type: d.action_type }, [d]).caid ?? "canactid:1:" + d.action_type + ":jcs-sha256:" + "A".repeat(43);
     const c = { op: "verify", obj: b64(render(obj)), caid, defs: [d], snaps_ref: "iso" };
     if (rnd() < 0.85) c.expected = randomPin(digest);
     M("verify with a random pin");

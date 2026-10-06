@@ -632,7 +632,7 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
                 return { ok: false, reason: checkedSelector.reason };
             const caid = signedAction[checkedSelector.value.field];
             if (typeof caid !== 'string'
-                || !/^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/.test(caid)) {
+                || !/^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/.test(caid)) {
                 return { ok: false, reason: 'signed_action_caid_invalid' };
             }
         }

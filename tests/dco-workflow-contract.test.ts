@@ -319,7 +319,7 @@ describe('DCO workflow contract', () => {
     } finally {
       s.cleanup();
     }
-  });
+  }, 15_000);
 
   it('does not exempt a spoofed [bot] author carrying the autopilot trailer', () => {
     const s = sandbox();

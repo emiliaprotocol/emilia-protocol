@@ -24,7 +24,7 @@
 //                             n nested two-element arrays around leaf, both
 //                             elements one shared array: 2^(n+1) - 1 values
 //                             in n + 1 distinct containers and leaves, for
-//                             the value budget of -04 Section 2.6.
+//                             the value budget of -05 Section 2.6.
 //   {"$fill": {"n": n, "v": v}}
 //                             an array of n elements, each the value v,
 //                             built once (a container v is one shared
@@ -32,7 +32,7 @@
 //                             values for a scalar v. With n of 2^24 or more
 //                             it is an array too long for V8 to list its
 //                             keys at once, which a port must still read
-//                             (-04 Section 2.5).
+//                             (-05 Section 2.5).
 //   {"$repeat": {"unit": s, "count": n}}
 //                             the string s repeated n times, for a value too
 //                             large to write into the corpus.

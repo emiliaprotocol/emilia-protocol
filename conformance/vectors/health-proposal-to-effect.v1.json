@@ -87,7 +87,7 @@
         "policy_version": 1,
         "policy_hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
       },
-      "caid": "caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:NrSSZNCIjm7jMWQufBWCRkXixrr8zuuG2c1Zm9qjzx8",
+      "caid": "canactid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:NrSSZNCIjm7jMWQufBWCRkXixrr8zuuG2c1Zm9qjzx8",
       "actionDigest": "sha256:36b49264d0888e6ee331642e7c15824645e2c6bafcceeb86d9cd599bdaa3cf1f",
       "requiredControl": {
         "approval": {
@@ -112,10 +112,10 @@
         "rawPhiIncluded": false,
         "memberReference": "pairwise_pseudonymous_commitment"
       },
-      "packageDigest": "sha256:9f1fee4ce52821bda9a8940a8d71416269817c49f0822145ef28d5f8447ad4bc"
+      "packageDigest": "sha256:a14af41cde78c6f553081c6e529631c2150ceee2322fde93d9c179ba8612ed2d"
     },
     "expected": {
-      "caid": "caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:NrSSZNCIjm7jMWQufBWCRkXixrr8zuuG2c1Zm9qjzx8",
+      "caid": "canactid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:NrSSZNCIjm7jMWQufBWCRkXixrr8zuuG2c1Zm9qjzx8",
       "action_digest": "sha256:36b49264d0888e6ee331642e7c15824645e2c6bafcceeb86d9cd599bdaa3cf1f",
       "decision": "APPROVAL_REQUIRED",
       "finding_authorizes": false

@@ -13,7 +13,7 @@ const DIGEST_C = `sha256:${'c'.repeat(64)}`;
 const DIGEST_D = `sha256:${'d'.repeat(64)}`;
 const DIGEST_E = `sha256:${'e'.repeat(64)}`;
 const DIGEST_F = `sha256:${'f'.repeat(64)}`;
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const WINDOW_START = '2026-07-01T00:00:00.000Z';
 const WINDOW_END = '2026-08-01T00:00:00.000Z';
 function auth(role, authorityId) {

@@ -44,7 +44,7 @@
  * unwrapping the statement changes nothing the receipt signature covers.
  *
  * SUBJECT SEMANTICS. `sub` is the receipt action's CAID
- * (`caid:1:<action_type>:jcs-sha256:<digest>`), recomputed from the payload at
+ * (`canactid:1:<action_type>:jcs-sha256:<digest>`), recomputed from the payload at
  * verification time and required to match. See the profile README in
  * conformance/scitt-statement/ for the argument against the alternatives.
  *
@@ -195,7 +195,7 @@ function isCaidString(value) {
     return typeof value === 'string'
         && value.length > 0
         && value.length <= 4096
-        && /^caid:1:[^:]+:jcs-sha256:[A-Za-z0-9_-]+$/.test(value);
+        && /^canactid:1:[^:]+:jcs-sha256:[A-Za-z0-9_-]+$/.test(value);
 }
 function sigStructureBytes(protectedBytes, payload) {
     // RFC 9052 Section 4.4: Sig_structure for COSE_Sign1 is

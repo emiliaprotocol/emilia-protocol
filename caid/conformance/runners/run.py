@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Python conformance runner for the CAID core corpus (vectors.json,
-# version 5) and the grammar boundary corpus (grammar-vectors.json). It
+# version 6) and the grammar boundary corpus (grammar-vectors.json). It
 # drives an implementation only through its public entry points.
 #
 #   python3 caid/conformance/runners/run.py [--impl DIR] [--corpus core|grammar|all]
@@ -135,8 +135,8 @@ def report(corpus, vid, ok, detail=None):
 # ---------------------------------------------------------------- core corpus
 def run_core():
     corpus = read_corpus("vectors.json")
-    if corpus.get("version") != 5:
-        report("core", "(corpus)", False, "expected corpus version 5")
+    if corpus.get("version") != 6:
+        report("core", "(corpus)", False, "expected corpus version 6")
         return
     snapshots = corpus["enum_snapshots"]
     caids = {}

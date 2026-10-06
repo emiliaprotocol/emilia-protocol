@@ -29,7 +29,7 @@ const rootAction = {
 };
 const rootActionHash = crypto.createHash('sha256').update(canonicalize(rootAction), 'utf8').digest();
 const rootActionBinding = {
-  root_caid: `caid:1:${rootAction.action_type}:jcs-sha256:${rootActionHash.toString('base64url')}`,
+  root_caid: `canactid:1:${rootAction.action_type}:jcs-sha256:${rootActionHash.toString('base64url')}`,
   root_action_digest: `sha256:${rootActionHash.toString('hex')}`,
 };
 const ED25519_PKCS8_SEED_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');

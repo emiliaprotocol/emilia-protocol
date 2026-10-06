@@ -88,7 +88,7 @@ export interface ProposalToEffectStatusVerifierOptions {
 }
 
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
-const CAID_PATTERN = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const CAID_PATTERN = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const EXPECTED_KEYS = [
   'tenant_id',
   'executor_id',

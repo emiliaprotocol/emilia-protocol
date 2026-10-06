@@ -1,6 +1,9 @@
 # CAID conformance
 
-Shared corpora and runners for draft-schrock-canonical-action-identifier-04.
+Shared corpora and runners for draft-schrock-canonical-action-identifier-05.
+Current corpora issue and accept only `canactid:` identifiers. Frozen
+historical corpora keep their original `caid:` bytes and are exercised only
+through the explicit CAID-04 legacy verifier.
 The JavaScript, Python and Go implementations in `caid/impl` are three ports
 by one team in one repository. Passing these corpora is a consistency check
 between them and against the spec oracle, not independent implementation.
@@ -16,12 +19,12 @@ npm run caid:fuzz          # the differential fuzz (caid/fuzz)
 
 | Path | What it is |
 |---|---|
-| `vectors.json` | Core corpus, version 5: 616 vectors (decode, parse, compute, verify, definition) |
+| `vectors.json` | Core corpus, version 6: 616 vectors (decode, parse, compute, verify, definition) |
 | `grammar-vectors.json` | Grammar boundary corpus: 1,966 cases over 21 drivers |
-| `mapping-vectors.json` | Mapping corpus, version 2: 86 vectors with exact reason lists; a vector may carry its own suite |
+| `mapping-vectors.json` | Mapping corpus, version 3: 86 vectors with exact reason lists; a vector may carry its own suite |
 | `history/vectors.v4.json` | The version 4 core corpus, byte for byte (`sha256:7a201c87…`) |
 | `history/mapping-vectors.v1.json` | The version 1 mapping corpus, byte for byte (`sha256:6941463c…`) |
-| `check-v4.mjs` | Proves from the files alone that version 5 carries version 4 forward |
+| `check-v4.mjs` | Proves version 4 is frozen, its identifiers verify through the explicit legacy profile, and version 6 preserves the action digests under `canactid:` |
 | `run.mjs` | The `caid:conformance` orchestrator |
 | `runners/run.mjs`, `runners/run.py`, `runners/go/` | Core and grammar runners for JavaScript, Python and Go |
 | `runners/native.mjs` | The native-lane encoding (below) and the input-form reader |
@@ -39,7 +42,7 @@ oracle and fail if it contradicts what the case states by hand, so every
 refusal list in the corpora is written down twice. The verify reason order
 comes from `core.json` (`sort_rank.verify`), the only statement of it.
 
-## Core corpus, version 5
+## Core corpus, version 6
 
 Every compute and verify input is exact octets, in one of three forms:
 
@@ -84,7 +87,7 @@ external enum also checks that a port ignores them. Verify also passes
 that is not the resolved digest string, a list or null included, is
 `definition_mismatch`. A suite of the wrong type counts as absent.
 
-**Conditional vectors.** Support for cbor-sha256 is OPTIONAL (-04 Section
+**Conditional vectors.** Support for cbor-sha256 is OPTIONAL (-05 Section
 3.1). A vector or grammar case with `applies_when: {suite_not_implemented:
 S}` applies only to an implementation that does not implement the registered
 suite S, and one with `applies_when: {suite_implemented: S}` only to one that
@@ -107,7 +110,9 @@ decode is `{ok}` or `{ok, refusals: ["malformed_json"]}`; definition is
 compared as JSON, member order aside. `relation` pins two computed CAIDs as
 equal or different; `time_budget_ms` bounds the JSON text entry-point call.
 
-What version 5 adds, by group: 66 decode vectors (duplicates in escaped and
+Version 6 carries forward version 5's semantic coverage and changes only
+current identifier issuance and parsing to the registered `canactid:`
+spelling. Version 5 added, by group: 66 decode vectors (duplicates in escaped and
 surrogate-pair spellings, BOM, UTF-16/32, overlong and surrogate UTF-8,
 unpaired-surrogate and noncharacter escapes, control characters, trailing
 content, non-JSON literals and numbers, depth 64 and 65); the size limits at
@@ -175,9 +180,11 @@ from a host definition or JSON, and has no `definition_sha256`
 `definition-fraction-in-projection`,
 `definition-sha256-fraction-in-projection`).
 
-**Version 4 carries forward.** Every version 4 vector keeps its id, with its
-object as the version 4 tokens. All 22 version 4 CAIDs are expected
-unchanged. Six results change, each by a named rule: three unpaired-surrogate
+**Version 4 remains immutable.** Every version 4 vector keeps its id and exact
+bytes in `history/vectors.v4.json`. Its 22 `caid:` identifiers are checked by
+the explicit legacy verifier, never rewritten. Current version 6 computes the
+same digest bytes under the corresponding `canactid:` identifiers. Six
+results change, each by a named rule: three unpaired-surrogate
 vectors are `malformed_json` from text (their native twins keep
 `unsupported_value`), and the three unregistered-suite vectors from #815 are
 `unknown_suite` at parse. `check-v4.mjs` proves this from the files.
@@ -194,10 +201,11 @@ cases `caid/spec/abnf-check.mjs` generates, plus astral, lone-surrogate
 case string; `expect` is the exact result, which the driver's other rules
 can decide first (registry, digest syntax, calendar, format registration).
 
-## Mapping corpus, version 2
+## Mapping corpus, version 3
 
-Version 2 keeps the version 1 layout that `caid/impl/*/run-mapping-vectors`
-read. Every expectation is the exact reason list in the -04 stage order: A
+Version 3 keeps the version 2 layout that `caid/impl/*/run-mapping-vectors`
+read and changes only current identifier issuance to `canactid:`. Every
+expectation is the exact reason list in the -05 stage order: A
 (profile checks; a shape failure is exactly `invalid_mapping_profile`), B
 (appended, in rank order), C (one reason per rule, in rule order), D
 (`mapped_action:` reasons in compute order), then `left:` before `right:`.
@@ -205,7 +213,8 @@ New vectors cover the registered profile extension
 (`omitted_source_fields`, `declared-source-semantic-loss`,
 `sha256-hex-to-digest`), UTF-8 octet limits, field-name targets such as
 `@version`, the review's D2-D9 cases, and each stage boundary. One version 1
-vector changes because -04 widens `target_field` to the field-name rule.
+version 1 vector changed in version 2 because -04 widened `target_field` to
+the field-name rule.
 A set mutation carries its value as `value`, as `units` (the UTF-16 code
 units of a string no strict JSON text can hold), as `nest` (`{depth,
 container, leaf}`, a host value nested deeper than strict JSON text may be),

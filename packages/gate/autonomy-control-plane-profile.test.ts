@@ -9,7 +9,7 @@ import {
 } from './autonomy-control-plane-profile.js';
 
 const D = (character: string) => `sha256:${character.repeat(64)}`;
-const C = (character: string) => `caid:1:code.change.1:jcs-sha256:${character.repeat(43)}`;
+const C = (character: string) => `canactid:1:code.change.1:jcs-sha256:${character.repeat(43)}`;
 
 function profile(): any {
   return {

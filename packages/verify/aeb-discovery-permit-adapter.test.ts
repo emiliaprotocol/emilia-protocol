@@ -23,7 +23,7 @@ import {
 } from './aeb-discovery-permit-adapter.js';
 
 const NOW = '2026-07-24T12:00:00Z';
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = Object.freeze({
   action_type: 'payment.release.1',
   amount: '125000.00',

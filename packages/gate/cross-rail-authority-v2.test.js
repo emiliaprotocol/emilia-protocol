@@ -13,7 +13,7 @@ import test from 'node:test';
 import { CROSS_RAIL_AUTHORITY_CLAIM_BOUNDARY, HUMAN_INTERRUPTION_DECISION_V2_VERSION, RAIL_ENTRY_PERMIT_V2_VERSION, signHumanInterruptionDecision, signHumanInterruptionDecisionV2, signRailEntryPermitV2, verifyHumanInterruptionDecision, verifyHumanInterruptionDecisionV2, verifyRailEntryPermitV2, } from './cross-rail-authority.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const D = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
-const CAID = `caid:1:commerce.payment.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
+const CAID = `canactid:1:commerce.payment.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
 const NOW = Date.parse('2026-08-03T18:00:00.000Z');
 function material() {
     const pair = generateKeyPairSync('ed25519');

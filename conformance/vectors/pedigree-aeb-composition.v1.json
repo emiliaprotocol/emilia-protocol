@@ -39,8 +39,8 @@
         "revocation_status": "CURRENT_NOT_REVOKED",
         "mandate_decision": "PERMIT",
         "ceiling_decision": "PERMIT",
-        "mapped_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo",
-        "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
+        "mapped_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo",
+        "observed_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
       },
       "expect": {
         "native": "VERIFIED",
@@ -61,7 +61,7 @@
         "mandate_decision": "NOT_EVALUATED",
         "ceiling_decision": "NOT_EVALUATED",
         "mapped_caid": null,
-        "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
+        "observed_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
       },
       "expect": {
         "native": "NOT_VERIFIED",
@@ -81,8 +81,8 @@
         "revocation_status": "CURRENT_NOT_REVOKED",
         "mandate_decision": "PERMIT",
         "ceiling_decision": "PERMIT",
-        "mapped_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
+        "mapped_caid": "canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "observed_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
       },
       "expect": {
         "native": "VERIFIED",
@@ -102,8 +102,8 @@
         "revocation_status": "CURRENT_NOT_REVOKED",
         "mandate_decision": "DENY",
         "ceiling_decision": "PERMIT",
-        "mapped_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo",
-        "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
+        "mapped_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo",
+        "observed_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
       },
       "expect": {
         "native": "VERIFIED",
@@ -124,7 +124,7 @@
         "mandate_decision": "NOT_EVALUATED",
         "ceiling_decision": "NOT_EVALUATED",
         "mapped_caid": null,
-        "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
+        "observed_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
       },
       "expect": {
         "native": "NOT_VERIFIED",
@@ -144,8 +144,8 @@
         "revocation_status": "CURRENT_NOT_REVOKED",
         "mandate_decision": "NOT_APPLICABLE",
         "ceiling_decision": "NOT_APPLICABLE",
-        "mapped_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo",
-        "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
+        "mapped_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo",
+        "observed_caid": "canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
       },
       "expect": {
         "native": "VERIFIED",

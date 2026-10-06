@@ -20,7 +20,7 @@
   },
   "aeb_decision": {
     "event_type": "emilia.aeb.decision.v1",
-    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
+    "caid": "canactid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
     "decision": "SATISFIED",
     "authorization_state": "AUTHORIZED",
     "consumption_state": "CONSUMED",
@@ -29,11 +29,11 @@
     "mapping_profile_digests": ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
     "occurred_at": "2026-07-20T12:00:00Z"
   },
-  "expected_aeb_event_digest": "sha256:e5124415a08d3b6022946ab60f6f7a4060ff8a546b0e416fe2c9810cc36cffe2",
+  "expected_aeb_event_digest": "sha256:7b1527a6312163bd24222544e2f3f0d6c02649552ba3727c45bb93c2c0d43638",
   "audit_record": {
     "event_type": "audit.action.v1",
-    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
-    "aeb_event_digest": "sha256:e5124415a08d3b6022946ab60f6f7a4060ff8a546b0e416fe2c9810cc36cffe2",
+    "caid": "canactid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
+    "aeb_event_digest": "sha256:7b1527a6312163bd24222544e2f3f0d6c02649552ba3727c45bb93c2c0d43638",
     "session_ref": "session-1",
     "provenance_refs": [
       { "format": "c2pa", "manifest_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444" },
@@ -51,7 +51,7 @@
     {
       "id": "aeb-audit-caid-splice-refuses",
       "mutations": [
-        { "path": "/audit_record/caid", "value": "caid:1:travel.cancel-notify.1:jcs-sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+        { "path": "/audit_record/caid", "value": "canactid:1:travel.cancel-notify.1:jcs-sha256:0000000000000000000000000000000000000000000000000000000000000000" }
       ],
       "expect": { "valid": false, "reasons": ["caid_mismatch"] }
     },

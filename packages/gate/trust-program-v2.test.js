@@ -14,7 +14,7 @@ import { canonicalize, hashCanonical } from './execution-binding.js';
 import { TRUST_PROGRAM_VERSION, TRUST_PROGRAM_V2_VERSION, TRUST_STAGE_RECEIPT_VERSION, TRUST_STAGE_RECEIPT_V2_VERSION, TRUST_STAGE_RECEIPT_V2_REQUIRED_ALGORITHMS, validateTrustProgram, validateTrustProgramV2, validateTrustProgramStatement, trustProgramDigest, trustProgramV2Digest, verifyTrustStageReceipt, signTrustStageReceiptV2, verifyTrustStageReceiptV2, verifyTrustStageReceiptStatement, } from './trust-program.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const D = (character) => `sha256:${character.repeat(64)}`;
-const C = (character) => `caid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
+const C = (character) => `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
 const KEY_ID = 'stage-key-1';
 const CONTEXT = Object.freeze({
     issuer: 'ep:gate:example',

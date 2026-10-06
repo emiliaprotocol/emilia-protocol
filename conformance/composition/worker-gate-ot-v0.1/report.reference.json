@@ -28,7 +28,7 @@
         "fixture_file_sha256": "95e9d734dd689e593352a9cd5fda49acbe2752da149879b34496e45e24951e2c",
         "action_type": "ot.modbus.write-multiple-registers.1",
         "definition_file_sha256": "2479b2881713e93ad5efbf2cb24a6f1c6a125a18d06f2c0e3196c2ec7a9907bc",
-        "caid": "caid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:EMNgSJJYCF_yMFagPhMj-miIiTxVzdfhJ-ds4sc0hqc",
+        "caid": "canactid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:EMNgSJJYCF_yMFagPhMj-miIiTxVzdfhJ-ds4sc0hqc",
         "caid_digest": "sha256:10c360489258085ff23056a03e1323fa6888893c55cdd7e127e76ce2c73486a7",
         "collaborator_confirmation": "confirmed-by-truealter-2026-09-25"
       }
@@ -142,5 +142,5 @@
     "Provider commitment and observed physical effect remain separate; no physical effect is claimed.",
     "J5 safety independence remains unexecuted because it requires a protective-path simulator outside the Gate."
   ],
-  "results_digest": "sha256:674b24f6b236fa8012c2b129f07986b44b3aeb6e4aa151b40ca73c64101a7ca2"
+  "results_digest": "sha256:84d9fb2caf9b7136559824caefb1d884fb92a12b46a248f661e2811eed87f1ac"
 }

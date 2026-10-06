@@ -1,11 +1,11 @@
 {
   "@version": "AEB-ADAPTER-CONTRACT-LOCK-v1",
   "contract_version": "AEB-ADAPTER-v1",
-  "verify_package_version": "7.0.0",
+  "verify_package_version": "8.0.0",
   "files": [
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "1f6616bfb5401037573a65942a751dfbf972dae0d40d2553a1c2b3393ef45bdc"
+      "sha256": "aa2a4b2d16c3f9f0e1cc4bcfa90ccbf519f49066913b2a25a76fb1c473e05200"
     },
     {
       "path": "docs/protocol/aeb-adapter-contract-v1.md",

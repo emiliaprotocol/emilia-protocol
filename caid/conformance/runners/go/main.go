@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Command caidconformance is the Go conformance runner for the CAID core
-// corpus (vectors.json, version 5) and the grammar boundary corpus
+// corpus (vectors.json, version 6) and the grammar boundary corpus
 // (grammar-vectors.json). It drives the Go implementation (module caid,
 // caid/impl/go) only through its public entry points, which port.go names.
 //
@@ -246,8 +246,8 @@ func readCorpus(name string) map[string]interface{} {
 
 func runCore() {
 	corpus := readCorpus("vectors.json")
-	if toInt(corpus["version"]) != 5 {
-		report("core", "(corpus)", false, "expected corpus version 5")
+	if toInt(corpus["version"]) != 6 {
+		report("core", "(corpus)", false, "expected corpus version 6")
 		return
 	}
 	snapshots, _ := corpus["enum_snapshots"].([]interface{})

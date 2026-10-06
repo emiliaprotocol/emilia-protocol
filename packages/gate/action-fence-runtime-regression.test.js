@@ -122,7 +122,7 @@ test('a failed CAID resolver object refuses before any effect or spend', async (
     const keys = issuer();
     const operationId = 'failed-caid-resolution';
     const exactAction = action(operationId);
-    const caid = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+    const caid = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
     const minted = mintCapabilityReceipt(keys.receipt, {
         capabilityId: 'failed_caid_resolution_capability',
         issuerPrivateKey: keys.privateKey,

@@ -181,7 +181,7 @@ test('OAuth transaction-challenge -00 verifies challenge plus issued access toke
     assert.deepEqual(native.reasons, []);
     const mapped = adapter.mapAction({ ...input(fixture), profile: profile(), native });
     assert.equal(mapped.mapping, 'MATCH');
-    assert.match(mapped.caid ?? '', /^caid:1:payment\.initiate\.1:jcs-sha256:/);
+    assert.match(mapped.caid ?? '', /^canactid:1:payment\.initiate\.1:jcs-sha256:/);
 });
 test('challenge alone and an asynchronous pending response are never authorization evidence', () => {
     const fixture = makeFixture();

@@ -93,12 +93,137 @@ tags:
       reference profile. The authorization endpoint is discovery, not a trust
       root; relying clients still verify an approved receipt under their own
       pins before execution.
+  - name: CAID
+    description: |
+      Public reference computation for current `canactid:` exact-action
+      identifiers. CAID identifies typed content; it does not authorize an
+      action, prove execution, or prevent replay.
   - name: Internal
     description: |
       Cron jobs, operator-only actions, and internal infrastructure endpoints.
       These routes are not part of the public API and require privileged authentication.
 
 paths:
+  /api/caid:
+    post:
+      tags: [CAID]
+      summary: Compare an exact payment action with the public CAID reference
+      description: |
+        Computes current `canactid:` identifiers for a bounded synthetic
+        `payment.release.1` example. The approved baseline and proposed action
+        are compared by identifier. This public demonstration does not create
+        authority, execute a payment, or accept provider credentials.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [amount, destinationReference]
+              properties:
+                amount:
+                  type: string
+                  maxLength: 64
+                  pattern: '^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$'
+                  example: '82000.00'
+                destinationReference:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: |
+                    Synthetic destination reference. The service hashes this
+                    value before placing it in the typed action.
+                  example: Acme Supply / settlement / account 7834
+      responses:
+        '200':
+          description: Deterministic comparison of the approved baseline and proposed action
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - approvedCaid
+                  - proposedCaid
+                  - recomputedCaid
+                  - matchesApprovedAction
+                  - changedFields
+                  - canonicalAction
+                properties:
+                  approvedCaid:
+                    type: string
+                    pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+                  proposedCaid:
+                    type: string
+                    pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+                  recomputedCaid:
+                    type: string
+                    pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+                  matchesApprovedAction:
+                    type: boolean
+                  changedFields:
+                    type: array
+                    uniqueItems: true
+                    items:
+                      type: string
+                      enum: [amount, destination]
+                  canonicalAction:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - action_type
+                      - amount
+                      - currency
+                      - beneficiary_account
+                      - payment_instruction_id
+                    properties:
+                      action_type:
+                        type: string
+                        enum: [payment.release.1]
+                      amount:
+                        type: string
+                      currency:
+                        type: string
+                        enum: [USD]
+                      beneficiary_account:
+                        type: string
+                        pattern: '^sha256:[a-f0-9]{64}$'
+                      payment_instruction_id:
+                        type: string
+                        enum: [pi-demo-1042]
+        '400':
+          description: Request body or bounded demo input is invalid
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [error]
+                properties:
+                  error: { type: string }
+        '413':
+          description: Request body exceeds 4096 bytes
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [error]
+                properties:
+                  error: { type: string }
+        '500':
+          description: The identifier could not be computed
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [error]
+                properties:
+                  error: { type: string }
+
   # ===========================================================================
   # Trust
   # ===========================================================================
@@ -7585,7 +7710,7 @@ components:
       properties:
         action_caid:
           type: string
-          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
           description: |
             Server-recomputed CAID for the exact payment material. CAID
             identifies content and does not establish authorization.
@@ -7763,7 +7888,7 @@ components:
                   pattern: '^sha256:[a-f0-9]{64}$'
                 action_caid:
                   type: string
-                  pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+                  pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
                 challenge_hash:
                   type: string
                   pattern: '^sha256:[a-f0-9]{64}$'
@@ -7942,7 +8067,7 @@ components:
           pattern: '^[a-f0-9]{64}$'
         action_caid:
           type: string
-          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
           description: |
             Server-computed identifier for exact `payment.release.1` typed
             action content. CAID does not establish authorization.
@@ -7981,7 +8106,7 @@ components:
           nullable: true
         action_caid:
           type: string
-          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
           description: |
             Server-computed typed-content identifier; not an authorization
             decision or proof.
@@ -8440,7 +8565,7 @@ components:
         supersedes_action_caid:
           type: string
           nullable: true
-          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
         changes:
           type: array
           items:
@@ -8490,7 +8615,7 @@ components:
       properties:
         action_caid:
           type: string
-          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
           description: Server-computed CAID for the authoritative exact-action wrapper.
         action_digest:
           type: string
@@ -8597,7 +8722,7 @@ components:
             action_reference: { type: string }
             action_caid:
               type: string
-              pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+              pattern: '^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
             action_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
         decision:
           type: object
@@ -8674,7 +8799,7 @@ components:
           pattern: '^[A-Za-z0-9:_.@-]{3,256}$'
         action_caid:
           type: string
-          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
         action_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
         action_hash: { type: string, pattern: '^(?:sha256:)?[0-9a-f]{64}$' }
         policy_id: { type: string, nullable: true }
@@ -8778,7 +8903,7 @@ components:
         operation_id: { type: string }
         action_caid:
           type: string
-          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
         consumption_nonce: { type: string }
         executor_id: { type: string }
         executor_key_id:
@@ -8815,7 +8940,7 @@ components:
         operation_id: { type: string }
         action_caid:
           type: string
-          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          pattern: '^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
         action_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
         consumption_nonce: { type: string }
         executor_id: { type: string }

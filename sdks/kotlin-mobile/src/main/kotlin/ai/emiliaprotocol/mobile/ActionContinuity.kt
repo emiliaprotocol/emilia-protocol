@@ -43,7 +43,7 @@ data class EmiliaMobileActionIdentity(
 
     private companion object {
         val CAID = Regex(
-            """^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$""",
+            """^canactid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$""",
         )
         const val HEX = "0123456789ABCDEF"
         val SHA256 = Regex("""^sha256:[0-9a-f]{64}$""")

@@ -28,7 +28,7 @@ function committedRows(decision = 'approved') {
     ep_version: '1.0',
     context_type: 'ep.signoff.v1',
     action_reference: 'mobact_0123456789abcdef0123456789abcdef',
-    action_caid: `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+    action_caid: `canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
     action_digest: `sha256:${'c'.repeat(64)}`,
     action_hash: ACTION_HASH,
     policy_id: 'policy-1',

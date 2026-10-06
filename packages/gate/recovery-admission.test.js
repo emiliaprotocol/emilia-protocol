@@ -7,7 +7,7 @@ import test from 'node:test';
 import { RECOVERY_CAPABILITY_CLAIM_BOUNDARY, RECOVERY_CAPABILITY_STATUS_VERSION, RECOVERY_CAPABILITY_VERSION, RECOVERY_RESERVATION_STATUS_VERSION, evaluateRecoveryAdmission, recoveryCapabilityDigest, signRecoveryCapability, verifyRecoveryCapability, } from './recovery-admission.js';
 import { signRiskBody } from './dist/reliance-risk-crypto.js';
 const D = (character) => `sha256:${character.repeat(64)}`;
-const C = (character) => (`caid:1:operations.recovery.1:jcs-sha256:${character.repeat(43)}`);
+const C = (character) => (`canactid:1:operations.recovery.1:jcs-sha256:${character.repeat(43)}`);
 const NOW = '2026-08-03T20:00:00.000Z';
 const ACTION_EXPIRES = '2026-08-03T20:30:00.000Z';
 const CAPABILITY_EXPIRES = '2026-08-03T21:00:00.000Z';

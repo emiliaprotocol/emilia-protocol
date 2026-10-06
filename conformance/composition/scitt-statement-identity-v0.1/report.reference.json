@@ -113,7 +113,7 @@
       "passed": true,
       "expected": "exact log-entry identity remains distinct from EP authorization identity",
       "observed": {
-        "statement_entry_digest": "sha256:e66c36d16399cddcb8e56b8eca8600d9dc04bba1df82c04c4b326dbb99a1684a",
+        "statement_entry_digest": "sha256:e7242c1fff414d0cd1d247e4a34db6ba681e013c344cec701b8825ae796dce5e",
         "authorization_payload_digest": "sha256:8990b21e82dbc67adc7f68100c58a79763c9517fc80185d0dcf358dda5b3583c"
       }
     }
@@ -129,5 +129,5 @@
     "The EP authorization payload digest identifies the canonical authorization claim under separately pinned issuer and profile checks.",
     "None of these digests alone proves authorization, transparency registration, or source-population completeness."
   ],
-  "results_digest": "sha256:ffcc95a7adc7111b09e068e400cdf4a57afe6df691ec982cd171d593510db635"
+  "results_digest": "sha256:d94ef6104c041dfc3d8406386d8ab311d7f0fd819fed80ab08d426bbc36bb249"
 }
