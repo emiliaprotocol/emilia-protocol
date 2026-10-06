@@ -31,7 +31,7 @@
     "qs": "6.16.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "esbuild": "^0.28.1",
     "vitest": "^5.0.1"
   },
