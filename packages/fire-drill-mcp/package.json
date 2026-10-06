@@ -39,9 +39,9 @@
     "security-scanner"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@emilia-protocol/fire-drill": "^0.5.2",
-    "@emilia-protocol/verify": "^3.21.0"
+    "@emilia-protocol/verify": "^3.21.0",
+    "@modelcontextprotocol/sdk": "1.31.0"
   },
   "engines": {
     "node": ">=18"

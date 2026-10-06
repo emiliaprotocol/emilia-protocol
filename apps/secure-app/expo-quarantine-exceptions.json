@@ -1,4 +1,29 @@
 {
   "schema_version": "ep_expo_quarantine_exceptions_v1",
-  "entries": []
+  "entries": [
+    {
+      "package": "expo",
+      "accepted_spec": "57.0.26",
+      "accepted_version": "57.0.26",
+      "doctor_required_version": "57.0.27",
+      "required_version_published_at": "2026-10-06T12:10:58.345Z",
+      "eligible_at": "2026-10-13T12:10:58.345Z"
+    },
+    {
+      "package": "expo-asset",
+      "accepted_spec": "57.0.18",
+      "accepted_version": "57.0.18",
+      "doctor_required_version": "57.0.19",
+      "required_version_published_at": "2026-10-06T12:09:40.922Z",
+      "eligible_at": "2026-10-13T12:09:40.922Z"
+    },
+    {
+      "package": "expo-screen-capture",
+      "accepted_spec": "~57.0.3",
+      "accepted_version": "57.0.3",
+      "doctor_required_version": "57.0.4",
+      "required_version_published_at": "2026-10-06T12:10:38.785Z",
+      "eligible_at": "2026-10-13T12:10:38.785Z"
+    }
+  ]
 }
