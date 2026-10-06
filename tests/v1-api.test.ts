@@ -465,7 +465,7 @@ describe('POST /api/v1/trust-receipts', () => {
       required_assurance: 'A',
       receipt_status: 'pending_signoff',
       canonical_action: {
-        action_caid: 'caid:1:payment.release.1:jcs-sha256:OB6MmOy-3-mT6RZAXQ3q4BwuEzPa8ZRUvZiFCRxyPUM',
+        action_caid: 'canactid:1:payment.release.1:jcs-sha256:OB6MmOy-3-mT6RZAXQ3q4BwuEzPa8ZRUvZiFCRxyPUM',
         caid_digest: 'sha256:381e8c98ecbedfe993e916405d0deae01c2e1333daf19454bd9885091c723d43',
         caid_action: {
           action_type: 'payment.release.1',

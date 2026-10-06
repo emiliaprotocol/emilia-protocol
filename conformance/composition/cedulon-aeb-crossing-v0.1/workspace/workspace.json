@@ -199,7 +199,7 @@
     "requirement_ref": "requirement:cedulon-machine-policy-decision",
     "profile_id": "cedulon:decision-token-payment-attempt",
     "artifact_ref": "artifact:cedulon-decision-token:001",
-    "caid": "caid:1:cedulon.payment.attempt.1:jcs-sha256:E0F6ihHvw-I9PIjt204lM5wqFmcUqrRZ1ByFlww8nR4",
+    "caid": "canactid:1:cedulon.payment.attempt.1:jcs-sha256:E0F6ihHvw-I9PIjt204lM5wqFmcUqrRZ1ByFlww8nR4",
     "status": {
       "checked_at": "2027-02-01T11:59:00Z",
       "expires_at": "2027-02-01T12:04:00Z",

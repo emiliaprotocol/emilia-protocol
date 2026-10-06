@@ -1,13 +1,4 @@
 {
   "schema_version": "ep_expo_quarantine_exceptions_v1",
-  "entries": [
-    {
-      "package": "expo",
-      "accepted_spec": "57.0.25",
-      "accepted_version": "57.0.25",
-      "doctor_required_version": "57.0.26",
-      "required_version_published_at": "2026-09-29T10:57:08.644Z",
-      "eligible_at": "2026-10-06T10:57:08.644Z"
-    }
-  ]
+  "entries": []
 }

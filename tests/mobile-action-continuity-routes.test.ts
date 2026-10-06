@@ -92,12 +92,12 @@ describe('mobile Action Evidence Boundary routes', () => {
       ok: true,
       operation_id: 'operation-42',
       state: 'consumed',
-      action_caid: `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_caid: `canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
       consumption_nonce: 'mconsume-test',
     });
     mocks.resolveMobileOperation.mockResolvedValue({
       operation_id: 'operation-42',
-      action_caid: `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_caid: `canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
       action_digest: `sha256:${'a'.repeat(64)}`,
       consumption_nonce: 'mconsume-test',
       executor_id: 'provider-1',

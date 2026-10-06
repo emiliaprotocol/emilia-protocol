@@ -505,7 +505,7 @@ function caidForAction(action) {
   const canonical = canonicalizeJson(action);
   const hash = sha256Bytes(Buffer.from(canonical, 'utf8'));
   return {
-    caid: `caid:1:${ACTION_TYPE}:jcs-sha256:${hash.toString('base64url')}`,
+    caid: `canactid:1:${ACTION_TYPE}:jcs-sha256:${hash.toString('base64url')}`,
     digest: `sha256:${hash.toString('hex')}`,
   };
 }

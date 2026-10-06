@@ -549,7 +549,7 @@ function authorityProgramOptions() {
     verifyRootActionBinding: () => ({
       valid: true,
       root_caid:
-        `caid:1:${vector.root_action.action_type}:jcs-sha256:` +
+        `canactid:1:${vector.root_action.action_type}:jcs-sha256:` +
         rootActionHash.toString("base64url"),
       root_action_digest: `sha256:${rootActionHash.toString("hex")}`,
     }),

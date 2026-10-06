@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// json.go - strict JSON text input (draft -04 Section 2.4).
+// json.go - strict JSON text input (draft -05 Section 2.4).
 //
 // Received JSON text reaches this package only through these decoders.
 // encoding/json is not a conforming front end: it replaces an unpaired
@@ -51,7 +51,7 @@ func decode(data []byte, maxOctets int) (interface{}, error) {
 }
 
 // DecodeJSON decodes an action object or a mapping source received as JSON
-// text, under every rule of draft -04 Section 2.4. The text MUST be an I-JSON
+// text, under every rule of draft -05 Section 2.4. The text MUST be an I-JSON
 // message [RFC7493] and in particular:
 //
 //   - within the JSON text limit (checked before parsing);
@@ -65,7 +65,7 @@ func decode(data []byte, maxOctets int) (interface{}, error) {
 //   - nesting within the nesting limit, the outermost object or array being
 //     depth 1.
 //
-// The limits are those of draft -04 Section 2.6, generated into spec_gen.go.
+// The limits are those of draft -05 Section 2.6, generated into spec_gen.go.
 //
 // Any other text is refused with a *DecodeError (reason malformed_json). A
 // number token is never refused here: it decodes to a json.Number holding
@@ -80,7 +80,7 @@ func DecodeJSON(data []byte) (interface{}, error) {
 
 // DecodeDocumentJSON decodes a registry, type definition, enum snapshot,
 // mapping profile or conformance corpus. It applies every rule of DecodeJSON
-// except the size limit, which draft -04 applies only to action objects and
+// except the size limit, which draft -05 applies only to action objects and
 // mapping sources: a value set that grows must never fall off a cliff.
 func DecodeDocumentJSON(data []byte) (interface{}, error) {
 	return decode(data, 0)

@@ -20,10 +20,13 @@ import {
   decodeCaidJson,
   definitionSha256,
   parseCaid,
+  parseLegacyCaidV04,
   resolveCaidDefinition,
   toCaidData,
   verifyCaid,
   verifyCaidJson,
+  verifyLegacyCaidV04,
+  verifyLegacyCaidV04Json,
 } from "./caid.mjs";
 import { compareMappedActions, mapAction, mappingProfileHash } from "./mapping.mjs";
 
@@ -63,19 +66,19 @@ test("a cyclic object or array refuses as unsupported_value and never throws", (
   // and only the data model refuses. A string field holding it is mistyped.
   assert.deepEqual(refusalsOf(computeCaid(top, OPTS)), ["unsupported_value"]);
   assert.deepEqual(canonicalize(top), { ok: false, refusals: ["unsupported_value"] });
-  const v = verifyCaid(top, "caid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
+  const v = verifyCaid(top, "canactid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
   assert.deepEqual(v.reasons, ["invalid_object"]);
   assert.deepEqual(v.details, [{ reason: "unsupported_value", field: null, rule: "data-model", observed: null }]);
   const inString = bare();
   inString.a = inString;
-  const w = verifyCaid(inString, "caid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
+  const w = verifyCaid(inString, "canactid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
   assert.deepEqual(w.details, [
     { reason: "mistyped_field:a", field: "a", rule: "field-type", observed: "object" },
     { reason: "unsupported_value", field: null, rule: "data-model", observed: null },
   ]);
   const inType = { a: "x" };
   inType.action_type = inType;
-  const x = verifyCaid(inType, "caid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
+  const x = verifyCaid(inType, "canactid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
   assert.deepEqual(x.details, [
     { reason: "action_type_mismatch", field: "action_type", rule: "action-type-equal", observed: "object" },
     { reason: "invalid_action_type", field: "action_type", rule: "action-type", observed: "object" },
@@ -113,7 +116,7 @@ test("getters are never invoked; a throwing getter refuses without throwing", ()
   Object.defineProperty(throwing, "a", { enumerable: true, get() { throw new Error("boom"); } });
   const r = computeCaid(throwing, OPTS);
   assert.deepEqual(r.refusals, ["mistyped_field:a", "unsupported_value"]);
-  const v = verifyCaid(throwing, "caid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
+  const v = verifyCaid(throwing, "canactid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
   assert.deepEqual(v.reasons, ["invalid_object"]);
   assert.deepEqual(v.details, [
     { reason: "mistyped_field:a", field: "a", rule: "field-type", observed: "unsupported" },
@@ -296,8 +299,8 @@ test("an action type, CAID or code_system over its length limit refuses before a
   // backtracking stack of a repeated group; the limit is checked first.
   const long = "a".repeat(8000000) + ".1";
   assert.deepEqual(refusalsOf(computeCaid({ action_type: long, a: "x" }, OPTS)), ["invalid_action_type"]);
-  assert.deepEqual(parseCaid(`caid:1:${long}:jcs-sha256:${"A".repeat(43)}`), { ok: false, refusals: ["malformed_caid"] });
-  assert.deepEqual(verifyCaid(bare(), `caid:1:${long}:jcs-sha256:${"A".repeat(43)}`, OPTS).reasons, ["malformed_caid"]);
+  assert.deepEqual(parseCaid(`canactid:1:${long}:jcs-sha256:${"A".repeat(43)}`), { ok: false, refusals: ["malformed_caid"] });
+  assert.deepEqual(verifyCaid(bare(), `canactid:1:${long}:jcs-sha256:${"A".repeat(43)}`, OPTS).reasons, ["malformed_caid"]);
   const codeDef = (cs) => [{ action_type: "t.code.1", required_fields: [{ name: "f", type: "code", code_system: cs, format: "icd-10-cm" }] }];
   assert.deepEqual(refusalsOf(computeCaid({ action_type: "t.code.1", f: "A00" }, { suite: S, definitions: codeDef(`urn:${"x".repeat(9000000)}`) })), ["invalid_definition"]);
   assert.deepEqual(definitionSha256(codeDef(`urn:${"x".repeat(9000000)}`)[0]), { refusals: ["invalid_definition"] });
@@ -680,16 +683,35 @@ test("options of the wrong type count as absent and never throw", () => {
 // Parse and verify
 // ---------------------------------------------------------------------------
 
+test("new issuance uses canactid while legacy caid verification is explicit", () => {
+  const computed = computeCaid(bare(), OPTS);
+  assert.equal(typeof computed.caid, "string");
+  const current = /** @type {string} */ (computed.caid);
+  assert.match(current, /^canactid:1:test\.unit\.1:jcs-sha256:/);
+  assert.equal(parseCaid(current).ok, true);
+
+  const legacy = current.replace(/^canactid:/, "caid:");
+  assert.deepEqual(parseCaid(legacy), { ok: false, refusals: ["malformed_caid"] });
+  assert.equal(verifyCaid(bare(), legacy, { definitions: DEFS }).valid, false);
+  assert.equal(parseLegacyCaidV04(legacy).ok, true);
+  assert.equal(verifyLegacyCaidV04(bare(), legacy, { definitions: DEFS }).valid, true);
+  assert.equal(verifyLegacyCaidV04Json(text(JSON.stringify(bare())), legacy, { definitions: DEFS }).valid, true);
+
+  // The legacy-only profile must never become a second permissive parser.
+  assert.deepEqual(parseLegacyCaidV04(current), { ok: false, refusals: ["malformed_caid"] });
+  assert.equal(verifyLegacyCaidV04(bare(), current, { definitions: DEFS }).valid, false);
+});
+
 test("parse: grammar, then suite registration, then digest syntax", () => {
   const d = "A".repeat(43);
-  assert.deepEqual(parseCaid(`caid:1:a.1:zz-unregistered:${d}`), { ok: false, refusals: ["unknown_suite"] });
-  assert.deepEqual(parseCaid(`caid:1:a.1:foo:${d}`), { ok: false, refusals: ["unknown_suite"] });
-  assert.deepEqual(parseCaid(`caid:1:a.1:zz-unregistered:x`), { ok: false, refusals: ["unknown_suite"] });
-  assert.deepEqual(parseCaid(`caid:1:a.1:jcs-sha256:x`), { ok: false, refusals: ["malformed_caid"] });
-  assert.deepEqual(parseCaid(`caid:1:a.1:jcs-sha256:${"A".repeat(42)}B`), { ok: false, refusals: ["malformed_caid"] });
-  assert.deepEqual(parseCaid(`CAID:1:a.1:jcs-sha256:${d}`), { ok: false, refusals: ["malformed_caid"] });
-  assert.deepEqual(parseCaid(`caid:1:a.1:jcs-sha256:${d}\n`), { ok: false, refusals: ["malformed_caid"] });
-  assert.deepEqual(parseCaid(`caid:1:a.1:cbor-sha256:${d}`), { ok: true, caid: { version: "1", action_type: "a.1", suite: "cbor-sha256", digest: d } });
+  assert.deepEqual(parseCaid(`canactid:1:a.1:zz-unregistered:${d}`), { ok: false, refusals: ["unknown_suite"] });
+  assert.deepEqual(parseCaid(`canactid:1:a.1:foo:${d}`), { ok: false, refusals: ["unknown_suite"] });
+  assert.deepEqual(parseCaid(`canactid:1:a.1:zz-unregistered:x`), { ok: false, refusals: ["unknown_suite"] });
+  assert.deepEqual(parseCaid(`canactid:1:a.1:jcs-sha256:x`), { ok: false, refusals: ["malformed_caid"] });
+  assert.deepEqual(parseCaid(`canactid:1:a.1:jcs-sha256:${"A".repeat(42)}B`), { ok: false, refusals: ["malformed_caid"] });
+  assert.deepEqual(parseCaid(`CANACTID:1:a.1:jcs-sha256:${d}`), { ok: false, refusals: ["malformed_caid"] });
+  assert.deepEqual(parseCaid(`canactid:1:a.1:jcs-sha256:${d}\n`), { ok: false, refusals: ["malformed_caid"] });
+  assert.deepEqual(parseCaid(`canactid:1:a.1:cbor-sha256:${d}`), { ok: true, caid: { version: "1", action_type: "a.1", suite: "cbor-sha256", digest: d } });
   assert.deepEqual(parseCaid(42), { ok: false, refusals: ["malformed_caid"] });
 });
 
@@ -698,7 +720,7 @@ test("verify: gates, closed-shape details, and the byte path", () => {
   assert.deepEqual(verifyCaid(bare(), 7, { definitions: DEFS }), {
     valid: false, reasons: ["malformed_caid"], details: [{ reason: "malformed_caid", field: null, rule: "caid", observed: "number" }],
   });
-  assert.deepEqual(verifyCaid(bare(), `caid:1:test.unit.1:zz-unregistered:${"A".repeat(43)}`, { definitions: DEFS }), {
+  assert.deepEqual(verifyCaid(bare(), `canactid:1:test.unit.1:zz-unregistered:${"A".repeat(43)}`, { definitions: DEFS }), {
     valid: false, reasons: ["unknown_suite"], details: [{ reason: "unknown_suite", field: null, rule: "suite", observed: null }],
   });
   assert.deepEqual(verifyCaid("str", c.caid, { definitions: DEFS }), {

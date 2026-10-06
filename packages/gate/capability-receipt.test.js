@@ -981,7 +981,7 @@ test('CAID scope requires a pinned resolver and matches only an allowed CAID', a
         amount: 5,
         currency: 'USD',
     };
-    const caid = 'caid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY';
+    const caid = 'canactid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY';
     const minted = mintCapabilityReceipt(keys.receipt, options({
         issuerPrivateKey: keys.privateKey,
         scope: {
@@ -1011,7 +1011,7 @@ test('CAID scope requires a pinned resolver and matches only an allowed CAID', a
 });
 test('CAID-equivalent wrappers keep exact digests but share one runtime fence', async () => {
     const keys = issuer();
-    const caid = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+    const caid = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
     const firstAction = scopedAction('wrapper-a', {
         amount: 5,
         action_type: 'payment.release',
@@ -1070,8 +1070,8 @@ test('CAID-equivalent wrappers keep exact digests but share one runtime fence', 
 });
 test('materially different CAIDs derive distinct runtime fences', async () => {
     const keys = issuer();
-    const caidA = `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`;
-    const caidB = `caid:1:payment.release.1:jcs-sha256:${'C'.repeat(43)}`;
+    const caidA = `canactid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`;
+    const caidB = `canactid:1:payment.release.1:jcs-sha256:${'C'.repeat(43)}`;
     const actions = [
         scopedAction('material-a', { amount: 5, destination: 'acct_a' }),
         scopedAction('material-b', { amount: 5, destination: 'acct_b' }),

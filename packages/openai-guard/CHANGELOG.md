@@ -3,6 +3,15 @@
 
 ## Unreleased
 
+## 0.5.3 (2026-10-06)
+
+- Pin the 0.9.0 `@emilia-protocol/require-receipt` executor-action
+  boundary so new installs cannot silently retain the obsolete `caid:`
+  selector behavior while claiming current `canactid:` support.
+- Retain optional offline receipt verification across Verify 3.21.x through
+  Verify 8.x. This compatibility release does not reinterpret historical
+  receipts or change the guard's configured enforcement boundary.
+
 ## 0.5.2 (2026-10-04)
 
 - Expand the optional verifier peer to include 5.x, 6.x, and 7.x alongside

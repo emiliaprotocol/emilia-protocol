@@ -25,7 +25,7 @@ import {
 
 const NOW = Date.parse('2026-07-21T23:30:00.000Z');
 const DIGEST = (character: string) => `sha256:${character.repeat(64)}`;
-const ROOT_CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const ROOT_CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 
 type ReceiptContext = Readonly<{
   issuer: string;

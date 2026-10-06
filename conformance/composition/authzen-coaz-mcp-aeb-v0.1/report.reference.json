@@ -9,16 +9,16 @@
     "production_mediation": false
   },
   "source_pins": {
-    "source_lock_digest": "sha256:fb34f7ba18981e1a720dd28649253e0dbdfcd817ba9f1460c0d89dcc431b6f0d",
+    "source_lock_digest": "sha256:7939bdc062aa2149b4b4d29114c8ed73f1155af061effb6520824ae8cc4381b8",
     "inherited_profile": "EP-COAZ-TRANSLATION-VECTOR-v0.1",
     "authzen_repository_commit": "e287920eed842b227e38531c1735b712337ca44d",
     "authzen_authorization_api_sha256": "f0ee89cc4a688f9f409dc323c8342579d74c45dc776a6b04a622ba9738de82bc",
     "mapping_profile_digest": "sha256:6fad7e8cae40b978b880acc2762134ba939f8ffcf56b50f11f6e8a9491b90368",
     "evidence_evaluator_version": "AEB-EVALUATION-v1",
-    "evidence_evaluator_sha256": "e10cc446c8f87dde5467cfa264e0b56c670d32c1879fdd9a90d5e1eac38b510a",
+    "evidence_evaluator_sha256": "2091e22affad2a2c190561d4f800690d734d054fc770f401ff0a260ee7bc7dbd",
     "native_attestation_bridge_version": "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1",
-    "native_attestation_bridge_sha256": "e10cc446c8f87dde5467cfa264e0b56c670d32c1879fdd9a90d5e1eac38b510a",
-    "aeb_kernel_sha256": "8baacf30ca25232f644eb7bff642ace40634587edec036ea552f119b818ad83d"
+    "native_attestation_bridge_sha256": "2091e22affad2a2c190561d4f800690d734d054fc770f401ff0a260ee7bc7dbd",
+    "aeb_kernel_sha256": "035c6d95ab346123e01c1ffcd179ec603afa7a28e18589a383f2a2dc66c5c524"
   },
   "claim_scope": {
     "authzen_result_role": "LOCAL_MACHINE_POLICY_INPUT",
@@ -125,14 +125,14 @@
         "pdp_decision": "ALLOW",
         "material_action": "MATCH",
         "material_reason": null,
-        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
-        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "request_digest": "sha256:cf29890faaa6194497e5e4a021382c17e99d71bc51f10763deeababe70e27346",
+        "local_pep_observation_digest": "sha256:bc1b72d8c3245e65ebb4ba74708a6b83361684b04713e384423c29738bd73d66",
         "policy_input_matches_verified_observation": true,
         "local_pep_attestation": {
           "signer": "test-verifier:authzen-local-pep:v0.1",
           "signer_scope": "LOCAL_PEP_TEST_HARNESS",
           "authzen_signature_claimed": false,
-          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+          "envelope_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4"
         },
         "local_pep_preflight": {
           "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
@@ -145,9 +145,9 @@
                 "initiator_exclusion": true,
                 "one_time_consumption": true
               },
-              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
               "composition": {
-                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "action_digest": "sha256:15f6bf9136071ef255d4ae56c25320f4bd8f670afbd493838795e9527514aff2",
                 "engine": "EP-AEC-v1",
                 "requirement_expression": "machine-policy-input",
                 "satisfied": true
@@ -159,7 +159,7 @@
                 "key_id": "",
                 "pinned_config_digest": "sha256:7dc6bfe9059b8f4aca33a3ad653bc61eff07c8a51d0bb1459ca36861e11cec84"
               },
-              "evidence_digest": "sha256:ad1c074e08e5e1b7a04b05bcdf40b1f0c05ef56be28462efd597ff4255a4087e",
+              "evidence_digest": "sha256:6d4bf2a802fc96f940016c7a094a7e33cf3b15b3fe50ec09ca13b88df8c24903",
               "executor_id": "executor:mcp-gate",
               "initiator_id": "agent:accounting",
               "legs": [
@@ -169,8 +169,8 @@
                   "adapter_id": "bridge:authzen-local-pep-observation-envelope",
                   "adapter_version": "1",
                   "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:allow_exact_call_admitted",
-                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
-                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4",
                   "evidence_role": "machine-policy-input",
                   "freshness": {
                     "age_seconds": 60,
@@ -189,7 +189,7 @@
                   "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
                   "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
                   "reasons": [],
-                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "replay_unit": "sha256:094f8e52466b5cb03d1e84ffcab10d2c9b05d65869aea6bdeaaff5c13e241974",
                   "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
                   "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
                   "subject": {
@@ -214,7 +214,7 @@
             ]
           },
           "native_replay_keys": [
-            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+            "aeb-native:sha256:1e39c7b81988cd28787094e97a9b087c740b26028e7ecb73f702e931ae7846e5"
           ],
           "policy_input": "ALLOW",
           "local_authorization": "NOT_EVALUATED",
@@ -230,7 +230,7 @@
           "portable_credential": false,
           "local_authorization_established": false
         },
-        "aeb_input_digest": "sha256:6a4f5b9ba40f3cd3b5f1777dabff3df51866756c225038cccb927a046bb69509",
+        "aeb_input_digest": "sha256:067824e951161b5374153b82113b8bdfcd617ba78a45e1a28dd865fd176a5cb5",
         "aeb": {
           "verification": "VERIFIED",
           "acceptance": "ACCEPTED",
@@ -312,14 +312,14 @@
         "pdp_decision": "ALLOW",
         "material_action": "MISMATCH",
         "material_reason": "caid_mismatch:beneficiary_account",
-        "request_digest": "sha256:95ae9f09e1bcce18325d4198176a66475a9ac2d3ae4d1222b50d1aa332d18336",
-        "local_pep_observation_digest": "sha256:b930fa54e0f12b208a8547ef56a12cd4c7d546554fbd15feb0b2bdd8b8aa4c96",
+        "request_digest": "sha256:554b7f6ee72622e6367bd41d1e1997de943a30142eb82be1f046daeae92503b8",
+        "local_pep_observation_digest": "sha256:20194d95c8d12de9e1b90baffb0325b135975dc1297630ce9d81c434f943010f",
         "policy_input_matches_verified_observation": true,
         "local_pep_attestation": {
           "signer": "test-verifier:authzen-local-pep:v0.1",
           "signer_scope": "LOCAL_PEP_TEST_HARNESS",
           "authzen_signature_claimed": false,
-          "envelope_digest": "sha256:de71d5fe075d252112580c20cd886a5d3f5ccf02cfd0d048b674f8df8db4387d"
+          "envelope_digest": "sha256:1ae0a71aeabc8afa77fb40f04a923409d55eb26e2780956cd3975b084f68cb9b"
         },
         "local_pep_preflight": {
           "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
@@ -332,9 +332,9 @@
                 "initiator_exclusion": true,
                 "one_time_consumption": true
               },
-              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
               "composition": {
-                "action_digest": "sha256:8628c1ead211487f38ad9b357dae3964b7bc75b909587049f657c7a1f0c5e216",
+                "action_digest": "sha256:0b86d83a3da753f71cab535dfc69c24e516adae938cd3a701bc0352efc3f134a",
                 "engine": "EP-AEC-v1",
                 "requirement_expression": "machine-policy-input",
                 "satisfied": false
@@ -346,7 +346,7 @@
                 "key_id": "",
                 "pinned_config_digest": "sha256:7dc6bfe9059b8f4aca33a3ad653bc61eff07c8a51d0bb1459ca36861e11cec84"
               },
-              "evidence_digest": "sha256:1abc7d68931d0b7603fc65520a4be92e46487640476f8d874fff3e52cb60e94b",
+              "evidence_digest": "sha256:5aba969d956e7c4e33103763061a3416ff5d17fa9447076d848448544b9ccfa4",
               "executor_id": "executor:mcp-gate",
               "initiator_id": "agent:accounting",
               "legs": [
@@ -356,8 +356,8 @@
                   "adapter_id": "bridge:authzen-local-pep-observation-envelope",
                   "adapter_version": "1",
                   "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:allow_changed_beneficiary_refused",
-                  "caid": "caid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo",
-                  "evidence_digest": "sha256:de71d5fe075d252112580c20cd886a5d3f5ccf02cfd0d048b674f8df8db4387d",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo",
+                  "evidence_digest": "sha256:1ae0a71aeabc8afa77fb40f04a923409d55eb26e2780956cd3975b084f68cb9b",
                   "evidence_role": "machine-policy-input",
                   "freshness": {
                     "age_seconds": 60,
@@ -379,7 +379,7 @@
                     "expected_action_digest_mismatch",
                     "normalized_action_digest_mismatch"
                   ],
-                  "replay_unit": "sha256:0b2f7b181bc5c2ba752e47fa2ec21b49664a94208e72a0b06260c766fb18eb98",
+                  "replay_unit": "sha256:7bdc3ee8bf22d5ae723a8fdacdfa3f0d6e1dcfd064bc207c5580eab98089a1bb",
                   "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
                   "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
                   "subject": {
@@ -410,7 +410,7 @@
             ]
           },
           "native_replay_keys": [
-            "aeb-native:sha256:195f5b76d5e8d6e92a5074661dbbf782b9b2e4b30371f30005fca0b2d47d580c"
+            "aeb-native:sha256:4a8633db9677296253fcdcb7e34b869984b15b6c60669aaf3550d64cd4d24682"
           ],
           "policy_input": "ALLOW",
           "local_authorization": "NOT_EVALUATED",
@@ -426,7 +426,7 @@
           "portable_credential": false,
           "local_authorization_established": false
         },
-        "aeb_input_digest": "sha256:63be1744362d50536229881805e40ad81e6e4b1ce43d3af8a26798ec0199d54d",
+        "aeb_input_digest": "sha256:a7db01f1665f02b07b109934217021d05e9e42ae45dc02ba9b53f4e0cb6ea5a8",
         "aeb": {
           "verification": "VERIFIED",
           "acceptance": "ACCEPTED",
@@ -512,14 +512,14 @@
         "pdp_decision": "DENY",
         "material_action": "MATCH",
         "material_reason": null,
-        "request_digest": "sha256:2886c4296b1ab3d766abc3301aeb9e0e5d9397645ae2af636a46b9435e0a171d",
-        "local_pep_observation_digest": "sha256:5b11032d9287ac5820f48d3fc0a96477d9b87b9e6d83373026ae6e68683d0a36",
+        "request_digest": "sha256:67dc00012c205679e2a2440c0d8773cf1c6b624765d49a2334e858a4b46fb387",
+        "local_pep_observation_digest": "sha256:71127cecd86d06d6af2b4efdf08946d010d0e2722564662c597cce97d1096770",
         "policy_input_matches_verified_observation": true,
         "local_pep_attestation": {
           "signer": "test-verifier:authzen-local-pep:v0.1",
           "signer_scope": "LOCAL_PEP_TEST_HARNESS",
           "authzen_signature_claimed": false,
-          "envelope_digest": "sha256:13b53dcd6dc1ab83deb4fbffa9a6efdaf82167d51d2ca8df5849d3c2c003c740"
+          "envelope_digest": "sha256:12dade7ba432a578c66de0fc9fe5c3e6a3f8fa8477efa39d43777c75f5e37257"
         },
         "local_pep_preflight": {
           "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
@@ -532,9 +532,9 @@
                 "initiator_exclusion": true,
                 "one_time_consumption": true
               },
-              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
               "composition": {
-                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "action_digest": "sha256:15f6bf9136071ef255d4ae56c25320f4bd8f670afbd493838795e9527514aff2",
                 "engine": "EP-AEC-v1",
                 "requirement_expression": "machine-policy-input",
                 "satisfied": true
@@ -546,7 +546,7 @@
                 "key_id": "",
                 "pinned_config_digest": "sha256:7dc6bfe9059b8f4aca33a3ad653bc61eff07c8a51d0bb1459ca36861e11cec84"
               },
-              "evidence_digest": "sha256:a1dcf0f053d711a83b165bd5b95cb7fe23a1b950b8c80a67fb457f083059520b",
+              "evidence_digest": "sha256:a831cf4931b99bed4bbaca2435025fe11afbe20238576167b70ad43e2c55909a",
               "executor_id": "executor:mcp-gate",
               "initiator_id": "agent:accounting",
               "legs": [
@@ -556,8 +556,8 @@
                   "adapter_id": "bridge:authzen-local-pep-observation-envelope",
                   "adapter_version": "1",
                   "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:deny_does_not_admit",
-                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
-                  "evidence_digest": "sha256:13b53dcd6dc1ab83deb4fbffa9a6efdaf82167d51d2ca8df5849d3c2c003c740",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:12dade7ba432a578c66de0fc9fe5c3e6a3f8fa8477efa39d43777c75f5e37257",
                   "evidence_role": "machine-policy-input",
                   "freshness": {
                     "age_seconds": 60,
@@ -576,7 +576,7 @@
                   "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
                   "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
                   "reasons": [],
-                  "replay_unit": "sha256:f06a4e8b19f8609073e2e3cc9e22c297c5c69b160dd084c9f10ceab3f9d34b17",
+                  "replay_unit": "sha256:d048fda4b4810da25555bfc63b67f66b4c7a38febf53b56f00192575e14d4677",
                   "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
                   "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
                   "subject": {
@@ -601,7 +601,7 @@
             ]
           },
           "native_replay_keys": [
-            "aeb-native:sha256:e9084a0cb771130a969ecc39741c03477cccffca203f011a55d57f930a61a2ac"
+            "aeb-native:sha256:a2ee679db87cb9afe8617940fcfdd186d242938aa76ddb29b9e99bbd669613a7"
           ],
           "policy_input": "DENY",
           "local_authorization": "NOT_EVALUATED",
@@ -617,7 +617,7 @@
           "portable_credential": false,
           "local_authorization_established": false
         },
-        "aeb_input_digest": "sha256:7acee8700a13cf64c95efdd48aa66cb44123ed5308a8df1a5b1dd83bfab98f33",
+        "aeb_input_digest": "sha256:c928618ce022a5c54b422e7434412499bed4450060de7fc0cf525a65bf37f0ec",
         "aeb": {
           "verification": "VERIFIED",
           "acceptance": "ACCEPTED",
@@ -701,14 +701,14 @@
         "pdp_decision": "ALLOW",
         "material_action": "MATCH",
         "material_reason": null,
-        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
-        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "request_digest": "sha256:cf29890faaa6194497e5e4a021382c17e99d71bc51f10763deeababe70e27346",
+        "local_pep_observation_digest": "sha256:bc1b72d8c3245e65ebb4ba74708a6b83361684b04713e384423c29738bd73d66",
         "policy_input_matches_verified_observation": true,
         "local_pep_attestation": {
           "signer": "test-verifier:authzen-local-pep:v0.1",
           "signer_scope": "LOCAL_PEP_TEST_HARNESS",
           "authzen_signature_claimed": false,
-          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+          "envelope_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4"
         },
         "local_pep_preflight": {
           "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
@@ -721,9 +721,9 @@
                 "initiator_exclusion": true,
                 "one_time_consumption": true
               },
-              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
               "composition": {
-                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "action_digest": "sha256:15f6bf9136071ef255d4ae56c25320f4bd8f670afbd493838795e9527514aff2",
                 "engine": "EP-AEC-v1",
                 "requirement_expression": "machine-policy-input AND named-human-authorization",
                 "satisfied": false
@@ -735,7 +735,7 @@
                 "key_id": "",
                 "pinned_config_digest": "sha256:732a13240ce396b6ac080d754ce4064ce4d2d51b472e72dda13d2475484b7882"
               },
-              "evidence_digest": "sha256:71c5b4a3dc3072e78f1c9f737de3aceb85a9f065ade3dd3c06fc875f7e6c31c9",
+              "evidence_digest": "sha256:3cf2ccc0eb9aa71fb8f594cd75c8f591983d1439d92d1b9117f8281c016c69cf",
               "executor_id": "executor:mcp-gate",
               "initiator_id": "agent:accounting",
               "legs": [
@@ -745,8 +745,8 @@
                   "adapter_id": "bridge:authzen-local-pep-observation-envelope",
                   "adapter_version": "1",
                   "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:allow_does_not_fill_named_human_role",
-                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
-                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4",
                   "evidence_role": "machine-policy-input",
                   "freshness": {
                     "age_seconds": 60,
@@ -765,7 +765,7 @@
                   "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
                   "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
                   "reasons": [],
-                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "replay_unit": "sha256:094f8e52466b5cb03d1e84ffcab10d2c9b05d65869aea6bdeaaff5c13e241974",
                   "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
                   "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
                   "subject": {
@@ -792,7 +792,7 @@
             ]
           },
           "native_replay_keys": [
-            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+            "aeb-native:sha256:1e39c7b81988cd28787094e97a9b087c740b26028e7ecb73f702e931ae7846e5"
           ],
           "policy_input": "ALLOW",
           "local_authorization": "NOT_EVALUATED",
@@ -808,7 +808,7 @@
           "portable_credential": false,
           "local_authorization_established": false
         },
-        "aeb_input_digest": "sha256:0ed1cbd473f9fa4a14bf15c5fa1c4e4532f1821c545c01822745c5ff47ce32cb",
+        "aeb_input_digest": "sha256:4ce9ced34bc31935697078466fbd792b6b64b143f104980ca4e759d2cdc762a0",
         "aeb": {
           "verification": "VERIFIED",
           "acceptance": "ACCEPTED",
@@ -892,14 +892,14 @@
         "pdp_decision": "ALLOW",
         "material_action": "MATCH",
         "material_reason": null,
-        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
-        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "request_digest": "sha256:cf29890faaa6194497e5e4a021382c17e99d71bc51f10763deeababe70e27346",
+        "local_pep_observation_digest": "sha256:bc1b72d8c3245e65ebb4ba74708a6b83361684b04713e384423c29738bd73d66",
         "policy_input_matches_verified_observation": true,
         "local_pep_attestation": {
           "signer": "test-verifier:authzen-local-pep:v0.1",
           "signer_scope": "LOCAL_PEP_TEST_HARNESS",
           "authzen_signature_claimed": false,
-          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+          "envelope_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4"
         },
         "local_pep_preflight": {
           "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
@@ -912,9 +912,9 @@
                 "initiator_exclusion": true,
                 "one_time_consumption": true
               },
-              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
               "composition": {
-                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "action_digest": "sha256:15f6bf9136071ef255d4ae56c25320f4bd8f670afbd493838795e9527514aff2",
                 "engine": "EP-AEC-v1",
                 "requirement_expression": "machine-policy-input",
                 "satisfied": true
@@ -926,7 +926,7 @@
                 "key_id": "",
                 "pinned_config_digest": "sha256:7dc6bfe9059b8f4aca33a3ad653bc61eff07c8a51d0bb1459ca36861e11cec84"
               },
-              "evidence_digest": "sha256:6f71358d0b2442ad961e1c9877c929c0a8a4ec4bd4db3d03d0711e15d42b80d8",
+              "evidence_digest": "sha256:18fdd465fac51ae5fe1b8eff6effd5ea0e5f8c446c308e16e85535243c2cde4f",
               "executor_id": "executor:mcp-gate",
               "initiator_id": "agent:accounting",
               "legs": [
@@ -936,8 +936,8 @@
                   "adapter_id": "bridge:authzen-local-pep-observation-envelope",
                   "adapter_version": "1",
                   "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:timeout_after_dispatch_indeterminate",
-                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
-                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4",
                   "evidence_role": "machine-policy-input",
                   "freshness": {
                     "age_seconds": 60,
@@ -956,7 +956,7 @@
                   "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
                   "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
                   "reasons": [],
-                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "replay_unit": "sha256:094f8e52466b5cb03d1e84ffcab10d2c9b05d65869aea6bdeaaff5c13e241974",
                   "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
                   "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
                   "subject": {
@@ -981,7 +981,7 @@
             ]
           },
           "native_replay_keys": [
-            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+            "aeb-native:sha256:1e39c7b81988cd28787094e97a9b087c740b26028e7ecb73f702e931ae7846e5"
           ],
           "policy_input": "ALLOW",
           "local_authorization": "NOT_EVALUATED",
@@ -997,7 +997,7 @@
           "portable_credential": false,
           "local_authorization_established": false
         },
-        "aeb_input_digest": "sha256:5bfdb34dff0ce5fe1e5ab3973216f4c34d82890a1269b32421201256be62286c",
+        "aeb_input_digest": "sha256:a81e5a2eb47323b8d4e4915bd0c1e6cddb4c32d3125fe8fa98ea13fd16cc105e",
         "aeb": {
           "verification": "VERIFIED",
           "acceptance": "ACCEPTED",
@@ -1081,14 +1081,14 @@
         "pdp_decision": "ALLOW",
         "material_action": "MATCH",
         "material_reason": null,
-        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
-        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "request_digest": "sha256:cf29890faaa6194497e5e4a021382c17e99d71bc51f10763deeababe70e27346",
+        "local_pep_observation_digest": "sha256:bc1b72d8c3245e65ebb4ba74708a6b83361684b04713e384423c29738bd73d66",
         "policy_input_matches_verified_observation": true,
         "local_pep_attestation": {
           "signer": "test-verifier:authzen-local-pep:v0.1",
           "signer_scope": "LOCAL_PEP_TEST_HARNESS",
           "authzen_signature_claimed": false,
-          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+          "envelope_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4"
         },
         "local_pep_preflight": {
           "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
@@ -1101,9 +1101,9 @@
                 "initiator_exclusion": true,
                 "one_time_consumption": true
               },
-              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
               "composition": {
-                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "action_digest": "sha256:15f6bf9136071ef255d4ae56c25320f4bd8f670afbd493838795e9527514aff2",
                 "engine": "EP-AEC-v1",
                 "requirement_expression": "machine-policy-input",
                 "satisfied": true
@@ -1115,7 +1115,7 @@
                 "key_id": "",
                 "pinned_config_digest": "sha256:7dc6bfe9059b8f4aca33a3ad653bc61eff07c8a51d0bb1459ca36861e11cec84"
               },
-              "evidence_digest": "sha256:fa7df1537b767a15a31eafd13a31c4768e257a43af6e9ed1c1fd43db316fb443",
+              "evidence_digest": "sha256:bda24095b1a40b169bd0f393a57b1e36402dd3c859d6f7c97c5ed4d5a3dc2e5a",
               "executor_id": "executor:mcp-gate",
               "initiator_id": "agent:accounting",
               "legs": [
@@ -1125,8 +1125,8 @@
                   "adapter_id": "bridge:authzen-local-pep-observation-envelope",
                   "adapter_version": "1",
                   "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:blind_retry_refused",
-                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
-                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4",
                   "evidence_role": "machine-policy-input",
                   "freshness": {
                     "age_seconds": 60,
@@ -1145,7 +1145,7 @@
                   "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
                   "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
                   "reasons": [],
-                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "replay_unit": "sha256:094f8e52466b5cb03d1e84ffcab10d2c9b05d65869aea6bdeaaff5c13e241974",
                   "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
                   "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
                   "subject": {
@@ -1170,7 +1170,7 @@
             ]
           },
           "native_replay_keys": [
-            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+            "aeb-native:sha256:1e39c7b81988cd28787094e97a9b087c740b26028e7ecb73f702e931ae7846e5"
           ],
           "policy_input": "ALLOW",
           "local_authorization": "NOT_EVALUATED",
@@ -1186,7 +1186,7 @@
           "portable_credential": false,
           "local_authorization_established": false
         },
-        "aeb_input_digest": "sha256:592b16d8c9d85d4cf39da43b75d44c064b71ed23a4ce8898dd8dcd138cc8853a",
+        "aeb_input_digest": "sha256:4ee04eed14cd9970e8ce95d33726211040aa1ab7068b929774a6432a34ecb24b",
         "aeb": {
           "verification": "VERIFIED",
           "acceptance": "ACCEPTED",
@@ -1270,14 +1270,14 @@
         "pdp_decision": "ALLOW",
         "material_action": "MATCH",
         "material_reason": null,
-        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
-        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "request_digest": "sha256:cf29890faaa6194497e5e4a021382c17e99d71bc51f10763deeababe70e27346",
+        "local_pep_observation_digest": "sha256:bc1b72d8c3245e65ebb4ba74708a6b83361684b04713e384423c29738bd73d66",
         "policy_input_matches_verified_observation": true,
         "local_pep_attestation": {
           "signer": "test-verifier:authzen-local-pep:v0.1",
           "signer_scope": "LOCAL_PEP_TEST_HARNESS",
           "authzen_signature_claimed": false,
-          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+          "envelope_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4"
         },
         "local_pep_preflight": {
           "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
@@ -1290,9 +1290,9 @@
                 "initiator_exclusion": true,
                 "one_time_consumption": true
               },
-              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
               "composition": {
-                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "action_digest": "sha256:15f6bf9136071ef255d4ae56c25320f4bd8f670afbd493838795e9527514aff2",
                 "engine": "EP-AEC-v1",
                 "requirement_expression": "machine-policy-input",
                 "satisfied": true
@@ -1304,7 +1304,7 @@
                 "key_id": "",
                 "pinned_config_digest": "sha256:7dc6bfe9059b8f4aca33a3ad653bc61eff07c8a51d0bb1459ca36861e11cec84"
               },
-              "evidence_digest": "sha256:e68e25dbb715ef6a5c7c52c0876d610ea4b2f4355a0be0e044ead29ffc934020",
+              "evidence_digest": "sha256:6ddb19797863626b29d218560b0da5aab8aa79111872736e1ec35435107e8ec7",
               "executor_id": "executor:mcp-gate",
               "initiator_id": "agent:accounting",
               "legs": [
@@ -1314,8 +1314,8 @@
                   "adapter_id": "bridge:authzen-local-pep-observation-envelope",
                   "adapter_version": "1",
                   "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:authenticated_exact_reconciliation_accepted",
-                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
-                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4",
                   "evidence_role": "machine-policy-input",
                   "freshness": {
                     "age_seconds": 60,
@@ -1334,7 +1334,7 @@
                   "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
                   "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
                   "reasons": [],
-                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "replay_unit": "sha256:094f8e52466b5cb03d1e84ffcab10d2c9b05d65869aea6bdeaaff5c13e241974",
                   "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
                   "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
                   "subject": {
@@ -1359,7 +1359,7 @@
             ]
           },
           "native_replay_keys": [
-            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+            "aeb-native:sha256:1e39c7b81988cd28787094e97a9b087c740b26028e7ecb73f702e931ae7846e5"
           ],
           "policy_input": "ALLOW",
           "local_authorization": "NOT_EVALUATED",
@@ -1375,7 +1375,7 @@
           "portable_credential": false,
           "local_authorization_established": false
         },
-        "aeb_input_digest": "sha256:3e4bdb42ee1b11ba5bc396004be573ad44ad622aeca1bd9f5a5965ae3969d659",
+        "aeb_input_digest": "sha256:f6ac8aba56de9a300305a0095df6bb98c61cda133d42b269d4a7dae7fef37c4d",
         "aeb": {
           "verification": "VERIFIED",
           "acceptance": "ACCEPTED",
@@ -1459,14 +1459,14 @@
         "pdp_decision": "ALLOW",
         "material_action": "MATCH",
         "material_reason": null,
-        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
-        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "request_digest": "sha256:cf29890faaa6194497e5e4a021382c17e99d71bc51f10763deeababe70e27346",
+        "local_pep_observation_digest": "sha256:bc1b72d8c3245e65ebb4ba74708a6b83361684b04713e384423c29738bd73d66",
         "policy_input_matches_verified_observation": true,
         "local_pep_attestation": {
           "signer": "test-verifier:authzen-local-pep:v0.1",
           "signer_scope": "LOCAL_PEP_TEST_HARNESS",
           "authzen_signature_claimed": false,
-          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+          "envelope_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4"
         },
         "local_pep_preflight": {
           "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
@@ -1479,9 +1479,9 @@
                 "initiator_exclusion": true,
                 "one_time_consumption": true
               },
-              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
               "composition": {
-                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "action_digest": "sha256:15f6bf9136071ef255d4ae56c25320f4bd8f670afbd493838795e9527514aff2",
                 "engine": "EP-AEC-v1",
                 "requirement_expression": "machine-policy-input",
                 "satisfied": true
@@ -1493,7 +1493,7 @@
                 "key_id": "",
                 "pinned_config_digest": "sha256:7dc6bfe9059b8f4aca33a3ad653bc61eff07c8a51d0bb1459ca36861e11cec84"
               },
-              "evidence_digest": "sha256:b2e3299beab78eb7e7a4347c45b7fb41043bbee14f92b4cd17f3345668dd621f",
+              "evidence_digest": "sha256:ba7bd7a5470538557c1f7a7fdb8302138fcb0e0f18a49f4c5c0765fc891a851f",
               "executor_id": "executor:mcp-gate",
               "initiator_id": "agent:accounting",
               "legs": [
@@ -1503,8 +1503,8 @@
                   "adapter_id": "bridge:authzen-local-pep-observation-envelope",
                   "adapter_version": "1",
                   "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:mismatched_provider_and_action_reconciliation_refused",
-                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
-                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:e3a760c235f2367aeac1754caa0015600bcf57884db268018dba111e19196ae4",
                   "evidence_role": "machine-policy-input",
                   "freshness": {
                     "age_seconds": 60,
@@ -1523,7 +1523,7 @@
                   "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
                   "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
                   "reasons": [],
-                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "replay_unit": "sha256:094f8e52466b5cb03d1e84ffcab10d2c9b05d65869aea6bdeaaff5c13e241974",
                   "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
                   "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
                   "subject": {
@@ -1548,7 +1548,7 @@
             ]
           },
           "native_replay_keys": [
-            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+            "aeb-native:sha256:1e39c7b81988cd28787094e97a9b087c740b26028e7ecb73f702e931ae7846e5"
           ],
           "policy_input": "ALLOW",
           "local_authorization": "NOT_EVALUATED",
@@ -1564,7 +1564,7 @@
           "portable_credential": false,
           "local_authorization_established": false
         },
-        "aeb_input_digest": "sha256:43023f612023741af01ef14e0c0b511d83334534484225edc22dba0fef50f546",
+        "aeb_input_digest": "sha256:145fd973cb1b079563731fae88116a2e5b584163ccc55cb49075722e0200cc7e",
         "aeb": {
           "verification": "VERIFIED",
           "acceptance": "ACCEPTED",
@@ -1661,5 +1661,5 @@
       }
     }
   ],
-  "report_digest": "sha256:2f32eb15d5f404ea7cacfb19dc9265fba323b635497eb7d7f05c6cc6ffd5c55e"
+  "report_digest": "sha256:aadf70552cf197855f9b206a6b35d8fc3a2d70ff9d3c6075c14eaf3572fb0865"
 }

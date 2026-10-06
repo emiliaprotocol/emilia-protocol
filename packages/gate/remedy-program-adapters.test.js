@@ -10,7 +10,7 @@ import { signActionEscrowStateStatement } from './action-escrow-state.js';
 import { REMEDY_PROGRAM_EVIDENCE_VERSION, createRemedyProgramAdapters, remedyProgramEvidenceDigest, remedyProgramEvidenceSigningBytes, } from './remedy-program-adapters.js';
 const NOW = Date.parse('2026-07-22T19:00:00.000Z');
 const HASH = (char) => `sha256:${char.repeat(64)}`;
-const CAID = (char, action = 'payments.refund') => (`caid:1:${action}.1:jcs-sha256:${char.repeat(43)}`);
+const CAID = (char, action = 'payments.refund') => (`canactid:1:${action}.1:jcs-sha256:${char.repeat(43)}`);
 function keyPair() {
     const pair = crypto.generateKeyPairSync('ed25519');
     return {

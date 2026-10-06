@@ -14,7 +14,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { issueRemedyProgramReceipt } from './remedy-program-receipt.js';
 const HASH = (character) => `sha256:${character.repeat(64)}`;
-const CAID = (operation, character) => `caid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`;
+const CAID = (operation, character) => `canactid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`;
 const CONTEXT = {
     issuer: 'emilia-gate-operator',
     tenant: 'tenant-a',

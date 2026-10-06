@@ -54,7 +54,7 @@ export const PURCHASE_ACTION_DEFINITION = Object.freeze({
 });
 
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
-const CAID = /^caid:1:commerce\.purchase\.submit\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID = /^canactid:1:commerce\.purchase\.submit\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const AMOUNT = /^(0|[1-9][0-9]*)(\.[0-9]+)?$/;
 const CURRENCY = /^[A-Z]{3}$/;
 const RFC3339_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/;

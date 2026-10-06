@@ -262,7 +262,7 @@ class MobileApiRecoveryTest {
             put("action_reference", "mobact_0123456789abcdef0123456789abcdef")
             put(
                 "action_caid",
-                "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"A".repeat(43)}",
+                "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"A".repeat(43)}",
             )
             put("action_digest", "sha256:" + "a".repeat(64))
             put("action_hash", "sha256:" + "a".repeat(64))

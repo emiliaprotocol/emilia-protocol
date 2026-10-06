@@ -16,7 +16,7 @@ import { hashCanonical } from './execution-binding.js';
 import { trustProgramDigest, validateTrustProgram } from './trust-program.js';
 
 const D = (character: string) => `sha256:${character.repeat(64)}`;
-const C = (character: string) => `caid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
+const C = (character: string) => `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
 
 function profile(id = 'rp:admissibility:human-review:v1', evidence = 'human_authorization'): any {
   const body = {

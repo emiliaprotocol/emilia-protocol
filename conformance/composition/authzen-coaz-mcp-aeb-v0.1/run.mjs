@@ -332,7 +332,7 @@ function observationShapeValid(observation) {
     && DIGEST_PATTERN.test(observation.authzen_response_digest)
     && typeof observation.boolean_decision === 'boolean'
     && exactText(observation.full_typed_action_caid)
-    && observation.full_typed_action_caid.startsWith('caid:')
+    && observation.full_typed_action_caid.startsWith('canactid:')
     && DIGEST_PATTERN.test(observation.full_typed_action_digest)
     && observation.authzen_mapping_profile_digest === PINNED_MAPPING_PROFILE_DIGEST
     && DIGEST_PATTERN.test(observation.aeb_mapping_profile_digest)

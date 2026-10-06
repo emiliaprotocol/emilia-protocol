@@ -48,7 +48,8 @@ behavior normative and testable, and refuses readings the -07 text permitted:
   that profile nor a closed list of further fact members;
 - no wire-format change: EP-AEC-v1, EP-AEC-REQUIREMENT-v1 and
   EP-AEC-REPLAY-v1 keep their versions and the member sets the reference
-  evaluator emits.
+  evaluator emits; the two CAID examples now use CAID-05's current
+  `canactid:` scheme, and no legacy identifier is rewritten.
 
 "Changes in -08" (Section 18) lists the changes.
 
@@ -70,7 +71,7 @@ behavior normative and testable, and refuses readings the -07 text permitted:
   line over 72 columns, and the TXT carries the -08 name and date;
 - the required -08 sentences are in the TXT (and, apart from
   cross-references, in the source), and the -07 grammar, the -07 evaluator
-  value, CAID -04 and the rejected promises ("cannot happen silently",
+  value, CAID -04, obsolete `caid:` examples and the rejected promises ("cannot happen silently",
   "guarantees matching", "backward compatible") are absent;
 - the posted -07 source is unchanged;
 - the SHA-256 in Section 8.7 equals the corpus on this tree, its
@@ -97,9 +98,10 @@ Upload is the editor's decision. Before it:
    -13, Quorum -04, AEB -07, Qualification -00). If any moved, update the
    reference, re-render with the procedure in `VALIDATION.md`, refresh
    `SHA256SUMS.txt` and the pins in `scripts/check-aec-08.mjs`.
-2. Implementation Status says `@emilia-protocol/verify` 6.0.0 is the latest
-   published release and implements `EP-AEC-EVALUATOR-07-v1`. If a release
-   carrying `EP-AEC-EVALUATOR-08-v1` ships first, revise that paragraph.
+2. Implementation Status records the current releases checked on 2026-10-06:
+   `@emilia-protocol/verify` 7.0.0, Python `emilia-verify` 2.9.0, and Go
+   `packages/go-verify/v2.5.0`. Recheck them immediately before upload and
+   revise the paragraph if any package has moved.
 3. Section 8.7 cites the corpus at commit `2ebba2d84` on
    `aec-08-expression-integrity`. That commit must stay reachable on the
    public repository or the URL may stop resolving; the SHA-256 remains the

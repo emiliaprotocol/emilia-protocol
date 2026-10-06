@@ -24,10 +24,10 @@ class MobileCeremonyTest {
     private val credentialId = "credential-android-1".toByteArray()
     private val androidKeyId = "android-keystore:sha256:${"A".repeat(43)}"
     private val case9482ActionCaid =
-        "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:" +
+        "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:" +
             "XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM"
     private val substitutedActionCaid =
-        "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"A".repeat(43)}"
+        "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"A".repeat(43)}"
 
     private data class Fixture(
         val challenge: EmiliaMobileChallenge,
@@ -284,7 +284,7 @@ class MobileCeremonyTest {
 
     @Test
     fun derivesSourceActionTypeByRequiredPriorityAndFallback() {
-        val prefix = "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:"
+        val prefix = "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:"
         val vectors = listOf(
             buildJsonObject {
                 put("action_type", "primary.action")
@@ -406,7 +406,7 @@ class MobileCeremonyTest {
             ),
             item.expectedActionIdentity.copy(
                 actionCaid =
-                    "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"B".repeat(43)}",
+                    "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"B".repeat(43)}",
             ),
             item.expectedActionIdentity.copy(actionDigest = "sha256:" + "f".repeat(64)),
         )

@@ -115,7 +115,7 @@
       "passed": true,
       "observed": {
         "mapping": "MATCH",
-        "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:iECWy-ncWzL7bcpGIiqyEwi-ZfTpRwbv58B0srsO2cY",
+        "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:iECWy-ncWzL7bcpGIiqyEwi-ZfTpRwbv58B0srsO2cY",
         "action_digest": "sha256:884096cbe9dc5b32fb6dca46222ab21308be65f4e94706efe7c074b2bb0ed9c6",
         "reasons": []
       }
@@ -165,5 +165,5 @@
     "A passing report reproduces the EMILIA reference adapter and is not independent implementation, deployment, certification, IETF adoption, or endorsement."
   ],
   "implementation_status_markdown": "The runner reproduced 8/8 source-locked CCS 1.1.20 to AEB checks. It verified the pinned Ed25519 L1 receipt and mapped its signed action, tool, and full argument digest to one executor-constructed CAID. This is a reproduction of the EMILIA reference adapter, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:ffb1fd8f31eae883b8c87d344be0e1081bd407cc971f6f36a1bdbcbf8f43b40e"
+  "report_digest": "sha256:e119f1d54859ebf0be8f89f6521408aac32b8a72dd7fd9bfad142bc2d2048ed0"
 }

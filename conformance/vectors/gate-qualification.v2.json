@@ -115,7 +115,7 @@
         "observed_at": "2026-07-26T17:59:30.000Z",
         "expires_at": "2026-07-26T18:15:00.000Z"
       },
-      "caid": "caid:1:payment.capture.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "caid": "canactid:1:payment.capture.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
       "action_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
       "effect_request_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
       "provider": {
@@ -867,7 +867,7 @@
       "scenario": "request_substitution",
       "mutation": {
         "target": "body.caid",
-        "value": "caid:1:payment.capture.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        "value": "canactid:1:payment.capture.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
       },
       "expected": {
         "disposition": "RECONCILE",

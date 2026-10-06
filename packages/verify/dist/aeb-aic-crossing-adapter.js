@@ -34,7 +34,7 @@ export const AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION = 'EP-AIC-X509-CREDENTIAL
 // digest; this constant enforces the v0.2 runtime freshness semantic itself.
 export const AIC_CROSSING_MAX_STATUS_AGE_SECONDS = 60;
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
-const CAID_RE = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID_RE = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9:_.@/#-]{0,511}$/;
 const BASE64URL_RE = /^[A-Za-z0-9_-]+$/;
 const MAX_AIC_JWT_BYTES = 64 * 1024;

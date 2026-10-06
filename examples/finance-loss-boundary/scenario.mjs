@@ -57,7 +57,7 @@ function publicKey(key) {
 }
 
 function caid(label) {
-  return `caid:1:payment.release.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
+  return `canactid:1:payment.release.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
 }
 
 function ownerToken(byte) {

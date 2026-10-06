@@ -34,8 +34,8 @@ import { computeCaid } from './vendor/caid.mjs';
 
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 
-const CAID = `caid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
-const OTHER_CAID = `caid:1:order.purchase.1:jcs-sha256:${'B'.repeat(43)}`;
+const CAID = `canactid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
+const OTHER_CAID = `canactid:1:order.purchase.1:jcs-sha256:${'B'.repeat(43)}`;
 const NOW = '2026-07-21T12:00:00Z';
 
 function legacyMalformedUnicodeCanonicalize(value) {

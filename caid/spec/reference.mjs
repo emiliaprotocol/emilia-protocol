@@ -265,7 +265,7 @@ export function createReference(spec) {
 
   /**
    * Computes over a data-model value. Returns {caid, digest,
-   * definition_sha256} or {refusals} in the -04 reason order.
+   * definition_sha256} or {refusals} in the -05 reason order.
    */
   function compute(object, options) {
     const opts = isPlainObject(options) ? options : {};
@@ -274,7 +274,7 @@ export function createReference(spec) {
     if (r.refusals.length) return { refusals: r.refusals };
     const bytes = createHash('sha256').update(Buffer.from(/** @type {string} */ (r.canonical), 'utf8')).digest();
     return {
-      caid: `caid:1:${object.action_type}:${suite}:${bytes.toString('base64url')}`,
+      caid: `${spec.identifier.scheme}:${spec.identifier.version}:${object.action_type}:${suite}:${bytes.toString('base64url')}`,
       digest: `sha256:${bytes.toString('hex')}`,
       definition_sha256: /** @type {any} */ (r.resolved).definition_sha256,
     };

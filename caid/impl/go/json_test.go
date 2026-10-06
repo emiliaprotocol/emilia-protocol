@@ -153,7 +153,7 @@ func TestJSONTextEntryPointsGateOnMalformedJSON(t *testing.T) {
 		t.Fatalf("VerifyCaidJSON duplicate = %#v", got)
 	}
 	// Parsing the CAID comes before decoding the text.
-	got = VerifyCaidJSON([]byte(`{`), "caid:1:test.text.1:jcs-sha256:!", VerifyOptions{Definitions: defs})
+	got = VerifyCaidJSON([]byte(`{`), "canactid:1:test.text.1:jcs-sha256:!", VerifyOptions{Definitions: defs})
 	if !reflect.DeepEqual(got.Reasons, []string{"malformed_caid"}) {
 		t.Fatalf("VerifyCaidJSON parse gate = %#v", got)
 	}

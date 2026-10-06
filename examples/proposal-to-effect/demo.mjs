@@ -7,7 +7,7 @@ import { createEg1Harness, createTrustedActionFirewall, EG1_DEFAULT_SELECTOR, } 
 import { createProposalToEffect, proposalToEffectConsumptionNonce, } from '../../packages/gate/proposal-to-effect.js';
 import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, pinnedConfigDigest, registryEntryDigest, unifiedRegistryDigest, } from '../../packages/verify/aeb-adapter-contract.js';
 const NOW = '2026-07-22T12:00:00Z';
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 function entry(id, kind, definition) {
     const value = { kind, version: '1', status: 'active', definition };
     value.registry_entry_sha256 = registryEntryDigest(id, value);

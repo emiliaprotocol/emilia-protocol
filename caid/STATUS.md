@@ -1,17 +1,21 @@
 # CAID Status
 
-Updated: 2026-09-28
+Updated: 2026-10-05
 
 ## Verified implementation
 
-- A typed action object and strict `caid:1` identifier.
+- A typed action object and strict `canactid:1` identifier. Current issuance,
+  parsing, and verification reject the obsolete `caid:1` spelling. Existing
+  CAID-04 artifacts retain their exact signed bytes and are accepted only by
+  separately named legacy parsing and verification APIs; there is no legacy
+  issuance API.
 - Registry v5: 62 action types, 53 active and 9 deprecated, a two-suite
   registry with each suite's `digest_octets`, and five integrity-pinned value
   sets (the SIX ISO 4217 List One of 2026-09-17, the IANA DNS RR TYPE, JOSE
   algorithm and JOSE elliptic-curve registries, and ISO 3166-1 alpha-2 as
   carried by the IANA Language Subtag Registry), each with its source,
   retrieval date and licence. Every active type resolves every enum;
-  `node caid/registry/check.mjs` computes all 53 under the -04 reference
+  `node caid/registry/check.mjs` computes all 53 under the -05 reference
   validator (`caid/spec/reference.mjs`), and each computes in all three
   ports. Four active types (`payment.refund.2`, `ach.debit.originate.2`,
   `rx.dispense.2`, `prior.auth.approve.2`) use the `code` field type, which
@@ -25,7 +29,7 @@ Updated: 2026-09-28
   65,536 characters and more, and that every matcher is linear-time: a static
   analysis plus adversarial inputs of 2^20 characters timed in all three.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 614 of the 616 shared core vectors (corpus version 5) pass in all three
+- 614 of the 616 shared core vectors (corpus version 6) pass in all three
   ports through their JSON text entry points; the other two apply only to a
   cbor-sha256 implementation, and every port here skips them. The vectors
   run with native/byte parity on every
@@ -40,13 +44,15 @@ Updated: 2026-09-28
   Six vectors and cases are conditional on cbor-sha256 support, which is
   OPTIONAL: four pin `unknown_suite` where it is not implemented, and two
   (the Appendix C.1 object, the vectors every port here skips) apply only
-  where it is. The 96 version 4
-  vectors keep their ids, and all 22 version 4 CAIDs reproduce unchanged
+  where it is. The 96 version 4 vectors remain byte-identical in history.
+  Their 22 legacy `caid:` identifiers are never rewritten; the explicit
+  legacy verifier checks them, while the current corpus emits corresponding
+  `canactid:` identifiers from the same action bytes and digest
   (`caid/conformance/check-v4.mjs`).
 - 1,966 grammar boundary cases, and the roughly half-million case list that
   `caid/spec/abnf-check.mjs` writes, passing in all three ports through
   `parseCaid` and `computeCaid`, never through the generated matchers.
-- 86 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
+- 86 Action-Mapping Profile vectors (version 3) passing with byte-for-byte
   agreement on verdicts and exact reason lists in all three ports, including
   the SILP IR to CAID `CANCEL+EMAIL` profile.
 - A differential fuzz of about 88,000 seeded cases in which the JavaScript,
@@ -65,7 +71,12 @@ Run the complete gate from the repository root:
 
 ```sh
 npm run caid:conformance
+npm run check:caid-04
+npm run check:caid-05
 ```
+
+The packet checks are separate by design: the first validates the immutable
+published -04 record, while the second validates the current -05 transition.
 
 These are cross-language ports maintained by the same project. They are not
 represented as independent implementations.
@@ -110,20 +121,24 @@ success is not represented as native support or author endorsement.
 
 ## Standards status
 
-`draft-schrock-canonical-action-identifier-04` was published as an individual
-Internet-Draft on 2026-09-28 through Datatracker submission 169585. It is not
-an RFC, an adopted IETF working-group item, or IETF endorsement. The draft
-defines the identifier and the profile-bounded mapping algorithm; the IETF
-archive is authoritative for the published revision.
+`draft-schrock-canonical-action-identifier-05` was posted as an individual
+Internet-Draft on 2026-10-02 and expires on 2027-04-05. It is not an RFC, an
+adopted IETF working-group item, or IETF endorsement. The draft defines the
+identifier and the profile-bounded mapping algorithm; the IETF archive is
+authoritative for the published revision.
 
-Revision -04 specifies the processing model described above: the strict JSON
+IANA provisionally registered the `canactid` URI scheme on 2026-10-05 with
+reference CAID-05. That record is a provisional scheme registration. It is
+not permanent registration, IETF adoption or endorsement, and it does not
+create the separate CAID registries requested by the draft.
+
+Revision -05 specifies the processing model described above: the strict JSON
 text profile, host values, the limits, definition conformance and
 `definition_sha256`, the `code` field type, the fixed reason order with
 verification details, the mapping stages, and reference registry version 5.
-It refuses inputs that -03 accepted, including some action objects whose CAIDs
-were valid under -03; its Section 14 lists every normative change. The
-superseded -03 text, published 2026-09-26, and the -02 text, published
-2026-08-06, are retained in `../standards/archive/`.
+It makes `canactid` the current identifier scheme. The superseded -04 text,
+published 2026-09-28, and earlier revisions remain historical records; legacy
+signed identifiers are verified without rewriting them.
 
 ## Explicit boundaries
 
@@ -138,6 +153,7 @@ sources. A mapping result never becomes authorization.
 - Deterministic CBOR implementation (`cbor-sha256` is registered and its
   support is OPTIONAL; no port ships it, and its two conformance vectors
   apply only to an implementation that does).
-- IANA registry creation, which the -04 draft requests.
+- Permanent URI-scheme registration and creation of the separate CAID
+  registries requested by CAID-05.
 - External clean-room implementation of CAID itself.
 - Author validation of the 25 candidate adjacent-protocol mappings.

@@ -68,7 +68,7 @@ function materialCaid(action) {
     destination: action.destination,
   };
   const value = createHash('sha256').update(canonicalize(material), 'utf8').digest('base64url');
-  return `caid:1:payment.transfer.1:jcs-sha256:${value}`;
+  return `canactid:1:payment.transfer.1:jcs-sha256:${value}`;
 }
 
 const MATERIAL_CAID = materialCaid(ACTION);

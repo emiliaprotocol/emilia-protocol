@@ -46,7 +46,7 @@ function rootActionBinding() {
   const hash = crypto.createHash('sha256').update(canonicalize(rootAction), 'utf8').digest();
   return {
     valid: true,
-    root_caid: `caid:1:${rootAction.action_type}:jcs-sha256:${hash.toString('base64url')}`,
+    root_caid: `canactid:1:${rootAction.action_type}:jcs-sha256:${hash.toString('base64url')}`,
     root_action_digest: `sha256:${hash.toString('hex')}`,
   };
 }

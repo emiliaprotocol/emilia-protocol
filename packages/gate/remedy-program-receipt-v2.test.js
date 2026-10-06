@@ -15,7 +15,7 @@ import { describe, it } from 'node:test';
 import { ACTION_REMEDY_RECEIPT_VERSION, ACTION_REMEDY_RECEIPT_V2_VERSION, ACTION_REMEDY_RECEIPT_V2_REQUIRED_ALGORITHMS, REMEDY_PROGRAM_PROFILE_V2_VERSION, expectedRemedyProgramReceiptBindings, expectedRemedyProgramReceiptV2Bindings, issueRemedyProgramReceipt, issueRemedyProgramReceiptV2, verifyRemedyProgramReceipt, verifyRemedyProgramReceiptV2, verifyRemedyProgramReceiptStatement, } from './remedy-program-receipt.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const HASH = (character) => `sha256:${character.repeat(64)}`;
-const CAID = (operation, character) => `caid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`;
+const CAID = (operation, character) => `canactid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`;
 const CONTEXT = {
     issuer: 'emilia-gate-operator',
     tenant: 'tenant-a',

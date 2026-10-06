@@ -10,7 +10,7 @@
 //   vendor  <root>/packages/verify/vendor/caid.mjs (with the js mapping)
 //   py      <root>/caid/impl/python
 //   go      <root>/caid/impl/go
-// Objects under test travel as octets and go to the -04 JSON text entry
+// Objects under test travel as octets and go to the -05 JSON text entry
 // points; each driver also checks native-entry-point parity on decodable
 // text. Native-lane cases go to the native entry points.
 //

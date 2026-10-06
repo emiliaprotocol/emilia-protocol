@@ -8,6 +8,7 @@
  * verification, local authority, and atomic native replay consumption.
  */
 import { aebReservationKey, authorizeAebExecution, digestAeb, } from './aeb-adapter-contract.js';
+import { canonicalActionIdentifierMatchesActionType } from './canonical-action-identifier.js';
 export const AEB_ACCEPTANCE_PROFILE_VERSION = 'EP-AEB-ACCEPTANCE-PROFILE-v1';
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const IDENT_RE = /^[A-Za-z0-9][A-Za-z0-9_.:@/-]{0,255}$/;
@@ -176,7 +177,7 @@ export function verifyAebAcceptanceProfile(profile, expectedDigest) {
     }
 }
 function actionTypeMatches(caid, actionType) {
-    return caid.startsWith(`caid:1:${actionType}:`);
+    return canonicalActionIdentifierMatchesActionType(caid, actionType);
 }
 function recordBindings(profile, record) {
     const reasons = [];

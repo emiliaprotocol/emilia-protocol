@@ -66,7 +66,7 @@ plus jcs-sha256 (RFC 8785 -> SHA-256). Then:
 
 - `action_digest` = the CAID digest bytes (b64url of the same SHA-256).
 - `canonicalization_profile` = the CAID type + suite, or simply carry the
-  full `caid:1:<action_type>:<suite>:<digest>` string, which packs profile
+  full `canactid:1:<action_type>:<suite>:<digest>` string, which packs profile
   identification and digest into one field and satisfies Section 9's
   requirement that the receipt identify the profile used at issuance.
 

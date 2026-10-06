@@ -196,11 +196,11 @@ Start with one declared consequential MCP action. Install the exact local
 runtime, then create its Gate Starter and run the bounded four-case check:
 
 ```bash
-npm install --save-exact @emilia-protocol/mcp-guard@0.6.1
-npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --apply --verify
+npm install --save-exact @emilia-protocol/mcp-guard@0.7.0
+npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action sendWire --apply --verify
 
 # after reading emilia/authority-map.html and action-control.manifest.json
-npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --reviewed \
+npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action sendWire --reviewed \
   --crossing-profile ccs-wang-draft08-v13
 ```
 
@@ -346,10 +346,14 @@ provider entry, refuses a second attempt at the same action while an earlier
 one is in flight or uncertain, and keeps an uncertain result locked until
 authenticated reconciliation.
 
-[CAID-04](standards/posted/draft-schrock-canonical-action-identifier-04.xml)
-is used when independently encoded representations must be compared. It is not
-a mandatory second mapping when the consequence-owning PEP already derives and
-enforces a current decision over the final operation.
+[CAID-05](standards/posted/draft-schrock-canonical-action-identifier-05.xml)
+is used when independently encoded representations must be compared. New
+identifiers use the IANA-provisionally-registered `canactid:` URI scheme. The
+registration is not IETF adoption, endorsement, certification, or permanent
+status. CAID is not a mandatory second mapping when the consequence-owning PEP
+already derives and enforces a current decision over the final operation.
+[Try the exact-action playground](https://www.emiliaprotocol.ai/caid) or read the
+[CAID-04 to CAID-05 migration guide](docs/CANACTID-MIGRATION.md).
 [AEC-06](standards/posted/draft-schrock-ep-authorization-evidence-chain-06.xml)
 is used when the relying party requires several evidence legs. Authorization
 Receipts, Human Authorization Binding, and Authority Introduction remain
@@ -463,7 +467,7 @@ complete; until it is, no blanket claim about the whole stack is made.
 
 ## Quickstart
 
-1. Install the exact local guard runtime, then run `npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --apply --verify`, replacing `sendWire` with one exact declared consequential tool.
+1. Install the exact local guard runtime, then run `npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action sendWire --apply --verify`, replacing `sendWire` with one exact declared consequential tool.
 2. Review the generated Authority Map, action manifest, material fields, selected boundary, and named blind spots.
 3. Run the separate `--reviewed --crossing-profile <launch-profile>` command to create the owner-only handoff and unsealed Lab workspace from those unchanged bytes.
 4. Install Gate on the path that owns the provider credential and durable consumption state.

@@ -121,7 +121,7 @@ function caidFor(action) {
   const suffix = crypto.createHash('sha256')
     .update(canonicalize(action), 'utf8')
     .digest('base64url');
-  return `caid:1:payment.release.1:jcs-sha256:${suffix}`;
+  return `canactid:1:payment.release.1:jcs-sha256:${suffix}`;
 }
 
 function ed25519PrivateKey(seedByte) {

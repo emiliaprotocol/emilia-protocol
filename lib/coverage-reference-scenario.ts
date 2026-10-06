@@ -16,7 +16,7 @@ import {
 
 const digest = (character: string) => `sha256:${character.repeat(64)}`;
 const caid = (character: string) => (
-  `caid:1:health.medical-prior-authorization-review.1:jcs-sha256:${character.repeat(43)}`
+  `canactid:1:health.medical-prior-authorization-review.1:jcs-sha256:${character.repeat(43)}`
 );
 
 function priorClosedMonth(now: Date) {

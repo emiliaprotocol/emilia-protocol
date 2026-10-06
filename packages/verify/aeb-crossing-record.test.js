@@ -34,7 +34,7 @@ const mldsaBackend = await loadDefaultAgilityMldsaBackend();
 assert.ok(mldsaBackend, "real ML-DSA-65 backend must be available");
 const NOW = "2026-08-19T05:00:00Z";
 const ACTION = Object.freeze({
-    caid: "caid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    caid: "canactid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     action_digest: `sha256:${"11".repeat(32)}`,
 });
 const BOUNDARY = Object.freeze({
@@ -240,7 +240,7 @@ const EVALUATION_ARTIFACT = Object.freeze({
     subject: { id: "workload:accounting", kind: "workload" },
 });
 const EVALUATION_TOKEN_DIGEST = digestAeb(EVALUATION_ARTIFACT);
-const UNRELATED_CAID = "caid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+const UNRELATED_CAID = "canactid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 function evaluationStatus(overrides = {}) {
     return {
         checked_at: "2026-08-19T04:59:00Z",
@@ -446,7 +446,7 @@ test("the v1 contract digest remains compatible across relying-party labels", ()
         },
     });
     assert.equal(finance, attacker);
-    assert.equal(finance, "sha256:0d17ad047e432fd235d60ae06ab6f819691d90dc3b09ecf553b33d4d2c0472fc");
+    assert.equal(finance, "sha256:893fcddabf522e031224a15e535f1ba1569c2ac4e1c1abe20ca3af6fc9b8edee");
 });
 test("v2 recomputes an explicit admission-domain commitment", async () => {
     const record = await issueV2();

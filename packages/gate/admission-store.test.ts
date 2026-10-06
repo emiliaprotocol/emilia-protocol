@@ -23,7 +23,7 @@ function d(label: string): `sha256:${string}` {
 }
 
 function caid(label = 'primary'): string {
-  return `caid:1:payment.release.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
+  return `canactid:1:payment.release.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
 }
 
 function owner(n: number): string {

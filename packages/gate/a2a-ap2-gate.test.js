@@ -11,7 +11,7 @@ import { A2AAp2Gate, } from './a2a-ap2-gate.js';
 import { CONSEQUENCE_ACTUATOR_ENVELOPE_VERSION, ConsequenceActuator, createMemoryConsequenceActuatorStore, signConsequenceExecutionEnvelope, } from './consequence-actuator.js';
 const NOW = '2026-08-09T17:00:00.000Z';
 const NOW_MS = Date.parse(NOW);
-const CAID = 'caid:1:payment.release.1:jcs-sha256:chfoX029yd-_1Y4U7hwHdDP5xcCjNbh01o5CS4yPsqE';
+const CAID = 'canactid:1:payment.release.1:jcs-sha256:chfoX029yd-_1Y4U7hwHdDP5xcCjNbh01o5CS4yPsqE';
 const ACTION = Object.freeze({
     action_type: 'payment.release.1',
     payment_instruction_id: 'pi-gate-1',
@@ -367,7 +367,7 @@ describe('EMILIA Gate for A2A/AP2', () => {
     it('refuses approve-A/execute-B using the executor-owned action before provider invocation', async () => {
         const fixture = gateFixture();
         const actionB = Object.freeze({ ...ACTION, payment_instruction_id: 'pi-gate-2' });
-        const caidB = 'caid:1:payment.release.1:jcs-sha256:6TpWaRXORGYVDkPm92Lu4IcLGqmMKIufZiz_k17NIqM';
+        const caidB = 'canactid:1:payment.release.1:jcs-sha256:6TpWaRXORGYVDkPm92Lu4IcLGqmMKIufZiz_k17NIqM';
         fixture.setExpected(actionB, caidB);
         const candidate = request(fixture);
         const issuedB = task('task-a2a-1', 'challenge-nonce-a2a-0001', actionB);

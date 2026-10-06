@@ -10,7 +10,7 @@ import { AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION, AEB_NATIVE_AUTHORIZATION_
 import { loadDefaultAgilityMldsaBackend } from '@emilia-protocol/verify/pq-signature-agility';
 import { consequenceBoundaryActionFenceHolderKey, consequenceBoundaryRecoveryAttemptIdentity, consequenceBoundaryRecoveryClaimKey, consequenceBoundaryRecoveryClaimMarkerKey, consequenceBoundaryProviderIdempotencyKey, createConsequenceBoundary, createNativeConsequenceBoundary, nativeConsequenceBoundaryActionFenceKey, nativeConsequenceBoundaryAttemptReservationKeys, nativeConsequenceBoundaryProviderIdempotencyKey, nativeConsequenceBoundaryReservationKey, } from './consequence-boundary.js';
 import { FINANCE_CUMULATIVE_EXPOSURE_PROFILE, createConsequenceEnvelopeBoundary, createMemoryConsequenceEnvelopeStore, issueConsequenceEnvelope, } from './dist/consequence-envelope.js';
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION = Object.freeze({
     action_type: 'payment.release.1',
     transfer_id: 'transfer-1',

@@ -2,7 +2,7 @@
 
 package main
 
-// The -04 entry points of the Go implementation (package caid). This file
+// The -05 entry points of the Go implementation (package caid). This file
 // is the only place the runner touches the implementation's API.
 
 import "caid"

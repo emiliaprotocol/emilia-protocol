@@ -104,7 +104,7 @@ const RECONCILIATION_SIGNATURE_DOMAIN =
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
 const CAID =
-  /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+  /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 const MAX_RESPONSE_BYTES = 256 * 1024;
 

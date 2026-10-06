@@ -67,7 +67,7 @@ final class ApprovalViewModel: ObservableObject {
 #if DEBUG
         guard arguments.contains("-emilia-reference-demo") else { return }
         guard let identity = try? EmiliaActionIdentity(
-            actionCAID: "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC678AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            actionCAID: "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC678AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             actionDigest: "sha256:" + String(repeating: "a", count: 64)
         ),
               let quorum = try? EmiliaActionQuorum(approved: 1, required: 2)

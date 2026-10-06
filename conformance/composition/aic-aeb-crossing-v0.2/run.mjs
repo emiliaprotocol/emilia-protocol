@@ -144,7 +144,7 @@ const X509_ARTIFACT_DIGEST = digestAebTyped({
     principal_certificate_der: PRINCIPAL_CERTIFICATE_DER,
 }, AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION);
 const ACTION = Object.freeze({
-    caid: "caid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    caid: "canactid:1:finance.vendor-account-change.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     action_digest: `sha256:${"11".repeat(32)}`,
 });
 const BOUNDARY = Object.freeze({

@@ -38,7 +38,7 @@ export async function runRelianceRiskRefinementTrace() {
     tenantId: 'tenant-a', exposureId: 'exposure-refinement', operationToken: token,
     programId: 'program-a', programVersion: 'program-a@1.0.0',
     programSourceDigest: D('6'), programDigest: D('7'),
-    caid: `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
+    caid: `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
     actionDigest: D('8'), admissionSnapshotDigest: D('9'),
     authorizationDigest: D('a'), authorizationExpiresAt: '2026-07-28T12:05:00.000Z',
     counterpartyId: 'merchant-a', actionClass: 'payment.release',

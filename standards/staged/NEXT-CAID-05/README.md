@@ -36,8 +36,16 @@ Validation on 2026-10-02:
 - `idnits -m submission` reported `PASS No nit found` for the TXT.
 - The -04 source and its posted copies were not edited.
 
-IANA ticket #1460612 is **not** a completed registration. On 2026-10-02,
-Iman replied in that existing ticket, accepted `canactid`, linked the
-posted -05, and supplied the updated Provisional registration fields with
-Iman as change controller. Do not describe `canactid` as registered until
-IANA adds it to the URI Schemes registry.
+IANA provisionally registered `canactid` on 2026-10-05 and published the
+registration at
+<https://www.iana.org/assignments/uri-schemes/prov/canactid>. The record
+references CAID-05 and lists Iman Schrock as change controller. This is a
+provisional URI-scheme registration under RFC 7595. It is not permanent
+registration, IETF adoption, IETF endorsement, certification,
+implementation evidence, or deployment evidence.
+
+The implementation-status paragraph above remains historical publication
+provenance for the bytes posted on 2026-10-02. The subsequent implementation
+migration belongs in its own versioned release and conformance corpus; this
+retained submission packet is not edited to claim code that did not exist at
+publication time.

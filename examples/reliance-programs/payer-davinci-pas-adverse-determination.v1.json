@@ -6,7 +6,7 @@
     "id": "org:synthetic-payer.example",
     "key_id": "key:synthetic-payer:reliance-program:v1"
   },
-  "root_caid": "caid:1:health.medical-prior-authorization-review.1:jcs-sha256:PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "root_caid": "canactid:1:health.medical-prior-authorization-review.1:jcs-sha256:PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
   "action_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
   "valid_from": "2026-07-28T00:00:00.000Z",
   "expires_at": "2026-08-28T00:00:00.000Z",

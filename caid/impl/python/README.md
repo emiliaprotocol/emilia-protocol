@@ -1,7 +1,7 @@
 # CAID implementation (Python)
 
 Python 3.11 or later, standard library only. Implements
-draft-schrock-canonical-action-identifier-04. Grammar, code formats, limits,
+draft-schrock-canonical-action-identifier-05. Grammar, code formats, limits,
 reason ranks, field types and mapping rules come from `caid_spec.py`, which
 `node caid/spec/gen.mjs --write` generates from `caid/spec/caid.abnf` and
 `caid/spec/core.json`. Do not edit `caid_spec.py` by hand.
@@ -26,12 +26,19 @@ nothing here verifies signatures, identity or authorization.
 | `compute_caid(value, options)` | a value the application built | as `compute_caid_json` |
 | `verify_caid(value, caid, options)` | a value the application built | as `verify_caid_json` |
 | `parse_caid(caid)` | identifier string | `{"ok": True, "caid": {...}}` or one of `malformed_caid`, `unknown_suite` |
+| `parse_legacy_caid_v04(caid)` | existing CAID-04 `caid:` identifier | the same parse result, explicitly profiled as legacy |
+| `verify_legacy_caid_v04(value, caid, options)` | host value and existing CAID-04 identifier | normal verification without rewriting the identifier |
+| `verify_legacy_caid_v04_json(data, caid, options)` | received JSON text and existing CAID-04 identifier | byte-path verification without rewriting the identifier |
 | `definition_sha256(definition)` | type definition | `{"definition_sha256"}` or `{"refusals": ["invalid_definition"]}` |
 | `canonicalize(value)` | data-model value | RFC 8785 text or `unsupported_number` / `unsupported_value` |
 
 Options: `suite`, `definitions`, `enum_snapshots`, and for verify
 `expected_definition_sha256` (a mismatch is `definition_mismatch`). An
 option of the wrong type counts as absent; nothing raises.
+
+Current compute, parse, and verify APIs use only `canactid:`. They fail closed
+on `caid:`. The separately named legacy functions exist only to verify
+already signed CAID-04 artifacts in place; there is no legacy compute API.
 
 Received JSON text goes through the byte entry points. `json.loads` keeps
 the last of two duplicate members, accepts `NaN`, a byte order mark and
@@ -72,7 +79,7 @@ assert check["valid"] and check["definition_sha256"] == result["definition_sha25
 
 ```sh
 python3 caid/impl/python/test_caid.py
-python3 caid/conformance/runners/run.py            # core corpus v5 and grammar corpus
+python3 caid/conformance/runners/run.py            # core corpus v6 and grammar corpus
 python3 caid/impl/python/run_mapping_vectors.py    # caid/conformance/mapping-vectors.json
 python3 caid/impl/python/run_mapping_vectors.py --corpus caid/interop/consequential-action-v1/mapping-vectors.json
 node caid/spec/abnf-check.mjs --out /tmp/grammar.json

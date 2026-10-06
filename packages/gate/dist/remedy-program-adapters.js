@@ -17,7 +17,7 @@ export const REMEDY_PROGRAM_EVIDENCE_VERSION = 'EP-GATE-REMEDY-EVIDENCE-v1';
 export const REMEDY_PROGRAM_EVIDENCE_DOMAIN = `${REMEDY_PROGRAM_EVIDENCE_VERSION}\0`;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,255}$/;
-const CAID = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID = /^canactid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 const ORIGINAL_KEYS = new Set([
     'caid', 'action_digest', 'operation_id', 'consequence_mode',

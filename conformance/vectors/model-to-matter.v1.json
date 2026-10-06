@@ -36,7 +36,7 @@
     "@version": "EP-MODEL-TO-MATTER-ACTION-v1"
   },
   "caid": {
-    "caid": "caid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
+    "caid": "canactid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
     "digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36"
   },
   "profile": {
@@ -126,13 +126,13 @@
   },
   "reliance_program": {
     "version": "EP-RELIANCE-PROGRAM-v1",
-    "source_digest": "sha256:71c48c84e42d6331929a664a2a42efef4ab67d0ebb5e38668654b3b7ad7df2dc",
+    "source_digest": "sha256:4f13869c7d19e9006e1f68089b0d3445ed82f1bd0674ef57d3ad9573ca01dd1d",
     "relying_party_id": "org:example-research-institute",
     "program": {
       "@version": "EP-GATE-TRUST-PROGRAM-PROFILE-v1",
       "program_id": "rp.m2m.conformance:v1",
       "version": 1,
-      "root_caid": "caid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
+      "root_caid": "canactid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
       "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
       "valid_from": "2026-07-19T11:00:00Z",
       "expires_at": "2026-07-20T11:00:00Z",
@@ -166,7 +166,7 @@
         "escrow_profile_digest": "sha256:8e355e5ca370f59b7cfffde35010f6bbc218dec39dcccd8b0cab483d014e20a5"
       }
     },
-    "program_digest": "sha256:8e20813f58b658ac9dad512f07504d08953a8eebbc5aa45fb693611bcaa85dbd",
+    "program_digest": "sha256:93c146073571468a6d9f28a62e954e0fb17fed1e594c69807d03bd669b8b0840",
     "trace": [
       {
         "stage_id": "model-to-matter-evidence",
@@ -179,13 +179,13 @@
   },
   "mismatched_reliance_program": {
     "version": "EP-RELIANCE-PROGRAM-v1",
-    "source_digest": "sha256:163b96f601228f6637aa6c228575cd3b82b7756a1f2ff206263ec60ca871fb3f",
+    "source_digest": "sha256:c9d1332c826106f4cedddf5d121776704ed883669878d4232fc8907268de8217",
     "relying_party_id": "org:example-research-institute",
     "program": {
       "@version": "EP-GATE-TRUST-PROGRAM-PROFILE-v1",
       "program_id": "rp.m2m.conformance-mismatch:v1",
       "version": 1,
-      "root_caid": "caid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
+      "root_caid": "canactid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
       "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
       "valid_from": "2026-07-19T11:00:00Z",
       "expires_at": "2026-07-20T11:00:00Z",
@@ -219,7 +219,7 @@
         "escrow_profile_digest": "sha256:8e355e5ca370f59b7cfffde35010f6bbc218dec39dcccd8b0cab483d014e20a5"
       }
     },
-    "program_digest": "sha256:3f49159f0b96e5651ff25e1f20502f1009eb498235a07a3f93a1646a2c4e263d",
+    "program_digest": "sha256:d8ac8748325e814bfb97484eae0688f225aee1d7396be37c05b1fc6c1a45bafb",
     "trace": [
       {
         "stage_id": "model-to-matter-evidence",
@@ -2475,7 +2475,7 @@
     "effect": {
       "@version": "EP-MODEL-TO-MATTER-EFFECT-v1",
       "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
-      "action_caid": "caid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
+      "action_caid": "canactid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
       "clearance_replay_digest": "sha256:8421965cc6343898284a6aa0407ed59f78fff53b1bcce44770dfcf9a73ce1424",
       "executor_id": "cloud-lab:example",
       "executed_at": "2026-07-19T12:01:00Z",
@@ -2485,8 +2485,8 @@
         "algorithm": "Ed25519",
         "key_id": "ep:m2m:key:sha256:86dc9f964b3b30a7",
         "public_key": "MCowBQYDK2VwAyEAIb5wP2pXEh516JgaItYOUNMN-zJecG2qcW27NEBrOF0",
-        "effect_digest": "sha256:66b4ba74bac124598ce08e550c5c43ddf8020439eed41d54ca27e6718842ae11",
-        "signature_b64u": "-T72um5McIgzqM4ItCeJ6OaUzkkVfGRqukgzQna5rTdIf6XkHsZJsa3VN0mf3XTStaEAIhfPd3vWzcx2GynRDw"
+        "effect_digest": "sha256:2845c5012b1a5ac684b505b5ebe21ae9401b60d261c0dbc1769e50dc5c4b6d1d",
+        "signature_b64u": "-NSjH2OlkSgnIHsT4UnRLugakhcsDhuUvUEv9lWrLgFmWo64PJoGXaHdcpAJwb19gkYvrkxVKKUiTSeS2JCUCw"
       }
     },
     "expected_clearance_replay_digest": "sha256:8421965cc6343898284a6aa0407ed59f78fff53b1bcce44770dfcf9a73ce1424",
@@ -2519,7 +2519,7 @@
       "evidence_set": "valid",
       "expect": {
         "verdict": "clear_to_execute",
-        "reliance_program_digest": "sha256:8e20813f58b658ac9dad512f07504d08953a8eebbc5aa45fb693611bcaa85dbd",
+        "reliance_program_digest": "sha256:93c146073571468a6d9f28a62e954e0fb17fed1e594c69807d03bd669b8b0840",
         "evidence_requirement_digest": "sha256:6110d2526d48849502b99eac685efddb295ed3d9801bd4da7fb687bca5b97eba"
       }
     },

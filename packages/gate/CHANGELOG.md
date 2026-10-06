@@ -4,6 +4,20 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.30.0 (2026-10-06)
+
+### Breaking: current CAID scheme
+
+- Gate's current action-bearing paths now use
+  `canactid:1:<action-type>:<suite>:<digest>`, the scheme provisionally
+  registered by IANA for CAID-05. They refuse the obsolete `caid:` spelling
+  instead of silently accepting or rewriting it. Preserve immutable
+  historical evidence with its original verifier and profile.
+- The exact `@emilia-protocol/verify` dependency moves to 8.0.0 and the exact
+  `@emilia-protocol/require-receipt` dependency moves to 0.9.0. Publish those
+  leaf packages and verify their pinned registry bytes before publishing Gate
+  0.30.0.
+
 ## 0.29.0 (2026-10-04)
 
 ### Security

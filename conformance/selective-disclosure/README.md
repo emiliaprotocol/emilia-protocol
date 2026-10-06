@@ -25,7 +25,8 @@ refuses them with `missing_disclosure_block`.
 
 ## Determinism
 
-Every byte in `vectors.json` regenerates identically:
+Every byte in `vectors.json` regenerates identically with `node generate.mjs`
+after building `packages/verify`:
 
 - The issuer and holder Ed25519 keys are PUBLIC TEST FIXTURES: the PKCS8 key
   is the standard Ed25519 PKCS8 prefix plus the 32-byte seed
@@ -68,6 +69,8 @@ binding digests from those seeds and asserts byte-identity with this file.
 ## Running
 
 ```
+cd packages/verify && npm run build
+cd ../.. && node conformance/selective-disclosure/generate.mjs
 cd packages/verify && npx vitest run receipt-selective-disclosure.test.ts
 ```
 

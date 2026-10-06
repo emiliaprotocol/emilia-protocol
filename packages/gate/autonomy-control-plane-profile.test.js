@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { AUTONOMY_CONTROL_PLANE_VERSION, AutonomyControlPlaneValidationError, compileAutonomyControlPlaneProfile, } from './autonomy-control-plane-profile.js';
 const D = (character) => `sha256:${character.repeat(64)}`;
-const C = (character) => `caid:1:code.change.1:jcs-sha256:${character.repeat(43)}`;
+const C = (character) => `canactid:1:code.change.1:jcs-sha256:${character.repeat(43)}`;
 function profile() {
     return {
         '@version': AUTONOMY_CONTROL_PLANE_VERSION,

@@ -287,7 +287,7 @@ test('CCS 1.1.20 Ed25519 receipt verifies, is accepted under the pinned issuer, 
     const mapped = f.adapter.mapAction({ ...f.input, profile: l1Profile(), native });
     assert.equal(mapped.mapping, 'MATCH', JSON.stringify(mapped));
     assert.equal(mapped.action_digest, digestAeb(f.action));
-    assert.match(mapped.caid ?? '', /^caid:1:agent\.tool-invocation\.1:jcs-sha256:/);
+    assert.match(mapped.caid ?? '', /^canactid:1:agent\.tool-invocation\.1:jcs-sha256:/);
 });
 test('CCS 1.1.20 signature, issuer pin, expiry, exact arguments, action, and tool fail independently', () => {
     const f = l1Fixture();
@@ -517,7 +517,7 @@ test('CCS-05 v1.3 receipt verifies under a pinned issuer and maps the executor-o
     const mapped = f.adapter.mapAction({ ...f.input, profile: v13Profile(), native });
     assert.equal(mapped.mapping, 'MATCH', JSON.stringify(mapped));
     assert.equal(mapped.action_digest, digestAeb(f.action));
-    assert.match(mapped.caid ?? '', /^caid:1:agent\.tool-invocation\.1:jcs-sha256:/);
+    assert.match(mapped.caid ?? '', /^canactid:1:agent\.tool-invocation\.1:jcs-sha256:/);
 });
 test('CCS-05 v1.3 refuses signature, audience, freshness, full-digest, substitution, replay, and status uncertainty independently', () => {
     const f = v13Fixture();
@@ -621,7 +621,7 @@ test('CCS maps its exact command into the shared native-action projection used b
     });
     assert.equal(mapping.mapping, 'MATCH');
     assert.equal(mapping.action_digest, digestAeb(expected_action));
-    assert.match(mapping.caid ?? '', /^caid:1:payment\.transfer\.1:jcs-sha256:/);
+    assert.match(mapping.caid ?? '', /^canactid:1:payment\.transfer\.1:jcs-sha256:/);
 });
 test('approve A execute B and changed command bytes fail independently', () => {
     const f = fixture();

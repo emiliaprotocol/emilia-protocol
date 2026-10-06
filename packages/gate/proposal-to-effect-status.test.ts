@@ -33,7 +33,7 @@ const EXPECTED = Object.freeze({
   tenant_id: 'tenant:acme',
   executor_id: 'executor:gate-1',
   operation_id: 'operation:payment-release-1',
-  caid: `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
+  caid: `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
   artifact_ref: 'receipt:payment-release:0001',
   evidence_digest: `sha256:${'a'.repeat(64)}` as AebDigest,
   replay_unit: `sha256:${'b'.repeat(64)}` as AebDigest,

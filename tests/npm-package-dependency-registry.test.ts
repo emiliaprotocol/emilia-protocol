@@ -21,6 +21,9 @@ const GATE_METADATA = JSON.parse(readFileSync('packages/gate/package.json', 'utf
 const QUALIFY_METADATA = JSON.parse(readFileSync('packages/qualify/package.json', 'utf8'));
 const CLI_METADATA = JSON.parse(readFileSync('cli/package.json', 'utf8'));
 const ATTEST_METADATA = JSON.parse(readFileSync('packages/attest/package.json', 'utf8'));
+const MOBILE_METADATA = JSON.parse(readFileSync('packages/mobile/package.json', 'utf8'));
+const OPENAI_GUARD_METADATA = JSON.parse(readFileSync('packages/openai-guard/package.json', 'utf8'));
+const SCAN_METADATA = JSON.parse(readFileSync('packages/scan/package.json', 'utf8'));
 const RELEASE_REGISTRY = JSON.parse(readFileSync('release/release-packages.v1.json', 'utf8'));
 
 function registryFetcher(
@@ -56,15 +59,15 @@ describe('npm internal dependency registry guard', () => {
       {
         metadata: GATE_METADATA,
         directory: 'packages/gate',
-        version: '0.29.0',
+        version: '0.30.0',
         expectedPins: [
           {
-            spec: '@emilia-protocol/require-receipt@0.8.2',
-            sha256: '729285f38f4224b7c3d6ac32f8adae7243223bca4f14b0d211adafe77dc4849e',
+            spec: '@emilia-protocol/require-receipt@0.9.0',
+            sha256: 'b103e5e71fdeb83ee880e627995efdf90388e52ad14b8ed42310037bf47852db',
           },
           {
-            spec: '@emilia-protocol/verify@7.0.0',
-            sha256: '0e12fc69151f2e50ba49b1e3bac5ce77cf186adfba415e8d8632446e47fb0532',
+            spec: '@emilia-protocol/verify@8.0.0',
+            sha256: '4cf1752819363de886338b3fc2c4afd2eae18556bcd8066ee49dabec686c0a38',
           },
         ],
       },
@@ -100,6 +103,33 @@ describe('npm internal dependency registry guard', () => {
             sha256: 'bd9adc23c7d859994ca6532e4104d2d3eb608348a53e81d6b8ebeba6aceb3af4',
           },
         ],
+      },
+      {
+        metadata: MOBILE_METADATA,
+        directory: 'packages/mobile',
+        version: '0.4.0',
+        expectedPins: [{
+          spec: '@emilia-protocol/verify@8.0.0',
+          sha256: '4cf1752819363de886338b3fc2c4afd2eae18556bcd8066ee49dabec686c0a38',
+        }],
+      },
+      {
+        metadata: OPENAI_GUARD_METADATA,
+        directory: 'packages/openai-guard',
+        version: '0.5.3',
+        expectedPins: [{
+          spec: '@emilia-protocol/require-receipt@0.9.0',
+          sha256: 'b103e5e71fdeb83ee880e627995efdf90388e52ad14b8ed42310037bf47852db',
+        }],
+      },
+      {
+        metadata: SCAN_METADATA,
+        directory: 'packages/scan',
+        version: '0.6.0',
+        expectedPins: [{
+          spec: '@emilia-protocol/verify@3.21.0',
+          sha256: 'bd9adc23c7d859994ca6532e4104d2d3eb608348a53e81d6b8ebeba6aceb3af4',
+        }],
       },
     ];
 
@@ -189,11 +219,11 @@ describe('npm internal dependency registry guard', () => {
     expect(() => collectRegistryDependencyTarballPins(
       GATE_METADATA,
       'packages/gate',
-      withPins([{ spec: '@emilia-protocol/verify@7.0.0', sha256: 'not-a-sha256' }]),
+      withPins([{ spec: '@emilia-protocol/verify@8.0.0', sha256: 'not-a-sha256' }]),
     )).toThrow(/invalid sha256/);
 
     const validPin = {
-      spec: '@emilia-protocol/verify@7.0.0',
+      spec: '@emilia-protocol/verify@8.0.0',
       sha256: 'a'.repeat(64),
     };
     expect(() => collectRegistryDependencyTarballPins(

@@ -3,6 +3,20 @@
 
 ## Unreleased
 
+## 0.6.0 (2026-10-06)
+
+### Changed
+
+- Pin generated install instructions and local protection checks to the exact
+  audited `@emilia-protocol/mcp-guard@0.7.0` runtime.
+
+### Security
+
+- Deploy the Guard release that can publish only server-recomputed current
+  `canactid:` metadata and refuses legacy `caid:` resolver output before a
+  protected provider is entered. Scan still proposes and verifies a local
+  starter; it does not turn discovery into authorization or deployment.
+
 ## 0.5.2 (2026-10-04)
 
 - Require exactly `@emilia-protocol/mcp-guard@0.6.1` for local protection

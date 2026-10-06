@@ -30,7 +30,7 @@ function created(receiptId, overrides = {}) {
     expires_at: '2026-07-20T12:00:00.000Z',
     canonical_action: {
       counterparty_name: 'Acme Treasury',
-      action_caid: 'caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      action_caid: 'canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       payment_destination_hash: `sha256:${'1'.repeat(64)}`,
       nonce: 'do-not-return',
       before_state: { balance: 1 },
@@ -342,7 +342,7 @@ describe('tenant-scoped large-payment approval queue', () => {
     expect(request).toEqual({
       receipt_id: receiptId,
       action_hash: `sha256:${receiptId}`,
-      action_caid: 'caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      action_caid: 'canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       action_type: 'large_payment_release',
       amount: 125000,
       currency: 'USD',

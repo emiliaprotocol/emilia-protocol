@@ -39,6 +39,13 @@ const AGENT_RECORD_API = /^\/api\/agent-records\/[^/]+(?:\/revoke)?$/;
 const AGENT_RECORD_CREATE_API = /^\/api\/adopt\/sessions\/[^/]+\/records$/;
 
 const ROUTE_POLICIES = {
+  // Public CAID playground. The route performs bounded strict-JSON
+  // canonicalization and SHA-256 over a body capped at 4 KiB; it writes no
+  // state and accepts no credential. Keep the limiter IP-scoped and use the
+  // submit tier so anonymous callers cannot turn it into an unmetered compute
+  // surface.
+  'POST /api/caid':                              { rateCategory: 'submit', useAuth: false },
+
   // Public synthetic Arena. Session creation has no credential yet. Attempt
   // and publication routes authenticate the dedicated ep_arena_ capability in
   // the service layer; the edge key stays IP-only so attacker-supplied bearer

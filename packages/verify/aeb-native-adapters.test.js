@@ -464,7 +464,7 @@ test('AgentROA keeps VERIFIED, ACCEPTED, mapped, and SATISFIED as separate decis
     const mapped = adapter.mapAction({ ...input, profile: agentProfile(), native });
     assert.equal(mapped.mapping, 'MATCH');
     assert.equal(mapped.action_digest, digestAeb(fixture.expectedAction));
-    assert.match(mapped.caid ?? '', /^caid:1:payment\.transfer\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+    assert.match(mapped.caid ?? '', /^canactid:1:payment\.transfer\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
     const evaluation = evaluateAgent(fixture, 'operation:a', 'aeb-nonce:a');
     assert.equal(evaluation.record.legs[0].native_verification, 'VERIFIED');
     assert.equal(evaluation.record.legs[0].acceptance, 'ACCEPTED');
@@ -551,7 +551,7 @@ test('ORPRG native inspection verifies and maps without claiming final ALLOW or 
     assert.notEqual(first.replay_unit, first.evidence_digest);
     const mapped = adapter.mapAction({ ...input, profile: orprgProfile(), native: first });
     assert.equal(mapped.mapping, 'MATCH');
-    assert.match(mapped.caid ?? '', /^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+    assert.match(mapped.caid ?? '', /^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
     assert.equal(mapped.action_digest, digestAeb(fixture.expectedAction));
     const evaluation = evaluateOrprg(fixture, 'operation:orprg-a', 'aeb-nonce:orprg-a');
     assert.equal(evaluation.record.legs[0].native_verification, 'VERIFIED');

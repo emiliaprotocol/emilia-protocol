@@ -47,11 +47,14 @@ describe('fork-safe schema candidate workflow contract', () => {
     expect(JSON.stringify(job)).not.toContain('secrets.');
   });
 
-  it('never runs the secret-using live leg on merge_group, and binds it to the main-only environment', () => {
+  it('never runs the secret-using live leg on PR or merge-group candidates, and binds it to the main-only environment', () => {
     const live = workflow.jobs['live-schema-contract'];
-    // On merge_group GitHub reads this file from the candidate, so the job
-    // that can read the schema-gate secret must not run there at all.
-    expect(live.if).toBe("github.event_name != 'merge_group'");
+    // Pull-request deployments are associated with the candidate branch for
+    // environment admission; merge_group also reads this file from the
+    // candidate. Neither may request the main-only schema-gate environment.
+    expect(live.if).toBe(
+      "github.event_name != 'pull_request_target' && github.event_name != 'merge_group'",
+    );
     expect(live.environment).toBe('schema-gate');
     const liveCheckout = live.steps.find((step: { uses?: string }) => step.uses?.startsWith('actions/checkout@'));
     expect(liveCheckout.with.ref).toBe('${{ github.event.pull_request.base.sha || github.sha }}');
@@ -60,7 +63,9 @@ describe('fork-safe schema candidate workflow contract', () => {
       expect(JSON.stringify(other), name).not.toContain('secrets.');
     }
     const aggregator = workflow.jobs['schema-contract'].steps[0].run;
-    expect(aggregator).toContain('if [[ "$EVENT_NAME" == merge_group ]]; then');
+    expect(aggregator).toContain(
+      'if [[ "$EVENT_NAME" == pull_request_target || "$EVENT_NAME" == merge_group ]]; then',
+    );
     expect(aggregator).toContain('[[ "$LIVE_RESULT" == skipped ]]');
     expect(aggregator).toContain('[[ "$LIVE_RESULT" == success ]]');
   });

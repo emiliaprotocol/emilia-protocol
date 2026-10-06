@@ -68,7 +68,7 @@ func TestCyclicHostValuesAreRefusedAndTheProcessSurvives(t *testing.T) {
 		}
 		top := obj{"action_type": "test.any.1", "o": obj{}}
 		top["o"].(obj)["up"] = top
-		v := VerifyCaid(top, "caid:1:test.any.1:jcs-sha256:"+strings.Repeat("A", 43), VerifyOptions{Definitions: anyDefinition})
+		v := VerifyCaid(top, "canactid:1:test.any.1:jcs-sha256:"+strings.Repeat("A", 43), VerifyOptions{Definitions: anyDefinition})
 		if v.Valid || !reflect.DeepEqual(v.Reasons, []string{"invalid_object"}) || v.Details[0].Reason != "unsupported_value" {
 			t.Errorf("VerifyCaid cyclic: %#v", v)
 		}
@@ -76,7 +76,7 @@ func TestCyclicHostValuesAreRefusedAndTheProcessSurvives(t *testing.T) {
 }
 
 // A reference back to an enclosing map or slice counts as one value and
-// nothing beyond it is visited (draft -04 Sections 2.2 and 2.5), so a
+// nothing beyond it is visited (draft -05 Sections 2.2 and 2.5), so a
 // branching cycle stays far inside the value count and a number beside it
 // is still unsupported_number, as in the JavaScript and Python ports.
 func TestBackReferenceCountsAsOneValue(t *testing.T) {
@@ -153,7 +153,7 @@ func TestSharedSubvaluesAreBounded(t *testing.T) {
 			t.Errorf("exponential DAG: %v", got)
 		}
 		// Past the value budget the value is unsupported_value alone
-		// (draft -04 Section 2.6), even when a number outside the model
+		// (draft -05 Section 2.6), even when a number outside the model
 		// was read before the budget ran out ("a" sorts first).
 		if got := refusals(obj{"action_type": "test.any.1", "a": json.Number("1.5"), "o": v}, anyDefinition); !reflect.DeepEqual(got, []string{"unsupported_value"}) {
 			t.Errorf("exponential DAG with a fractional number: %v", got)
@@ -269,7 +269,7 @@ func TestHostNumbersFollowTheValueRule(t *testing.T) {
 }
 
 // For every value DecodeJSON produces, the host entry point returns what the
-// JSON text entry point returns (draft -04 Section 2.5).
+// JSON text entry point returns (draft -05 Section 2.5).
 func TestNativeAndJSONTextParity(t *testing.T) {
 	defs := append(append([]interface{}{}, stringDefinition...), anyDefinition...)
 	texts := []string{
@@ -293,7 +293,7 @@ func TestNativeAndJSONTextParity(t *testing.T) {
 				t.Errorf("%s: native %#v, text %#v", text, a, b)
 			}
 		}
-		for _, c := range []string{"caid:1:test.text.1:jcs-sha256:" + strings.Repeat("A", 43), "caid:1:test.any.1:cbor-sha256:" + strings.Repeat("A", 43), "nope"} {
+		for _, c := range []string{"canactid:1:test.text.1:jcs-sha256:" + strings.Repeat("A", 43), "canactid:1:test.any.1:cbor-sha256:" + strings.Repeat("A", 43), "nope"} {
 			opts := VerifyOptions{Definitions: defs}
 			if a, b := VerifyCaid(value, c, opts), VerifyCaidJSON([]byte(text), c, opts); !reflect.DeepEqual(a, b) {
 				t.Errorf("%s / %s: native %#v, text %#v", text, c, a, b)

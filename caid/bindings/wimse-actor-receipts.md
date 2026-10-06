@@ -158,7 +158,7 @@ signatures, prh hash-chaining, byte-for-byte preservation. What the claims
 do not carry is the action itself; origin_jti binds to a token instance,
 and iss/sub/act describe parties. CAID supplies the missing reference: a
 typed action object, JCS + SHA-256 canonicalization, and a compact
-identifier (caid:1:type:suite:digest). One optional claim per receipt, and
+identifier (canactid:1:type:suite:digest). One optional claim per receipt, and
 each hop is bound to canonical action content that rides the chain's
 existing tamper-evidence. The delegation chain then joins, by identifier
 equality alone, to permits, outcome attestations, and audit records about

@@ -1,7 +1,7 @@
 {
- "@version": "CAID-ACTION-MAPPING-VECTORS-v2",
- "version": 2,
- "description": "Shared vectors for profile-bounded material-action equivalence. A result is content correlation only; it never authorizes an action. Every expectation is an exact reason list in the -04 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is \"a\", a host value nested deeper than a strict JSON text may be), as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6), as fill ({n, v}: an array of n elements, each the value v, built once and shared), or as host, a host value no JSON text carries: \"cyclic\", a reference to the object or array that holds the member (its parent), or \"opaque\", a host value of no JSON kind (JavaScript new Map(), Python set(), Go struct{}{}).",
+ "@version": "CAID-ACTION-MAPPING-VECTORS-v3",
+ "version": 3,
+ "description": "Shared vectors for profile-bounded material-action equivalence. A result is content correlation only; it never authorizes an action. Version 3 uses canactid: for current mapped-action identifiers. Every expectation is an exact reason list in the -05 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is \"a\", a host value nested deeper than a strict JSON text may be), as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6), as fill ({n, v}: an array of n elements, each the value v, built once and shared), or as host, a host value no JSON text carries: \"cyclic\", a reference to the object or array that holds the member (its parent), or \"opaque\", a host value of no JSON kind (JavaScript new Map(), Python set(), Go struct{}{}).",
  "previous_versions": [
   {
    "version": 1,
@@ -9,6 +9,12 @@
    "sha256": "sha256:6941463cdb42ad5242d1e44efa6937a9db3edbfa77ea2c5df5573ce301be6f24",
    "history": "caid/conformance/history/mapping-vectors.v1.json",
    "note": "Version 2 keeps the layout and every version 1 vector under the same id. The 10 vectors that pinned only reason_contains now pin the whole list; one vector changes because -04 widens target_field to the field-name rule (change_since_v1)."
+  },
+  {
+   "version": 2,
+   "vectors": 86,
+   "sha256": "sha256:1d3c24370f0308835ef28c183022636e7ce7dd933ee6fa330e9919f70f783d57",
+   "note": "Byte digest of mapping corpus version 2 as last published on main before the canactid: migration. Version 3 changes only current mapped-action identifier issuance to canactid:; mapping inputs, profile hashes, verdicts and refusal reasons remain unchanged."
   }
  ],
  "suite": "jcs-sha256",

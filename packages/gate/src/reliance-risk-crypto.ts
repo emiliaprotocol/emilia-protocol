@@ -12,7 +12,7 @@ export type RiskRecord = Record<string, any>;
 export type TrustedRiskKeys = Record<string, { issuer_id: string; public_key: string }>;
 
 export const RISK_DIGEST = /^sha256:[0-9a-f]{64}$/;
-export const RISK_CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+export const RISK_CAID = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 export const RISK_ID = /^[A-Za-z0-9][A-Za-z0-9:_.@/+\-]{0,511}$/;
 const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?Z$/;
 
@@ -364,4 +364,3 @@ export async function verifyRiskBodyV2(
     return refuse('artifact_invalid');
   }
 }
-

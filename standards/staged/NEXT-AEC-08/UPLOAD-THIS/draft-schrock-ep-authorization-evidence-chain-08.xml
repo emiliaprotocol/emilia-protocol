@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="October" day="4"/>
+    <date year="2026" month="October" day="6"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -164,7 +164,7 @@
   "@version": "EP-AEC-v1",
   "action": { "...": "Action Object" },
   "action_digest": "sha256:<hex>",
-  "action_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
+  "action_caid": "canactid:1:<type>:<suite>:<digest-b64url>",
   "components": [
     {
       "type": "ep-quorum",
@@ -804,7 +804,7 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
   "evaluator_profile_digest": "sha256:<hex>",
   "aec_digest": "sha256:<hex>",
   "expected_action_digest": "sha256:<hex>",
-  "expected_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
+  "expected_caid": "canactid:1:<type>:<suite>:<digest-b64url>",
   "requirement_profile_digest": "sha256:<hex>",
   "verification_time": "2026-07-27T17:00:00Z",
   "facts": [
@@ -1202,8 +1202,9 @@ native VERIFIED
         digest of the requirement object and states that it covers the
         expression exactly as stored. Section 14 adds parser
         differentials.</li>
-        <li>Updated the implementation status, cited CAID -05, and added
-        RFC 7405.</li>
+        <li>Updated the implementation status, cited CAID -05, changed the
+        two CAID examples to its current <tt>canactid:</tt> scheme, and added
+        RFC 7405. A legacy identifier is not rewritten.</li>
       </ul>
     </section>
 
@@ -1305,11 +1306,10 @@ native VERIFIED
       original evidence under those configuration pins; serialized facts
       are not trusted merely because their digest matches.</t>
       <t>At the time of writing, the latest published release of the
-      JavaScript package, @emilia-protocol/verify 6.0.0, implements
-      <tt>EP-AEC-EVALUATOR-07-v1</tt>. <tt>EP-AEC-EVALUATOR-08-v1</tt> is
-      implemented in the reference repository and is not yet in a published
-      release; this draft revision does not by itself imply a released
-      package.</t>
+      JavaScript package, @emilia-protocol/verify 7.0.0, implements
+      <tt>EP-AEC-EVALUATOR-08-v1</tt>. The package release is separate from
+      this draft's publication and does not imply deployment, adoption, or
+      interoperability.</t>
       <t>The -08 evaluator parses the relying party's expression once, when
       the evaluator is constructed, and evaluates that tree. It exposes the
       canonical parse, parse identity, and token count as diagnostics outside
@@ -1324,10 +1324,9 @@ native VERIFIED
       reports a record of another revision, including -07, as unsupported
       without modifying it, and always returns a new -08 record. The
       structured result reports <tt>authorization_decision</tt> as false.</t>
-      <t>The Python and Go verifier packages implement the Section 8
-      expression algorithm and its diagnostics and use it in their legacy
-      chain interfaces, also in the reference repository and not yet
-      released. They
+      <t>The published Python verifier package 2.9.0 and Go verifier module
+      2.5.0 implement the Section 8 expression algorithm and its diagnostics
+      and use it in their legacy chain interfaces. They
       do not implement the structured EP-AEC-REQUIREMENT-v1 and
       EP-AEC-REPLAY-v1 contract, and their agreement with the JavaScript
       implementation on the corpus is agreement on expression evaluation

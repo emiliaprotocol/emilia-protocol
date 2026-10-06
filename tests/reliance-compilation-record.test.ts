@@ -40,7 +40,7 @@ function fixture() {
     program_id: 'rp.institution.synthetic.1',
     version: 1,
     relying_party: { id: 'org:synthetic-institution', key_id: 'rp-key-1' },
-    root_caid: `caid:1:finance.vendor-bank-change.1:jcs-sha256:${'A'.repeat(43)}`,
+    root_caid: `canactid:1:finance.vendor-bank-change.1:jcs-sha256:${'A'.repeat(43)}`,
     action_digest: D('a'),
     valid_from: '2026-08-19T12:00:00Z',
     expires_at: '2026-08-20T12:00:00Z',

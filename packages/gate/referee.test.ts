@@ -27,7 +27,7 @@ import {
   runReferee,
 } from './referee-runner.js';
 
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION_DIGEST = `sha256:${'1'.repeat(64)}`;
 const NODE_EXECUTABLE_SHA256 = executableDigest(process.execPath);
 
@@ -248,7 +248,7 @@ describe('offline EMILIA Referee core', () => {
     const result = evaluateReferee(evaluation(runnerOutput({
       native_verification: 'INDETERMINATE',
       rp_acceptance: 'REJECTED',
-      caid: `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`,
+      caid: `canactid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`,
       aec_satisfaction: 'NOT_SATISFIED',
       provider_outcome: 'INDETERMINATE',
       effect_relation: 'DIVERGED',

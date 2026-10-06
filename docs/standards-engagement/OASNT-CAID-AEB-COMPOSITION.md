@@ -59,7 +59,7 @@ action:
 
 1. `oasnt:caid:1:<base64url-digest>` is derived under OASNT-CAID-01 from the
    OASNT native action type and parameters.
-2. `caid:1:<type>:<suite>:<digest>` is derived under the exact
+2. `canactid:1:<type>:<suite>:<digest>` is derived under the exact
    relying-party-pinned EMILIA mapping profile from the complete expected
    action.
 

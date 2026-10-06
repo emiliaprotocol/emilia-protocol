@@ -27,7 +27,7 @@
     "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
     "payment_instruction_id": "pi-bindings-001"
   },
-  "expected_caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+  "expected_caid": "canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
   "expected_action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec",
   "fixtures": {
     "http": {
@@ -45,7 +45,7 @@
           "headers": {
             "X-EMILIA-Receipt": {
               "binding": {
-                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "caid": "canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
                 "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
               }
             }
@@ -68,7 +68,7 @@
           "meta": {
             "emilia_receipt": {
               "binding": {
-                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "caid": "canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
                 "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
               }
             }
@@ -101,7 +101,7 @@
                 "payment_instruction_id": "pi-bindings-001"
               },
               "binding_artifact": {
-                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "caid": "canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
                 "base_action_digest": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
               }
             }
@@ -125,7 +125,7 @@
             "X-PAYMENT": {
               "proof": {
                 "binding": {
-                  "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                  "caid": "canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
                   "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
                 }
               }
@@ -149,7 +149,7 @@
             "type": "ep.authorization_receipt",
             "ep_authorization_receipt": {
               "binding": {
-                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "caid": "canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
                 "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
               }
             }
@@ -174,7 +174,7 @@
             "type": "ep.authorization_receipt",
             "ep_authorization_receipt": {
               "binding": {
-                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "caid": "canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
                 "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
               }
             }
@@ -213,7 +213,7 @@
         {
           "protocol_id": "ap2",
           "path": "/payment_intent/evidence/ep_authorization_receipt/binding/caid",
-          "value": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYux"
+          "value": "canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYux"
         }
       ],
       "expect": { "valid": false, "reason": "caid_mismatch" }

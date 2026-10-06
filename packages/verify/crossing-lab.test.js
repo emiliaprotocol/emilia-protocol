@@ -362,7 +362,7 @@ runtimeTest('scaffold uses a real native signature and a CAID derived from the e
     const root = freshWorkspace();
     const workspace = readWorkspace(root);
     const actionBytes = JSON.stringify(workspace.expected_action, Object.keys(workspace.expected_action).sort());
-    const expectedCaid = `caid:1:${workspace.expected_action.action_type}:jcs-sha256:${crypto.createHash('sha256').update(actionBytes).digest('base64url')}`;
+    const expectedCaid = `canactid:1:${workspace.expected_action.action_type}:jcs-sha256:${crypto.createHash('sha256').update(actionBytes).digest('base64url')}`;
     assert.equal(workspace.evaluation.caid, expectedCaid);
     const artifact = JSON.parse(readFileSync(join(root, 'artifact.json'), 'utf8'));
     assert.match(artifact.signature, /^[A-Za-z0-9_-]+$/);

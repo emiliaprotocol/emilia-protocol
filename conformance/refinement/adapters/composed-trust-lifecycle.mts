@@ -29,9 +29,9 @@ import { runRevocationScenario } from "./revocation.mjs";
 
 const HASH = (char: string) => `sha256:${char.repeat(64)}`;
 const ORIGINAL_CAID =
-  `caid:1:commerce.purchase.1:jcs-sha256:${"A".repeat(43)}`;
+  `canactid:1:commerce.purchase.1:jcs-sha256:${"A".repeat(43)}`;
 const REMEDY_CAID =
-  `caid:1:payments.refund.1:jcs-sha256:${"B".repeat(43)}`;
+  `canactid:1:payments.refund.1:jcs-sha256:${"B".repeat(43)}`;
 const NOW = Date.parse("2026-07-22T19:00:00.000Z");
 
 type ComposedState = {

@@ -19,7 +19,7 @@ import {
 const NOW = Date.parse('2026-07-22T19:00:00.000Z');
 const HASH = (char: string) => `sha256:${char.repeat(64)}`;
 const CAID = (char: string, action = 'remedy.perform') => (
-  `caid:1:${action}.1:jcs-sha256:${char.repeat(43)}`
+  `canactid:1:${action}.1:jcs-sha256:${char.repeat(43)}`
 );
 
 function keyPair() {

@@ -17,15 +17,16 @@ def _freeze(value):
 
 # Rule data, read-only (mappings are MappingProxyType, sequences are tuples).
 SPEC = _freeze({
-    "draft": "draft-schrock-canonical-action-identifier-04",
+    "draft": "draft-schrock-canonical-action-identifier-05",
     "identifier": {
-        "scheme": "caid",
+        "scheme": "canactid",
+        "legacy_v04_scheme": "caid",
         "version": "1",
         "separator": ":",
         "parts": 5,
     },
     "patterns": {
-        "caid": "caid\\x3a1\\x3a(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*\\x3a[a-z][\\x2d0-9a-z]*\\x3a[\\x2d0-9A-Z\\x5fa-z]+",
+        "caid": "canactid\\x3a1\\x3a(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*\\x3a[a-z][\\x2d0-9a-z]*\\x3a[\\x2d0-9A-Z\\x5fa-z]+",
         "action_type": "(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*",
         "suite": "[a-z][\\x2d0-9a-z]*",
         "digest": "[\\x2d0-9A-Z\\x5fa-z]+",
@@ -856,7 +857,7 @@ SPEC = _freeze({
 # in SPEC["patterns"]. They refuse a value followed by a final line feed
 # whichever of match, search, or fullmatch is used. Apply them to str only.
 PATTERNS = types.MappingProxyType({
-    "caid": re.compile("\\A(?:caid\\x3a1\\x3a(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*\\x3a[a-z][\\x2d0-9a-z]*\\x3a[\\x2d0-9A-Z\\x5fa-z]+)\\Z"),
+    "caid": re.compile("\\A(?:canactid\\x3a1\\x3a(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*\\x3a[a-z][\\x2d0-9a-z]*\\x3a[\\x2d0-9A-Z\\x5fa-z]+)\\Z"),
     "action_type": re.compile("\\A(?:(?:[a-z][\\x2d0-9a-z]*\\x2e)+[1-9][0-9]*)\\Z"),
     "suite": re.compile("\\A(?:[a-z][\\x2d0-9a-z]*)\\Z"),
     "digest": re.compile("\\A(?:[\\x2d0-9A-Z\\x5fa-z]+)\\Z"),

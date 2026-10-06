@@ -28,7 +28,7 @@ export const ROOT_CAUSES = [
   { id: "M5", match: /target_action_type \d+ chars/, title: "target_action_type bounded differently from 512 UTF-8 octets" },
   { id: "M6", match: /suite=""/, title: "An empty mapping suite taken as the default instead of refused" },
   { id: "M9", match: /outside the data model at/, title: "A mapping profile outside the data model not refused as exactly invalid_mapping_profile at the stage A gate" },
-  { id: "M8", match: /^(map|compare) \|/, title: "Mapping result or reason order differs from the -04 stage order" },
+  { id: "M8", match: /^(map|compare) \|/, title: "Mapping result or reason order differs from the -05 stage order" },
   { id: "V1", match: /random pin/, title: "A supplied expected definition_sha256 of another type ignored instead of refusing as definition_mismatch" },
   { id: "G1", match: /action-type-variant|over its length limit/, title: "An action type, CAID or code_system over its length limit not refused before its pattern runs" },
   { id: "D2", match: /host definition with/, title: "A host definition read or checked outside its validation projection" },

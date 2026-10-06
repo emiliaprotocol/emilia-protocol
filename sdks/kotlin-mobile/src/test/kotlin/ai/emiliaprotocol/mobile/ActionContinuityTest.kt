@@ -12,7 +12,7 @@ class ActionContinuityTest {
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = true }
     private val caidDigest = "XupRmBfC678AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     private val caid =
-        "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:$caidDigest"
+        "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:$caidDigest"
     private val digest = "sha256:" + "a".repeat(64)
 
     @Test
@@ -36,7 +36,7 @@ class ActionContinuityTest {
                   "action_digest": "$digest",
                   "fingerprint": "5EEA-5198-17C2-EBBF"
                 },
-                "supersedes_action_caid": "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"B".repeat(43)}",
+                "supersedes_action_caid": "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"B".repeat(43)}",
                 "continuity": {
                   "state": "EXECUTED",
                   "retry_safe": false,
@@ -135,11 +135,11 @@ class ActionContinuityTest {
             "BBBB-BBBB-BBBB-BBBB",
         )
         val punctuationDigest =
-            "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:" +
+            "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:" +
                 "__________________________________________8"
         val punctuationIdentity = EmiliaMobileActionIdentity(punctuationDigest, digest)
         val nonCanonicalDigest = EmiliaMobileActionIdentity(
-            "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"_".repeat(43)}",
+            "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"_".repeat(43)}",
             digest,
         )
 
@@ -148,6 +148,17 @@ class ActionContinuityTest {
         assertNull(nonCanonicalDigest.stableFingerprint())
         assertNull(conflictingPresentation.stableFingerprint())
         assertFalse(conflictingPresentation.isValidActionLock())
+    }
+
+    @Test
+    fun currentActionLockRefusesLegacySchemeWithoutExplicitMigration() {
+        val legacy = EmiliaMobileActionIdentity(
+            "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:$caidDigest",
+            digest,
+        )
+
+        assertFalse(legacy.isValidActionLock())
+        assertNull(legacy.stableFingerprint())
     }
 
     @Test

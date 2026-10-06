@@ -202,7 +202,7 @@ test('a valid WAG grant verifies and maps the exact token-issuance request to on
   assert.deepEqual(native.subject, { id: SUBJECT, kind: 'workload' });
   const mapped = adapter.mapAction({ ...input(currentArtifact), profile: profile(), native });
   assert.equal(mapped.mapping, 'MATCH');
-  assert.match(mapped.caid ?? '', /^caid:1:oauth\.access-token\.issue\.1:jcs-sha256:/);
+  assert.match(mapped.caid ?? '', /^canactid:1:oauth\.access-token\.issue\.1:jcs-sha256:/);
   assert.equal(mapped.action_digest, digestAeb(action(currentArtifact)));
 });
 

@@ -27,6 +27,7 @@ import { verifyOutcomeBindingCore, verifyOutcomeBindingSetCore } from './outcome
 type Obj = Record<string, any>;
 
 export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
+export * from './canonical-action-identifier.js';
 export {
   AUTHORITY_PROGRAM_VERSION,
   AUTHORITY_PROGRAM_DOMAIN,

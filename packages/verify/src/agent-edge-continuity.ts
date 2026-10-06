@@ -210,7 +210,7 @@ const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const ID_RE = /^[A-Za-z0-9_.:-]{1,256}$/;
 const NONCE_RE = /^[A-Za-z0-9_-]{16,256}$/;
 const RFC3339_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
-const CAID_RE = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const CAID_RE = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const EDGES = new Set<AgentEdge>([
   'user-harness',
   'harness-model',

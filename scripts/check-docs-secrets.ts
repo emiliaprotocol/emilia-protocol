@@ -256,6 +256,7 @@ const SAFE_HOSTS: Set<string> = new Set([
   // Government / standards bodies cited in proposals.
   "nist.gov",
   "ietf.org", // datatracker.ietf.org — the EP Internet-Draft lives there
+  "iana.org", // public registries and provisional URI-scheme registrations
   "aaif.io", // Agentic AI Foundation — proposal + working-group docs
   // Grant programs / solicitation portals cited in archived grant/application drafts.
   "federalregister.gov", // NIST AI Consortium Federal Register notice

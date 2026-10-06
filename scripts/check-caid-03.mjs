@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { canonicalize, computeCaid } from '../caid/impl/js/caid.mjs';
+import { canonicalize, computeCaid, verifyLegacyCaidV04 } from '../caid/impl/js/caid.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // The packet is publication provenance for the posted -03 revision; the
@@ -113,14 +113,18 @@ const example = {
   tool: 'payment.release',
   args: { amount_usd: 4000, beneficiary: 'vendor@example.com', memo: 'invoice 7781' },
 };
-const computed = computeCaid(example, { suite: 'jcs-sha256', definitions: registry.types });
 const expected = 'caid:1:tool.call.1:jcs-sha256:FdawgFwgN5tAtiZa-SCkVDrV3dS9w1yeXVQaDaZLQQQ';
-assert(computed.caid === expected, 'tool.call.1 example does not reproduce the draft CAID');
-const shadowed = computeCaid(
+const verified = verifyLegacyCaidV04(example, expected, { definitions: registry.types });
+assert(verified.valid, 'tool.call.1 example does not reproduce the draft CAID');
+const shadowed = verifyLegacyCaidV04(
   { ...example, target: 'https://shadow.example' },
-  { suite: 'jcs-sha256', definitions: registry.types },
+  expected,
+  { definitions: registry.types },
 );
-assert(shadowed.caid !== expected, 'tool.call.1 target does not discriminate a shadow provider');
+assert(
+  !shadowed.valid && shadowed.reasons.includes('digest_mismatch'),
+  'tool.call.1 target does not discriminate a shadow provider',
+);
 const withoutWhitespace = (value) => value.replace(/\s+/g, '');
 assert(withoutWhitespace(source).includes(expected), 'example CAID missing from source');
 assert(withoutWhitespace(text).includes(expected), 'example CAID missing from TXT render');

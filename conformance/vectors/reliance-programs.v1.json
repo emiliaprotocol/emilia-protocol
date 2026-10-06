@@ -457,7 +457,7 @@
         {
           "op": "replace",
           "path": "/source/root_caid",
-          "value": "caid:1:mcp.tool-call.1:jcs-sha256:ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+          "value": "canactid:1:mcp.tool-call.1:jcs-sha256:ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
         }
       ],
       "expect": {

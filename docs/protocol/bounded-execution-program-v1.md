@@ -65,7 +65,7 @@ The identifier profile is:
 ```
 
 A digest is `sha256:` followed by exactly 64 lowercase hexadecimal digits. A
-CAID uses the closed `caid:1:<action-type>:jcs-sha256:<43 base64url chars>`
+CAID uses the closed `canactid:1:<action-type>:jcs-sha256:<43 base64url chars>`
 form enforced by the shared Gate risk-artifact profile.
 
 ### 2.1 Budgets
@@ -112,7 +112,7 @@ the corresponding AdmissionSnapshot.
 `action` has exactly one of two shapes:
 
 ```json
-{ "mode": "exact", "caid": "caid:1:...", "action_digest": "sha256:..." }
+{ "mode": "exact", "caid": "canactid:1:...", "action_digest": "sha256:..." }
 ```
 
 ```json

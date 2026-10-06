@@ -23,7 +23,7 @@ const pq = ml_dsa65.keygen(crypto.randomBytes(32));
 const pqPubB64u = Buffer.from(pq.publicKey).toString('base64url');
 const pqPrivB64u = Buffer.from(pq.secretKey).toString('base64url');
 
-const CAID = 'caid:1:ep.mobile-action.1:jcs-sha256:' + 'A'.repeat(43);
+const CAID = 'canactid:1:ep.mobile-action.1:jcs-sha256:' + 'A'.repeat(43);
 
 function input(overrides: Record<string, any> = {}) {
   return {

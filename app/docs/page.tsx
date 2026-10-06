@@ -73,6 +73,12 @@ const DOC_SECTIONS = [
     desc: 'Check an artifact under explicit relying-party inputs without depending on EMILIA’s hosted service.',
     href: '/verify',
   },
+  {
+    eyebrow: 'Exact-action identity',
+    title: 'CAID playground',
+    desc: 'Compute a canactid URI, then change a material payment field and watch the exact-action match break.',
+    href: '/caid',
+  },
 ];
 
 const SYSTEM = [

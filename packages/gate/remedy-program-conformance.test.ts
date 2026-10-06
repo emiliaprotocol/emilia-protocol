@@ -105,7 +105,7 @@ function materialize(value: unknown, label: string): any {
       return `sha256:${createHash('sha256').update(value.$sha256).digest('hex')}`;
     }
     assert.match(value.$caid, /^[A-Za-z0-9_-]$/, `${label} has invalid $caid token`);
-    return `caid:1:payments.refund.1:jcs-sha256:${value.$caid.repeat(43)}`;
+    return `canactid:1:payments.refund.1:jcs-sha256:${value.$caid.repeat(43)}`;
   }
   for (const key of Object.keys(value)) {
     assert.equal(key.startsWith('$'), false, `${label}.${key} is an unhandled materialization token`);

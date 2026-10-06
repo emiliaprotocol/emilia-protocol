@@ -690,7 +690,7 @@ export function computeProfileCaid(action) {
   const canonical = Buffer.from(jcs(action), 'utf8');
   const hash = sha256Bytes(canonical);
   return {
-    caid: `caid:1:account.suspend.1:jcs-sha256:${hash.toString('base64url')}`,
+    caid: `canactid:1:account.suspend.1:jcs-sha256:${hash.toString('base64url')}`,
     action_digest: `sha256:${hash.toString('hex')}`,
     action_bytes: canonical,
   };

@@ -178,7 +178,7 @@ describe('CAID registry enum snapshots', () => {
       const result = reference.compute(object, {
         suite: 'jcs-sha256', definitions: registry.types, enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
       });
-      expect(result.caid, `${type.action_type}: ${JSON.stringify(result.refusals)}`).toMatch(/^caid:1:/);
+      expect(result.caid, `${type.action_type}: ${JSON.stringify(result.refusals)}`).toMatch(/^canactid:1:/);
       expect(result.definition_sha256).toBe(reference.definitionSha256(type));
     }
   });
@@ -218,7 +218,7 @@ describe('CAID registry enum snapshots', () => {
       const result = computeCaid(object, {
         suite: 'jcs-sha256', definitions: [registryDefinition(actionType)], enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
       });
-      expect(result.caid, actionType).toMatch(new RegExp(`^caid:1:${actionType.replaceAll('.', '\\.')}:jcs-sha256:`));
+      expect(result.caid, actionType).toMatch(new RegExp(`^canactid:1:${actionType.replaceAll('.', '\\.')}:jcs-sha256:`));
       expect(verifyCaid(object, result.caid, {
         definitions: [registryDefinition(actionType)], enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
       })).toMatchObject({ valid: true, reasons: [] });
@@ -237,7 +237,7 @@ describe('CAID registry enum snapshots', () => {
     const accepted = computeCaid(action, {
       suite: 'jcs-sha256', definitions: [definition], enumSnapshots: CAID_REGISTRY_ENUM_SNAPSHOTS,
     });
-    expect(accepted.caid).toMatch(/^caid:1:payment\.release\.1:jcs-sha256:/);
+    expect(accepted.caid).toMatch(/^canactid:1:payment\.release\.1:jcs-sha256:/);
 
     const unpinned = computeCaid(action, { suite: 'jcs-sha256', definitions: [definition] });
     expect(unpinned).toEqual({ refusals: ['mistyped_field:currency'] });

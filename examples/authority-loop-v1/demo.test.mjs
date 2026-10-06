@@ -10,7 +10,7 @@ test('authority-loop demo produces all four terminal verdicts with verified cert
     const result = spawnSync(process.execPath, [demo], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /EMILIA AUTHORITY LOOP/);
-    assert.match(result.stdout, /CAID: caid:1:travel\.book\.1:jcs-sha256:/);
+    assert.match(result.stdout, /CAID: canactid:1:travel\.book\.1:jcs-sha256:/);
     assert.match(result.stdout, /ALLOW: executed, certificate verified offline \(ticketed\)/);
     assert.match(result.stdout, /Unattended envelope: 340 of 500 USD consumed/);
     assert.match(result.stdout, /ASK: refused unattended \(budget_exceeded\)/);

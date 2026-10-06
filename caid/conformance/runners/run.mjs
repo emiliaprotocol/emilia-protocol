@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // JavaScript conformance runner for the CAID core corpus (vectors.json,
-// version 5) and the grammar boundary corpus (grammar-vectors.json). It
+// version 6) and the grammar boundary corpus (grammar-vectors.json). It
 // drives an implementation only through its public entry points.
 //
 //   node caid/conformance/runners/run.mjs [--impl FILE] [--corpus core|grammar|all]
@@ -100,7 +100,7 @@ function applies(condition, probe) {
 // ---------------------------------------------------------------- core corpus
 function runCore() {
   const corpus = readCorpus('vectors.json');
-  if (corpus.version !== 5) { report('core', '(corpus)', false, `expected corpus version 5, got ${corpus.version}`); return; }
+  if (corpus.version !== 6) { report('core', '(corpus)', false, `expected corpus version 6, got ${corpus.version}`); return; }
   const snapshots = corpus.enum_snapshots;
   const caids = new Map();
   for (const v of corpus.vectors) {

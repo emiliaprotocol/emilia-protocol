@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.8.2  ·  content-sha256:53c9e103cb656c5f
+//   source: @emilia-protocol/require-receipt@0.9.0  ·  content-sha256:bb230d4a61a4c845
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -355,7 +355,7 @@ export const APPROVAL_STATUSES = Object.freeze([
 ]);
 const MAX_APPROVAL_RESPONSE_BYTES = 1024 * 1024;
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const CAID_PATTERN = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const CAID_PATTERN = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const FIELD_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,127}$/;
 const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const REQUESTER_BEARER = /^Bearer (?:ep|ept)_[A-Za-z0-9._~-]{8,512}$/;
@@ -1333,7 +1333,7 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
                 return { ok: false, reason: checkedSelector.reason };
             const caid = signedAction[checkedSelector.value.field];
             if (typeof caid !== 'string'
-                || !/^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/.test(caid)) {
+                || !/^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/.test(caid)) {
                 return { ok: false, reason: 'signed_action_caid_invalid' };
             }
         }

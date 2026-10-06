@@ -42,7 +42,7 @@ are a profile sketch, not a registration or native-conformance claim:
 ```json
 {
   "event_type": "emilia.aeb.decision.v1",
-  "caid": "caid:1:<action-type>:jcs-sha256:<digest>",
+  "caid": "canactid:1:<action-type>:jcs-sha256:<digest>",
   "decision": "SATISFIED",
   "authorization_state": "AUTHORIZED",
   "consumption_state": "CONSUMED",

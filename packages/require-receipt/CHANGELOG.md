@@ -5,6 +5,22 @@ All notable changes to `@emilia-protocol/require-receipt` are documented here.
 
 ## Unreleased
 
+## 0.9.0 (2026-10-06)
+
+### Breaking: current CAID selectors
+
+- Action-risk-manifest `caid_field` selectors, approval-acquisition responses,
+  receipt verification, and the edge handler now accept only the current
+  `canactid:1:<action-type>:<suite>:<digest>` spelling. The scheme is
+  provisionally registered by IANA; provisional registration is not IETF
+  endorsement.
+- The obsolete `caid:` spelling is refused instead of being silently accepted,
+  translated, or rebound. Immutable historical signed evidence belongs behind
+  Verify's explicitly selected CAID-04 legacy profile; this package's current
+  enforcement path does not provide a dual-scheme compatibility mode.
+- The generated zero-dependency drop-in carries the same current-only selector
+  behavior.
+
 ## 0.8.2 (2026-10-04)
 
 ### Added

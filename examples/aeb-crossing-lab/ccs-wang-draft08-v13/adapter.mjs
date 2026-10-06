@@ -347,7 +347,7 @@ function computeCaid(action) {
   const canonical = jcs(action);
   const bytes = crypto.createHash('sha256').update(canonical, 'utf8').digest();
   return {
-    caid: `caid:1:${ACTION_TYPE}:jcs-sha256:${bytes.toString('base64url')}`,
+    caid: `canactid:1:${ACTION_TYPE}:jcs-sha256:${bytes.toString('base64url')}`,
     digest: `sha256:${bytes.toString('hex')}`,
   };
 }

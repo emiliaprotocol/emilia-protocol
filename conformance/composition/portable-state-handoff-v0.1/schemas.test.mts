@@ -94,13 +94,13 @@ test('published schemas compile, accept reference artifacts, and reject unknown 
       {
         stage: 'SOURCE_RELEASE',
         action: 'agent.state.export.1',
-        caid: 'caid:1:agent.state.export.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        caid: 'canactid:1:agent.state.export.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
         receipt_digest: `sha256:${'1'.repeat(64)}`,
       },
       {
         stage: 'RECIPIENT_COMMIT',
         action: 'agent.state.import.1',
-        caid: 'caid:1:agent.state.import.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        caid: 'canactid:1:agent.state.import.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
         receipt_digest: `sha256:${'2'.repeat(64)}`,
       },
     ],

@@ -35,6 +35,7 @@ add('.github/workflows/authzen-pep-profile.yml');
 lock.assembled = '2026-09-03';
 lock.public_dependency_base = '761ff724cb3c96fe5863023f978512d406d6b84c';
 delete lock.native_compiler;
+lock.inherits.sha256 = hash(lock.inherits.path);
 lock.evidence_evaluator = {
   version: 'AEB-EVALUATION-v1',
   path: 'packages/verify/dist/aeb-adapter-contract.js',

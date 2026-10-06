@@ -283,7 +283,7 @@ test('the generated pin compiles through unchanged Reliance Program v1 before fi
     program_id: program().program_id,
     version: program().version,
     relying_party: { id: 'payer:example-health-plan', key_id: 'rp-key-1' },
-    root_caid: `caid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`,
+    root_caid: `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${'A'.repeat(43)}`,
     action_digest: D('c'),
     valid_from: '2026-07-28T12:00:00Z',
     expires_at: '2026-07-29T12:00:00Z',

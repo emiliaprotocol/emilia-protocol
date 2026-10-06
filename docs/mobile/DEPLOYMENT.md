@@ -105,7 +105,7 @@ includes:
   "ep_version": "1.0",
   "context_type": "ep.signoff.v1",
   "action_reference": "case-system:approval:9482",
-  "action_caid": "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:...",
+  "action_caid": "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:...",
   "action_digest": "sha256:...",
   "mobile_binding": {
     "profile": "EP-MOBILE-CHALLENGE-v2"

@@ -12,7 +12,7 @@
   },
   "pins": {
     "aeb_contract": "AEB-ADAPTER-v1",
-    "aeb_contract_lock": "sha256:18dcd514480890c4b58c8e7f79d28b9b6d7b162d1616135bb35d4feb717fde24",
+    "aeb_contract_lock": "sha256:ddd9f4258a46afb706557cdc921a78a858dcfd9005d070510010ffd67fe1761b",
     "ccs_distribution": "1.1.0",
     "ccs_runtime": "0.4.1",
     "oasnt_revision": "draft-thallapelly-oasnt-02",
@@ -48,7 +48,7 @@
       "passed": true,
       "observed": {
         "mapping": "MATCH",
-        "caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg"
+        "caid": "canactid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg"
       }
     },
     {
@@ -90,7 +90,7 @@
       "passed": true,
       "observed": {
         "mapping": "MATCH",
-        "caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg"
+        "caid": "canactid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg"
       }
     }
   ],
@@ -101,12 +101,12 @@
       "description": "The compatibility lock matches AEB-ADAPTER-v1 contract bytes.",
       "passed": true,
       "observed": {
-        "lock_digest": "sha256:18dcd514480890c4b58c8e7f79d28b9b6d7b162d1616135bb35d4feb717fde24",
+        "lock_digest": "sha256:ddd9f4258a46afb706557cdc921a78a858dcfd9005d070510010ffd67fe1761b",
         "files": [
           {
             "path": "packages/verify/src/aeb-adapter-contract.ts",
-            "expected": "1f6616bfb5401037573a65942a751dfbf972dae0d40d2553a1c2b3393ef45bdc",
-            "actual": "1f6616bfb5401037573a65942a751dfbf972dae0d40d2553a1c2b3393ef45bdc",
+            "expected": "aa2a4b2d16c3f9f0e1cc4bcfa90ccbf519f49066913b2a25a76fb1c473e05200",
+            "actual": "aa2a4b2d16c3f9f0e1cc4bcfa90ccbf519f49066913b2a25a76fb1c473e05200",
             "matched": true
           },
           {
@@ -130,8 +130,8 @@
       "description": "Both native legs independently map to one CAID and action digest.",
       "passed": true,
       "observed": {
-        "ccs_caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
-        "oasnt_caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+        "ccs_caid": "canactid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+        "oasnt_caid": "canactid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
         "ccs_action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8",
         "oasnt_action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8"
       }
@@ -193,11 +193,11 @@
   ],
   "composition": {
     "action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8",
-    "caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+    "caid": "canactid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
     "ccs_action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8",
-    "ccs_caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+    "ccs_caid": "canactid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
     "oasnt_action_digest": "sha256:c9bc87b03e7ec2d90536707a8b9c549a5f24e27dc02b801c4d8b6213867e98a8",
-    "oasnt_caid": "caid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
+    "oasnt_caid": "canactid:1:payment.transfer.1:jcs-sha256:ybyHsD5-wtkFNnB6i5xUml8k4n3AK4AcTYtiE4Z-mKg",
     "evidence_roles": [
       "human-authorization",
       "machine-policy-decision"
@@ -214,6 +214,6 @@
     "One OASNT native check is pinned to the published draft-thallapelly-oasnt-02 token vector and archived text sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603; the two-leg composition uses a synthetic action-only token under the same verifier rules.",
     "A passing report is not IETF adoption, endorsement, certification, or proof of deployment."
   ],
-  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at a6a28465485b13ceccd8de8b9e29b50439282d62 on 2026-10-04T16:12:41.515Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:18dcd514480890c4b58c8e7f79d28b9b6d7b162d1616135bb35d4feb717fde24). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:c4f3536382f1777a5342fa8b36894fd296ebf88f9b1435590a65b55117609ac0"
+  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at a6a28465485b13ceccd8de8b9e29b50439282d62 on 2026-10-04T16:12:41.515Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:ddd9f4258a46afb706557cdc921a78a858dcfd9005d070510010ffd67fe1761b). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
+  "report_digest": "sha256:c07a6d9960f406217ac7a6e9e1fbb9f3cc4bd9a2b6b24aaae364f4074eb17215"
 }

@@ -144,7 +144,7 @@ test('AEC05 status requires native authentication, active disposition and curren
     }
 });
 test('AEC05 uses only pinned mapping after native verification and checks expected CAID', async () => {
-    const caid = `caid:1:payment.release.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
+    const caid = `canactid:1:payment.release.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
     let maps = 0;
     const reg = registration({ mapping: { profile: { id: 'mapping:one', revision: '1' }, map: (native) => { maps++; return { verdict: native.native_payload.destination === 'merchant:one' ? 'EQUIVALENT_UNDER_PROFILE' : 'NOT_EQUIVALENT', caid }; } } });
     const ev = evaluator(requirement({ expression: 'mapped', freshness_sec: {}, role_constraints: [], required_bindings: [] }), { nativeVerifiers: { mapped: reg } });
@@ -322,7 +322,7 @@ test('AEC07 the pinned native format revision is an acceptance check', async () 
     assert.deepEqual([fact.native_verification, fact.acceptance, fact.reasons], ['VERIFIED', 'REJECTED', ['native_format_revision_mismatch']]);
 });
 test('AEC07 action mapping never runs on a VERIFIED artifact that is not ACCEPTED', async () => {
-    const caid = `caid:1:payment.release.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
+    const caid = `canactid:1:payment.release.1:jcs-sha256:${Buffer.alloc(32, 7).toString('base64url')}`;
     let maps = 0;
     const reg = registration({ mapping: { profile: { id: 'mapping:one', revision: '1' }, map: () => { maps++; return { verdict: 'EQUIVALENT_UNDER_PROFILE', caid }; } } });
     const ev = evaluator(requirement({ expression: 'mapped', freshness_sec: {}, role_constraints: [], required_bindings: [] }), { nativeVerifiers: { mapped: reg } });

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// The hand-written cases that corpus version 5 adds to the version 4
+// The hand-written semantic cases carried into corpus version 6 from the
+// version 5 additions to the version 4
 // vectors. Each case states its expected outcome in the terms a reader
 // checks against the draft: the refusal or reason list, "ok", "valid",
 // true/false for decode, or "invalid" for a definition digest. The builder
@@ -117,7 +118,7 @@ const VALID_DIGEST = 'liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y';
 const FIVE_1075 = (5n ** 1075n).toString();
 const SUBNORMAL_MIDPOINT = `${FIVE_1075[0]}.${FIVE_1075.slice(1)}e${FIVE_1075.length - 1 - 1075}`;
 const OVERFLOW_MIDPOINT = 2n ** 1024n - 2n ** 970n;
-const PAYMENT_CAID = `caid:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`;
+const PAYMENT_CAID = `canactid:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`;
 
 export function coreCases({ limits }) {
   const cases = [];
@@ -219,7 +220,7 @@ export function coreCases({ limits }) {
     compute('refuse-canonical-size-not-measured-with-bad-number', 'a value outside the number rule has no RFC 8785 encoding, so its size is not measured: only unsupported_number', [T1],
       { json_repeat: { prefix: '{"action_type":"t.1","n":1.5,"s":"', unit: 'x', count: canonFill + 1, suffix: '"}' } }, { refusals: ['unsupported_number'] }),
     verify('verify-refuse-canonical-size-over-limit', 'an oversized object is invalid_object and its digest is not compared', [T1],
-      { json_repeat: { prefix: '{"action_type":"t.1","s":"', unit: 'x', count: canonFill + 1, suffix: '"}' }, caid: 'caid:1:t.1:jcs-sha256:' + VALID_DIGEST }, { reasons: ['invalid_object'] }),
+      { json_repeat: { prefix: '{"action_type":"t.1","s":"', unit: 'x', count: canonFill + 1, suffix: '"}' }, caid: 'canactid:1:t.1:jcs-sha256:' + VALID_DIGEST }, { reasons: ['invalid_object'] }),
   );
   add(
     compute('compute-depth-64', 'an action object nested exactly 64 deep computes', [OBJ],
@@ -309,7 +310,7 @@ export function coreCases({ limits }) {
     compute('native-lone-surrogate-member-name', 'native lane: a member name holding a lone surrogate is unsupported_value', [text1],
       native({ $object: [['action_type', 'test.text.1'], ['c', 'x'], [{ $units: [0xdc00] }, 'y']] }), { refusals: ['unsupported_value'] }),
     verify('native-verify-lone-surrogate-against-replacement-caid', 'native lane: a lone surrogate never verifies against the CAID of the same object with U+FFFD', [text1],
-      { native: { action_type: 'test.text.1', c: { $units: [0xd800] } }, caid: 'caid:1:test.text.1:jcs-sha256:agG0nPtxAPmIVabJzWul9xH1rE2ayq67AYPCMNqgdqU' }, { reasons: ['invalid_object'] }),
+      { native: { action_type: 'test.text.1', c: { $units: [0xd800] } }, caid: 'canactid:1:test.text.1:jcs-sha256:agG0nPtxAPmIVabJzWul9xH1rE2ayq67AYPCMNqgdqU' }, { reasons: ['invalid_object'] }),
     compute('native-order-number-then-surrogate-key', 'native lane (review D1): a lone-surrogate member name that sorts before a member holding 1.5; the reason order is fixed by phase, not traversal', [T1],
       native({ $object: [['action_type', 't.1'], ['s', 'x'], [{ $units: [0xd800] }, 'y'], ['', 1.5]] }), { refusals: ['unsupported_number', 'unsupported_value'] }),
     compute('native-order-surrogate-key-after-number', 'native lane: the same pair with the number member sorting first gives the same order', [T1],
@@ -390,7 +391,7 @@ export function coreCases({ limits }) {
     verify('verify-px-valid', 'a valid verification carries definition_sha256 and empty details', [PX], { json: j(PX_OK), caid_of: pxCaid }, 'valid'),
     verify('verify-gate-parse-first', 'a malformed CAID is a gate even when the object is also malformed JSON', [PX], { json: '{"a":1,"a":2}', caid: 'CAID:1:p.1:jcs-sha256:' + VALID_DIGEST }, { reasons: ['malformed_caid'] }),
     verify('verify-gate-unknown-suite-at-parse', 'a grammatical but unregistered suite stops verification at parse with unknown_suite', [PX],
-      { json: j({ action_type: 'q.1' }), caid: 'caid:1:p.1:zz-unregistered:' + VALID_DIGEST }, { reasons: ['unknown_suite'] }),
+      { json: j({ action_type: 'q.1' }), caid: 'canactid:1:p.1:zz-unregistered:' + VALID_DIGEST }, { reasons: ['unknown_suite'] }),
     verify('verify-gate-malformed-json', 'malformed JSON text is the gate after parse', [PX], { json: '{"action_type":"p.1","action_type":"p.1"}', caid_of: pxCaid }, { reasons: ['malformed_json'] }),
     verify('verify-not-an-object-array', 'a JSON array is invalid_object; its detail observes an array', [PX], { json: '[1]', caid_of: pxCaid }, { reasons: ['invalid_object'] }),
     verify('verify-not-an-object-null', 'null is invalid_object; its detail observes null', [PX], { json: 'null', caid_of: pxCaid }, { reasons: ['invalid_object'] }),
@@ -402,9 +403,9 @@ export function coreCases({ limits }) {
       { json: j({ action_type: 'p.1', a: 1, b: [], c: {}, d: 'x', e: null }), caid_of: pxCaid }, { reasons: ['digest_mismatch', 'invalid_object'] }),
     verify('verify-details-missing-field-absent', 'a missing field is observed as absent', [PX], { json: j({ action_type: 'p.1', a: '1.00', c: D(), e: true }), caid_of: pxCaid }, { reasons: ['digest_mismatch', 'invalid_object'] }),
     verify('verify-registered-suite-not-implemented', 'a registered suite this implementation does not implement is unknown_suite after parse', [PX],
-      { json: j(PX_OK), caid: 'caid:1:p.1:cbor-sha256:' + VALID_DIGEST }, { reasons: ['unknown_suite'] }, { applies_when: { suite_not_implemented: 'cbor-sha256' } }),
+      { json: j(PX_OK), caid: 'canactid:1:p.1:cbor-sha256:' + VALID_DIGEST }, { reasons: ['unknown_suite'] }, { applies_when: { suite_not_implemented: 'cbor-sha256' } }),
     verify('verify-registered-suite-not-implemented-invalid-object', 'unknown_suite (rank 6) precedes invalid_object (rank 7)', [PX],
-      { json: j({ ...PX_OK, a: '1.0.0' }), caid: 'caid:1:p.1:cbor-sha256:' + VALID_DIGEST }, { reasons: ['unknown_suite', 'invalid_object'] }, { applies_when: { suite_not_implemented: 'cbor-sha256' } }),
+      { json: j({ ...PX_OK, a: '1.0.0' }), caid: 'canactid:1:p.1:cbor-sha256:' + VALID_DIGEST }, { reasons: ['unknown_suite', 'invalid_object'] }, { applies_when: { suite_not_implemented: 'cbor-sha256' } }),
     verify('verify-expected-definition-match', 'a matching expected_definition_sha256 verifies', [PX], { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { of: PX } }, 'valid'),
     verify('verify-definition-mismatch', 'a different expected_definition_sha256 is definition_mismatch even when the digest matches', [PX],
       { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { of: { ...PX, optional_fields: [] } } }, { reasons: ['definition_mismatch'] }),
@@ -548,7 +549,7 @@ export function coreCases({ limits }) {
   add(
     // ISO 3166-1 alpha-2 is a small, stable, freely published list, so it is
     // an enum pinned to a snapshot (vendor.onboard.1 jurisdiction), never a
-    // code format; -04 registers no such format.
+    // code format; -05 registers no such format.
     compute('code-format-iso-3166-1-alpha-2-not-registered', 'iso-3166-1-alpha-2 is not a registered code format: the definition conforms, and a present value is mistyped_field', [{ action_type: 'test.code.country.1', required_fields: [{ name: 'f', type: 'code', code_system: 'urn:iso:std:iso:3166', format: 'iso-3166-1-alpha-2' }] }],
       text(j({ action_type: 'test.code.country.1', f: 'US' })), { refusals: ['mistyped_field:f'] }),
     compute('code-refuses-number', 'a code value must be a JSON string', [codeDef('cpt')], text(j({ action_type: 'test.code.cpt.1', f: 99213 })), { refusals: ['mistyped_field:f'] }),
@@ -594,36 +595,36 @@ export function coreCases({ limits }) {
   // ------------------------------------------------------------ parse
   const d42 = VALID_DIGEST.slice(0, 42);
   add(
-    parse('parse-refuses-uppercase-prefix', 'the prefix is case-sensitive (%s"caid")', `CAID:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-mixed-case-prefix', 'the -03 ABNF string literal "caid" was case-insensitive, so it admitted "Caid:"; -04 refuses it', `Caid:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-uppercase-prefix', 'the prefix is case-sensitive (%s"canactid")', `CANACTID:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-mixed-case-prefix', 'the scheme is case-sensitive, so "Canactid:" is refused', `Canactid:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
     parse('parse-refuses-leading-space', 'no trimming', ` ${PAYMENT_CAID}`, { refusals: ['malformed_caid'] }),
     parse('parse-refuses-trailing-cr', 'a trailing carriage return', `${PAYMENT_CAID}\r`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-empty-segment', 'an empty name segment', `caid:1:payment..release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-uppercase-type', 'an uppercase letter in the action type', `caid:1:Payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-version-01', 'the CAID version is exactly "1"', `caid:01:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-version-2', 'an unknown CAID version', `caid:2:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-fullwidth-version', 'a fullwidth digit version', `caid:１:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-type-version-leading-zero', 'a type version with a leading zero', `caid:1:payment.release.01:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-accepts-huge-type-version', 'a type version of any length', `caid:1:payment.release.${'9'.repeat(40)}:jcs-sha256:${VALID_DIGEST}`, 'ok'),
-    parse('parse-accepts-segment-trailing-hyphen', 'the grammar allows a trailing hyphen in a segment', `caid:1:payment-.release.1:jcs-sha256:${VALID_DIGEST}`, 'ok'),
-    parse('parse-accepts-segment-double-hyphen', 'the grammar allows two hyphens in a row', `caid:1:pay--ment.release.1:jcs-sha256:${VALID_DIGEST}`, 'ok'),
-    parse('parse-refuses-segment-leading-digit', 'a segment starts with a lowercase letter', `caid:1:1payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-segment-leading-hyphen', 'a segment does not start with a hyphen', `caid:1:-payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-cyrillic-a', 'U+0430 looks like "a" and is refused', `caid:1:pаyment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-type-without-segment', 'an action type needs a name segment', `caid:1:1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-accepts-two-part-type', 'one name segment and a version', `caid:1:payment.1:jcs-sha256:${VALID_DIGEST}`, 'ok'),
-    parse('parse-refuses-standard-base64', '"+" and "/" are not base64url', `caid:1:payment.release.1:jcs-sha256:${VALID_DIGEST.slice(0, 20)}+/${VALID_DIGEST.slice(22)}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-empty-digest', 'an empty digest', 'caid:1:payment.release.1:jcs-sha256:', { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-nul-in-digest', 'U+0000 in the digest', `caid:1:payment.release.1:jcs-sha256:${d42}\u0000`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-digest-42', 'a 42-character digest for a 32-octet suite', `caid:1:payment.release.1:jcs-sha256:${d42}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-empty-version', 'an empty version', `caid::payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-empty-suite', 'an empty suite', `caid:1:payment.release.1::${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-empty-segment', 'an empty name segment', `canactid:1:payment..release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-uppercase-type', 'an uppercase letter in the action type', `canactid:1:Payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-version-01', 'the CAID version is exactly "1"', `canactid:01:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-version-2', 'an unknown CAID version', `canactid:2:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-fullwidth-version', 'a fullwidth digit version', `canactid:１:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-type-version-leading-zero', 'a type version with a leading zero', `canactid:1:payment.release.01:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-accepts-huge-type-version', 'a type version of any length', `canactid:1:payment.release.${'9'.repeat(40)}:jcs-sha256:${VALID_DIGEST}`, 'ok'),
+    parse('parse-accepts-segment-trailing-hyphen', 'the grammar allows a trailing hyphen in a segment', `canactid:1:payment-.release.1:jcs-sha256:${VALID_DIGEST}`, 'ok'),
+    parse('parse-accepts-segment-double-hyphen', 'the grammar allows two hyphens in a row', `canactid:1:pay--ment.release.1:jcs-sha256:${VALID_DIGEST}`, 'ok'),
+    parse('parse-refuses-segment-leading-digit', 'a segment starts with a lowercase letter', `canactid:1:1payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-segment-leading-hyphen', 'a segment does not start with a hyphen', `canactid:1:-payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-cyrillic-a', 'U+0430 looks like "a" and is refused', `canactid:1:pаyment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-type-without-segment', 'an action type needs a name segment', `canactid:1:1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-accepts-two-part-type', 'one name segment and a version', `canactid:1:payment.1:jcs-sha256:${VALID_DIGEST}`, 'ok'),
+    parse('parse-refuses-standard-base64', '"+" and "/" are not base64url', `canactid:1:payment.release.1:jcs-sha256:${VALID_DIGEST.slice(0, 20)}+/${VALID_DIGEST.slice(22)}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-empty-digest', 'an empty digest', 'canactid:1:payment.release.1:jcs-sha256:', { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-nul-in-digest', 'U+0000 in the digest', `canactid:1:payment.release.1:jcs-sha256:${d42}\u0000`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-digest-42', 'a 42-character digest for a 32-octet suite', `canactid:1:payment.release.1:jcs-sha256:${d42}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-empty-version', 'an empty version', `canactid::payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-empty-suite', 'an empty suite', `canactid:1:payment.release.1::${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
     parse('parse-refuses-sixth-part', 'a sixth colon-separated part', `${PAYMENT_CAID}:x`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-digest-outside-alphabet', 'a digest character outside base64url is malformed_caid before any suite lookup', 'caid:1:payment.release.1:foo:!', { refusals: ['malformed_caid'] }),
-    parse('parse-unknown-suite-registry-before-digest', 'the registry check precedes the digest check: an unregistered suite with a malformed-for-any-suite digest', 'caid:1:payment.release.1:sha3-jcs:AAAA', { refusals: ['unknown_suite'] }),
-    parse('parse-unknown-suite-long-digest', 'an unregistered suite with a 64-character digest', `caid:1:payment.release.1:zz-unregistered:${'A'.repeat(64)}`, { refusals: ['unknown_suite'] }),
-    parse('parse-refuses-suite-leading-digit', 'a suite that does not match the suite rule is malformed_caid, not unknown_suite', `caid:1:payment.release.1:1x:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('parse-refuses-suite-uppercase', 'an uppercase suite does not match the suite rule', `caid:1:payment.release.1:JCS-SHA256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-digest-outside-alphabet', 'a digest character outside base64url is malformed_caid before any suite lookup', 'canactid:1:payment.release.1:foo:!', { refusals: ['malformed_caid'] }),
+    parse('parse-unknown-suite-registry-before-digest', 'the registry check precedes the digest check: an unregistered suite with a malformed-for-any-suite digest', 'canactid:1:payment.release.1:sha3-jcs:AAAA', { refusals: ['unknown_suite'] }),
+    parse('parse-unknown-suite-long-digest', 'an unregistered suite with a 64-character digest', `canactid:1:payment.release.1:zz-unregistered:${'A'.repeat(64)}`, { refusals: ['unknown_suite'] }),
+    parse('parse-refuses-suite-leading-digit', 'a suite that does not match the suite rule is malformed_caid, not unknown_suite', `canactid:1:payment.release.1:1x:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-suite-uppercase', 'an uppercase suite does not match the suite rule', `canactid:1:payment.release.1:JCS-SHA256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
   );
 
   // ------------------------------------------------------------ length limits (Section 2.6)
@@ -635,7 +636,7 @@ export function coreCases({ limits }) {
   const at512 = typeOf(512);
   const at513 = typeOf(513);
   const csDef = (cs) => ({ action_type: 'test.code.system.1', required_fields: [{ name: 'f', type: 'code', code_system: cs, format: 'icd-10-cm' }] });
-  const suiteFor = (total) => 'x'.repeat(total - `caid:1:a.1::${VALID_DIGEST}`.length);
+  const suiteFor = (total) => 'x'.repeat(total - `canactid:1:a.1::${VALID_DIGEST}`.length);
   add(
     compute('limit-action-type-512', 'an action type of exactly 512 octets computes', [lenDef(at512)], text(j({ action_type: at512, s: 'x' })), 'ok'),
     compute('limit-action-type-513', 'an action type of 513 octets is invalid_action_type, whatever the definitions say', [lenDef(at513)], text(j({ action_type: at513, s: 'x' })), { refusals: ['invalid_action_type'] }),
@@ -644,10 +645,10 @@ export function coreCases({ limits }) {
     defn('limit-definition-action-type-513', 'a definition whose action type is 513 octets does not conform', lenDef(at513), 'invalid'),
     verify('limit-verify-action-type-512', 'a 512-octet action type verifies against its own CAID', [lenDef(at512)],
       { json: j({ action_type: at512, s: 'x' }), caid_of: { json: j({ action_type: at512, s: 'x' }), definitions: [lenDef(at512)] } }, 'valid'),
-    parse('limit-caid-action-type-512', 'a CAID carrying a 512-octet action type parses', `caid:1:${at512}:jcs-sha256:${VALID_DIGEST}`, 'ok'),
-    parse('limit-caid-action-type-513', 'a CAID whose action type is 513 octets is malformed_caid', `caid:1:${at513}:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
-    parse('limit-caid-1024', 'a CAID of exactly 1024 octets reaches the registry check: its long suite is unknown_suite', `caid:1:a.1:${suiteFor(1024)}:${VALID_DIGEST}`, { refusals: ['unknown_suite'] }),
-    parse('limit-caid-1025', 'a CAID of 1025 octets is malformed_caid before the registry is consulted', `caid:1:a.1:${suiteFor(1025)}:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('limit-caid-action-type-512', 'a CAID carrying a 512-octet action type parses', `canactid:1:${at512}:jcs-sha256:${VALID_DIGEST}`, 'ok'),
+    parse('limit-caid-action-type-513', 'a CAID whose action type is 513 octets is malformed_caid', `canactid:1:${at513}:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('limit-caid-1024', 'a CAID of exactly 1024 octets reaches the registry check: its long suite is unknown_suite', `canactid:1:a.1:${suiteFor(1024)}:${VALID_DIGEST}`, { refusals: ['unknown_suite'] }),
+    parse('limit-caid-1025', 'a CAID of 1025 octets is malformed_caid before the registry is consulted', `canactid:1:a.1:${suiteFor(1025)}:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
     compute('limit-code-system-2048', 'a code_system of exactly 2048 octets conforms', [csDef(`urn:${'x'.repeat(2044)}`)], text(j({ action_type: 'test.code.system.1', f: 'A00' })), 'ok'),
     compute('limit-code-system-2049', 'a code_system of 2049 octets makes the definition nonconforming', [csDef(`urn:${'x'.repeat(2045)}`)], text(j({ action_type: 'test.code.system.1', f: 'A00' })), { refusals: ['invalid_definition'] }),
   );
@@ -698,7 +699,7 @@ export function coreCases({ limits }) {
     compute('native-value-budget-under', 'native lane: 2^24 - 1 values reached through shared arrays are within the value budget, so the fractional leaf is unsupported_number', [BUDGET], dag(23), { refusals: ['unsupported_number'] }),
     compute('native-value-budget-over', 'native lane: 2^26 - 1 values reached through shared arrays pass the value budget, so the value is unsupported_value alone and the fractional leaf is not reported', [BUDGET], dag(25), { refusals: ['unsupported_value'] }),
     verify('native-verify-value-budget-over', 'native lane: verification of a value past the value budget is invalid_object, with unsupported_value alone behind it', [BUDGET],
-      { ...dag(25), caid: `caid:1:probe.budget.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+      { ...dag(25), caid: `canactid:1:probe.budget.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
   );
   // The value count stops at the nesting limit, as the examination of
   // numbers does (Section 2.5): an object or array nested deeper than 64
@@ -721,7 +722,7 @@ export function coreCases({ limits }) {
     compute('native-value-count-with-phase-3-and-4', 'native lane: 2^26 - 1 values in the declared array field a pass the value count, the required field s is absent and the integer field n holds the host number 1.5: phases 3 and 4 still run, so missing_material_field:s and mistyped_field:n, then unsupported_value, and phase 6 reports nothing', [OBJ],
       overCount, { refusals: ['missing_material_field:s', 'mistyped_field:n', 'unsupported_value'] }),
     verify('native-verify-value-count-with-phase-3-and-4', 'native lane: verification of the same object is invalid_object, with the phase 3, phase 4 and unsupported_value details behind it and no unsupported_number', [OBJ],
-      { ...overCount, caid: `caid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+      { ...overCount, caid: `canactid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
   );
   // A reference back to an enclosing object or array counts as one value,
   // and nothing beyond it is counted or examined (Sections 2.2 and 2.5).
@@ -777,9 +778,9 @@ export function coreCases({ limits }) {
     if (n === 2 ** 24) {
       add(
         verify(`native-verify-array-${label}-elements-in-declared-field`, `native lane: verification of the array of ${label} zeros in the declared field a is invalid_object with unsupported_value alone behind it, no mistyped_field`, [OBJ],
-          { ...declared, caid: `caid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+          { ...declared, caid: `canactid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
         verify(`native-verify-array-${label}-elements-beside-fraction`, `native lane: verification of the array of ${label} zeros beside 1.5 is invalid_object with unsupported_number alone behind it`, [OBJ],
-          { ...beside, caid: `caid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+          { ...beside, caid: `canactid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
       );
     }
   }
@@ -807,7 +808,7 @@ export function coreCases({ limits }) {
         compute(`native-value-count-${count}-${name}`, `native lane: exactly ${count} values, the shared array's elements being ${leaves}, beside the host number 1.5: ${verdict}, so ${expect.join(', then ')}`, [OBJ],
           object, { refusals: expect }),
         verify(`native-verify-value-count-${count}-${name}`, `native lane: verification of the same ${count} values is invalid_object, with ${expect.join(' and ')} behind it`, [OBJ],
-          { ...object, caid: `caid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+          { ...object, caid: `canactid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
       );
     }
   }

@@ -726,7 +726,7 @@ test('every signed WebAuthn context binding is relying-party checked', () => {
     { provider: { ...PROVIDER, environment: 'staging' } },
     { source_commitments: wrongCommitments },
     { normalized_action_digest: digestAeb({ wrong: 'action' }) },
-    { caid: `caid:1:${FIDO_AP2_ACTION_TYPE}:jcs-sha256:${'A'.repeat(43)}` },
+    { caid: `canactid:1:${FIDO_AP2_ACTION_TYPE}:jcs-sha256:${'A'.repeat(43)}` },
     { disclosure_digest: digestAeb({ wrong: 'disclosure' }) },
     { approver_id: 'human:attacker' },
     { nonce: 'wrong-nonce' },

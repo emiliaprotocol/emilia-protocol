@@ -90,7 +90,7 @@ describe('EMILIA Arena allowance profile', () => {
     const first = deriveArenaActionBinding(action());
     const second = deriveArenaActionBinding({ ...action() });
     expect(first).toEqual(second);
-    expect(first.caid).toMatch(/^caid:1:arena\.resource\.allocate\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+    expect(first.caid).toMatch(/^canactid:1:arena\.resource\.allocate\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
     expect(first.action_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
 

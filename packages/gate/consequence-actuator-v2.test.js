@@ -15,7 +15,7 @@ const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const NOW = Date.parse('2026-07-25T01:00:00.000Z');
 const ACTION_DIGEST = `sha256:${'a'.repeat(64)}`;
 const TARGET_DIGEST = `sha256:${'c'.repeat(64)}`;
-const CAID = `caid:1:example.execute.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:example.execute.1:jcs-sha256:${'A'.repeat(43)}`;
 function payloadV2(overrides = {}) {
     return {
         '@version': CONSEQUENCE_ACTUATOR_ENVELOPE_V2_VERSION,

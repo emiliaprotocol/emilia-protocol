@@ -196,7 +196,7 @@ test('OASNT -02 published compact token (Appendix A.6 V5, no asl) verifies and m
 
   const mapped = adapter.mapAction({ ...input(), profile: profile(), native });
   assert.equal(mapped.mapping, 'MATCH');
-  assert.match(mapped.caid ?? '', /^caid:1:payment\.transfer\.1:jcs-sha256:/);
+  assert.match(mapped.caid ?? '', /^canactid:1:payment\.transfer\.1:jcs-sha256:/);
   assert.equal(mapped.action_digest, digestAeb(expectedAction));
 });
 
@@ -271,7 +271,7 @@ const joinVectorHandlers: Record<string, () => void> = {
     const derived = mappedIdentifiers(expectedAction);
     assert.ok(derived);
     assert.match(derived.oasnt_caid, /^oasnt:caid:1:[A-Za-z0-9_-]{43}$/);
-    assert.match(derived.emilia_caid, /^caid:1:/);
+    assert.match(derived.emilia_caid, /^canactid:1:/);
     assert.notEqual(derived.oasnt_caid, derived.emilia_caid);
   },
   executor_owned_mapping_joins_one_material_action() {

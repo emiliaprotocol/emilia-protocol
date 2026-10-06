@@ -143,7 +143,7 @@ The top-level members are closed:
 {
   "@version": "ACTION-AUTHORIZATION-STATUS-v1",
   "action": {
-    "reference": { "scheme": "caid", "value": "caid:1:example:release-payment" },
+    "reference": { "scheme": "canactid", "value": "canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" },
     "type": "payment.release",
     "occurred_at": "2026-07-30T18:00:00Z"
   },

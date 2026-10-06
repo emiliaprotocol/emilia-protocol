@@ -187,7 +187,7 @@ final class MobileAPIRecoveryTests: XCTestCase {
     func testSelectedActionIdentityMismatchIsRejectedBeforeNetwork() async throws {
         let fixture = try makeFixture()
         let mismatched = try EmiliaActionIdentity(
-            actionCAID: "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+            actionCAID: "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
             actionDigest: fixture.identity.actionDigest
         )
         StubURLProtocol.install([])
@@ -291,7 +291,7 @@ final class MobileAPIRecoveryTests: XCTestCase {
 
     private func passportStub(actionReference: String) throws -> HTTPStub {
         let actionCAID =
-            "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM"
+            "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM"
         let actionDigest =
             "sha256:f6a151156b476ece29dab84266ab4a94abd81bd683a222942681d2850cb26f4e"
         let payload: EmiliaJSONValue = .object([
@@ -334,7 +334,7 @@ final class MobileAPIRecoveryTests: XCTestCase {
         let decision = "approved"
         let actionReference = "mobact_0123456789abcdef0123456789abcdef"
         let actionCAID =
-            "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM"
+            "canactid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM"
         let actionDigest =
             "sha256:f6a151156b476ece29dab84266ab4a94abd81bd683a222942681d2850cb26f4e"
         let identity = try EmiliaActionIdentity(

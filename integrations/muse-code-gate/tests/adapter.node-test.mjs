@@ -72,7 +72,7 @@ test('canonicalizes all five material payment fields into registered payment.rel
   assert.equal(first.action.amount, INPUT.amount);
   assert.equal(first.action.currency, INPUT.currency);
   assert.equal(first.action.payment_instruction_id, INPUT.operation);
-  assert.match(first.caid, /^caid:1:payment\.release\.1:jcs-sha256:/);
+  assert.match(first.caid, /^canactid:1:payment\.release\.1:jcs-sha256:/);
   assert.notEqual(first.caid, second.caid);
 });
 

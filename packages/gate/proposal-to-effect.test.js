@@ -9,7 +9,7 @@ import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest,
 import { createEg1Harness, createTrustedActionFirewall, EG1_DEFAULT_SELECTOR, } from './index.js';
 import { PROPOSAL_TO_EFFECT_VERSION, createProposalToEffect, proposalToEffectConsumptionNonce, } from './proposal-to-effect.js';
 const NOW = '2026-07-22T12:00:00Z';
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const PROPOSAL_INTEGRITY_DOMAIN = `${PROPOSAL_TO_EFFECT_VERSION}:INTEGRITY\0`;
 const PROPOSAL_INTEGRITY_KEY = crypto.createHash('sha256').update('proposal-to-effect-test-key').digest();
 const SERVER_CONTEXT = Object.freeze({

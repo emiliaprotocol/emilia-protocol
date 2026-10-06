@@ -235,7 +235,7 @@ test('McGraw Budget -03 real ML-DSA-65 COSE proof verifies and maps', () => {
   assert.deepEqual(native.reasons, []);
   const mapped = adapter.mapAction({ ...input(fixture), profile: profile(), native });
   assert.equal(mapped.mapping, 'MATCH');
-  assert.match(mapped.caid ?? '', /^caid:1:dataset\.export\.1:jcs-sha256:/);
+  assert.match(mapped.caid ?? '', /^canactid:1:dataset\.export\.1:jcs-sha256:/);
 });
 
 test('McGraw adapter refuses a changed target and a changed ML-DSA signature', () => {

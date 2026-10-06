@@ -34,7 +34,7 @@ const CURRENCY = /^[A-Z]{3}$/;
 const OPERATION_TOKEN = /^open-exposure-op:v1:[A-Za-z0-9_-]{32,128}$/;
 const RECONCILIATION_TOKEN = /^open-exposure-reconcile:v1:[A-Za-z0-9_-]{32,128}$/;
 const INVOCATION_PERMIT = /^open-exposure-invoke:v1:[0-9a-f]{64}$/;
-const CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const CAID = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const STATUSES = new Set([
     'RESERVED', 'INVOKING', 'INDETERMINATE',
     'CLOSED_COMMITTED', 'CLOSED_PROVEN_NOT_COMMITTED',

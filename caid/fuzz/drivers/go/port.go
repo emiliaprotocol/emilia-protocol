@@ -2,7 +2,7 @@
 
 package main
 
-// The -04 entry points of the Go implementation under test.
+// The -05 entry points of the Go implementation under test.
 
 import caidlib "caid"
 
@@ -38,7 +38,7 @@ func verifyOptions(o opts) caidlib.VerifyOptions {
 }
 
 // expectedPointer is the typed form of the expected digest option: nil
-// when it is absent. A supplied pin is never absent (draft -04 Section 6):
+// when it is absent. A supplied pin is never absent (draft -05 Section 6):
 // one that is not a string, null included, becomes a pin to "", which no
 // definition_sha256 equals, so it fails closed as in the other ports.
 func expectedPointer(o opts) *string {

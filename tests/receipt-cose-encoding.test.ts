@@ -449,7 +449,7 @@ describe('fail-closed edges beyond the recorded vectors', () => {
   it('a pinned expectedCaid that differs refuses caid_mismatch', () => {
     const result = verifyReceiptCoseSign1(goodCose(), {
       ...pins,
-      expectedCaid: 'caid:1:payment.release.1:jcs-sha256:' + 'A'.repeat(43),
+      expectedCaid: 'canactid:1:payment.release.1:jcs-sha256:' + 'A'.repeat(43),
     });
     expect(result.valid).toBe(false);
     expect(result.reason).toBe('caid_mismatch');

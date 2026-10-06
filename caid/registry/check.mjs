@@ -47,12 +47,12 @@ const jcs = (value) => {
   return sha(Buffer.from(c.canonical, 'utf8'));
 };
 
-// Every registry document is read under the strict JSON text rules of -04
+// Every registry document is read under the strict JSON text rules of -05
 // Section 2.4 (without the size limit); one that fails them is never used.
 const strict = (rel, bytes = readFileSync(path.join(HERE, rel))) => {
   const decoded = decodeCaidDocument(bytes);
   if (!decoded.ok) {
-    fail(`${rel} is not strict JSON text (-04 Section 2.4)`);
+    fail(`${rel} is not strict JSON text (-05 Section 2.4)`);
     return JSON.parse(bytes.toString('utf8'));
   }
   return decoded.value;

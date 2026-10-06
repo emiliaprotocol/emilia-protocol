@@ -30,7 +30,7 @@ import {
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
 const D = (character: string) => `sha256:${character.repeat(64)}`;
-const C = (character: string) => `caid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
+const C = (character: string) => `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
 const KEY_ID = 'stage-key-1';
 
 const CONTEXT = Object.freeze({

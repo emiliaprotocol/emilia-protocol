@@ -14,7 +14,7 @@ import {
 
 const NOW = Date.parse('2026-07-21T17:00:00.000Z');
 const HASH = (c: string) => `sha256:${c.repeat(64)}`;
-const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 
 function requirement(id: string, policy: string) {
   return {
@@ -177,7 +177,7 @@ test('valid evidence for a different action or CAID cannot cross the challenge b
   const first = kernel();
   const changed = profile();
   changed.action_digest = HASH('4');
-  changed.root_caid = `caid:1:payment.cancel.1:jcs-sha256:${'B'.repeat(43)}`;
+  changed.root_caid = `canactid:1:payment.cancel.1:jcs-sha256:${'B'.repeat(43)}`;
   const second = kernel({ program: changed });
   await first.start({ instanceId: 'bind_a' });
   await second.start({ instanceId: 'bind_b' });

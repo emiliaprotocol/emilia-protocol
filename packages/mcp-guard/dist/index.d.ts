@@ -37,7 +37,19 @@
  */
 type AnyRecord = Record<string, any>;
 /** Runtime/package identity used by generated consumers that pin this release. */
-export declare const MCP_GUARD_RUNTIME_VERSION = "0.6.1";
+export declare const MCP_GUARD_RUNTIME_VERSION = "0.7.0";
+/** MCP result metadata key for a server-computed canonical action identifier. */
+export declare const MCP_CANACTID_META_KEY = "ai.emiliaprotocol/canactid";
+/**
+ * Add the current canonical action identifier to an MCP CallToolResult.
+ *
+ * The caller must supply the identifier recomputed from server-observed action
+ * material. This function does not derive it from presenter-controlled MCP
+ * metadata and deliberately rejects historical `caid:` identifiers. Historical
+ * signed artifacts remain verifiable through their explicit legacy profile;
+ * they are never rewritten into a current identifier.
+ */
+export declare function attachCanactidMetadata(result: unknown, canactid: unknown): AnyRecord;
 /** "sha256:<hex>" over canonical JSON — the project-wide hash format. */
 export declare function hashObject(obj: any): string;
 /**

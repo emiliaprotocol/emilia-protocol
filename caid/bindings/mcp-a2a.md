@@ -62,7 +62,7 @@ alphanumerics; we deliberately claim no dotted prefix, and the
       "payment_instruction_id": "pi_8842"
     },
     "_meta": {
-      "caid": "caid:1:payment.release.1:jcs-sha256:Qm9k..."
+      "caid": "canactid:1:payment.release.1:jcs-sha256:Qm9k..."
     }
   }
 }

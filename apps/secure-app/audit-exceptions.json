@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Temporary, expiring acceptances for two high advisories in Expo developer tooling that have no upstream fix. node-forge (Expo CLI code-signing) and braces (Metro file watcher glob matching) have no release outside their advisory ranges, and every published Expo and Metro line still depends on them. Neither package ships in the exported app bundles, and neither sees untrusted input. Each entry carries its own expiry and must be removed as soon as a fixed release clears the seven-day release quarantine.",
+  "description": "Temporary, expiring acceptances for reviewed Expo developer-tooling advisories. node-forge and braces have no upstream release outside their advisory ranges. source-map-js has a patch that remains inside the repository's seven-day release quarantine until 2026-10-07T14:08:09Z. None of these paths accepts approval traffic, and each entry must be removed when its stated remediation becomes eligible.",
   "exceptions": [
     {
       "advisory": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
@@ -16,7 +16,7 @@
         "expo",
         "node-forge"
       ],
-      "reachability": "Developer-machine CLI tooling only, not device-reachable application code. The installed paths are expo 57.0.25 -> @expo/cli 57.0.27 -> node-forge 1.4.0 and @expo/cli 57.0.27 -> @expo/code-signing-certificates 0.0.6 -> node-forge 1.4.0. @expo/cli is the `expo` command binary (expo's package.json bin entry); expo's runtime entry does not import it, no app source imports node-forge, @expo/cli, or @expo/code-signing-certificates, and the deterministic iOS and Android exports contain no node-forge code. Inside the CLI, node-forge RSA verification runs in exactly two places, both in the development-server manifest signer: validateSelfSignedCertificate checks the self-signature of a project's own updates.codeSigningCertificate read from local disk, and signBufferRSASHA256AndVerify re-verifies a signature the CLI has just produced with its own private key. Neither path accepts an attacker-chosen signature as an authorization decision, and both are unreachable here because app.json sets neither updates.codeSigningCertificate nor extra.eas.projectId and expo-updates is not installed. The app's own approval signatures use @noble/curves P-256, not RSA.",
+      "reachability": "Developer-machine CLI tooling only, not device-reachable application code. The installed paths are expo 57.0.26 -> @expo/cli 57.0.27 -> node-forge 1.4.0 and @expo/cli 57.0.27 -> @expo/code-signing-certificates 0.0.6 -> node-forge 1.4.0. @expo/cli is the `expo` command binary (expo's package.json bin entry); expo's runtime entry does not import it, no app source imports node-forge, @expo/cli, or @expo/code-signing-certificates, and the deterministic iOS and Android exports contain no node-forge code. Inside the CLI, node-forge RSA verification runs in exactly two places, both in the development-server manifest signer: validateSelfSignedCertificate checks the self-signature of a project's own updates.codeSigningCertificate read from local disk, and signBufferRSASHA256AndVerify re-verifies a signature the CLI has just produced with its own private key. Neither path accepts an attacker-chosen signature as an authorization decision, and both are unreachable here because app.json sets neither updates.codeSigningCertificate nor extra.eas.projectId and expo-updates is not installed. The app's own approval signatures use @noble/curves P-256, not RSA.",
       "no_upstream_fix": {
         "checked_on": "2026-10-02",
         "advisory_range": "<=1.4.0",
@@ -56,7 +56,7 @@
         "micromatch",
         "react-native"
       ],
-      "reachability": "Bundler and file-watcher tooling on the developer or CI machine only, not device-reachable application code. The single installed copy is braces 3.0.3 under micromatch 4.0.8, reached by expo 57.0.25 -> @expo/cli 57.0.27 -> @expo/metro-file-map 57.0.3 -> micromatch -> braces and by expo -> @expo/metro 56.0.2 -> metro 0.84.5 -> metro-file-map 0.84.5 -> micromatch -> braces; the react-native, @react-native and metro-* entries in the affected set are parents of that same Metro edge, not separate consumers. The only importers of micromatch in the tree are @expo/metro-file-map/build/watchers/common.js and metro-file-map/src/watchers/common.js (includedByGlob), and nothing imports braces directly. braces expands only the pattern argument, never the path being tested, and those patterns are built by the watcher from local Metro configuration: '**/*', '**/package.json', the health-check file prefix, and '**/*.' plus each resolver source extension. File paths come from the local filesystem; nothing derived from approval requests, pairing payloads, receipts or the network reaches a glob. The source maps of fresh iOS and Android `expo export --no-bytecode` bundles list no module from braces, micromatch, metro-file-map or @expo/metro-file-map, and neither bundle contains the strings braces or micromatch. The worst case is a RangeError that aborts a local bundler or watcher run.",
+      "reachability": "Bundler and file-watcher tooling on the developer or CI machine only, not device-reachable application code. The single installed copy is braces 3.0.3 under micromatch 4.0.8, reached by expo 57.0.26 -> @expo/cli 57.0.27 -> @expo/metro-file-map 57.0.3 -> micromatch -> braces and by expo -> @expo/metro 56.0.2 -> metro 0.84.5 -> metro-file-map 0.84.5 -> micromatch -> braces; the react-native, @react-native and metro-* entries in the affected set are parents of that same Metro edge, not separate consumers. The only importers of micromatch in the tree are @expo/metro-file-map/build/watchers/common.js and metro-file-map/src/watchers/common.js (includedByGlob), and nothing imports braces directly. braces expands only the pattern argument, never the path being tested, and those patterns are built by the watcher from local Metro configuration: '**/*', '**/package.json', the health-check file prefix, and '**/*.' plus each resolver source extension. File paths come from the local filesystem; nothing derived from approval requests, pairing payloads, receipts or the network reaches a glob. The source maps of fresh iOS and Android `expo export --no-bytecode` bundles list no module from braces, micromatch, metro-file-map or @expo/metro-file-map, and neither bundle contains the strings braces or micromatch. The worst case is a RangeError that aborts a local bundler or watcher run.",
       "no_upstream_fix": {
         "checked_on": "2026-10-04",
         "advisory_range": "<=3.0.3",
@@ -65,12 +65,39 @@
         "latest_published_version": "3.0.3",
         "npm_suggested_fix": "semver-major downgrade to expo@44.0.6 (and react-native@0.72.17 for the Metro edge)",
         "how_checked": "GitHub advisory GHSA-vfj7-8cjw-p6xm lists no first patched version. The npm registry shows braces 3.0.3 as the latest release and dist-tag, and micromatch 4.0.8 (latest) still depends on braces ^3.0.3. @expo/metro-file-map 57.0.3 (latest) and 58.0.3 (next) and metro-file-map 0.87.1 (latest) all still depend on micromatch ^4.0.4, and @expo/cli 57.0.27 (latest) depends on @expo/metro-file-map ^57.0.3.",
-        "why_suggested_fix_rejected": "expo@44.0.6 and react-native@0.72.17 are many SDK and React Native majors behind the pinned expo 57.0.25 and react-native 0.86.3; they would trade one build-tool advisory for an unsupported runtime. There is no patched braces or braces-free micromatch to override to, and replacing Metro's watcher dependency with an unreleased fork would pull unreviewed code into the build and bypass the seven-day release quarantine."
+        "why_suggested_fix_rejected": "expo@44.0.6 and react-native@0.72.17 are many SDK and React Native majors behind the pinned expo 57.0.26 and react-native 0.86.3; they would trade one build-tool advisory for an unsupported runtime. There is no patched braces or braces-free micromatch to override to, and replacing Metro's watcher dependency with an unreleased fork would pull unreviewed code into the build and bypass the seven-day release quarantine."
       },
       "accepted_by": "EMILIA Protocol maintainers",
       "accepted_on": "2026-10-04",
       "expires_on": "2026-12-01",
       "revisit_trigger": "Matches the root audit's BRACES_RECHECK_BY of 2026-12-01 for the same advisory. When braces publishes a release outside <=3.0.3, or micromatch, @expo/metro-file-map and metro-file-map drop braces, and it clears this app's seven-day min-release-age, refresh the lock, require the gate to pass without this entry, and delete it. Revisit immediately if any app source imports braces, micromatch, metro-file-map or @expo/metro-file-map, if an exported bundle contains any of them, if npm reports a new package in this advisory's affected set, or if the severity changes."
+    },
+    {
+      "advisory": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+      "advisory_ids": [
+        1241209
+      ],
+      "package": "source-map-js",
+      "severity": "high",
+      "title": "source-map-js event-loop denial of service through indexed source-map section offsets",
+      "affected_packages": [
+        "source-map-js"
+      ],
+      "reachability": "The single installed source-map-js 1.2.1 copy is reached only through PostCSS under Expo Metro configuration. It processes developer-controlled source maps during local or CI bundling; application code does not import source-map-js, approval requests and receipts cannot supply its inputs, and it is not an authorization decision point. The advisory can therefore abort a build only if a maintainer introduces a hostile source map into the build inputs. The exception is intentionally shorter than two days because the patched 1.2.2 release clears the repository's seven-day supply-chain quarantine on 2026-10-07T14:08:09Z.",
+      "no_upstream_fix": {
+        "checked_on": "2026-10-06",
+        "advisory_range": ">=1.0.0 <1.2.2",
+        "npm_vulnerability_range": "1.0.0 - 1.2.1",
+        "installed_version": "1.2.1",
+        "latest_published_version": "1.2.2",
+        "npm_suggested_fix": "install source-map-js 1.2.2",
+        "how_checked": "GitHub advisory GHSA-68fv-2mgg-jv7q names 1.2.2 as patched. npm records 1.2.2 as published at 2026-09-30T14:08:09Z, so it becomes eligible under this repository's seven-day min-release-age policy at 2026-10-07T14:08:09Z. npm explain shows the installed copy only beneath the pinned PostCSS build dependency.",
+        "why_suggested_fix_rejected": "Installing 1.2.2 before 2026-10-07T14:08:09Z would bypass the repository's deliberate seven-day quarantine for new third-party releases. The one-day acceptance preserves that control and expires immediately after the patch becomes eligible; it does not claim the vulnerable parser is safe for untrusted source maps."
+      },
+      "accepted_by": "EMILIA Protocol maintainers",
+      "accepted_on": "2026-10-06",
+      "expires_on": "2026-10-08",
+      "revisit_trigger": "As soon as 2026-10-07T14:08:09Z passes, pin source-map-js 1.2.2 in the secure-app override, refresh the lockfile, rerun deterministic iOS and Android export checks plus npm audit, and delete this entry. Revisit immediately if application source imports source-map-js, if approval or network data reaches PostCSS source-map parsing, or if npm attributes the advisory to any additional package."
     }
   ]
 }

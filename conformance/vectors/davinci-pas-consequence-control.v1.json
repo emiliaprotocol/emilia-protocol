@@ -6,7 +6,7 @@
   "aeb_requirement_ref": "requirement:healthcare-davinci-pas-consequence-control",
   "fixed_denial": {
     "operation_id": "operation:pas-review-001",
-    "expected_caid": "caid:1:health.medical-prior-authorization-review.1:jcs-sha256:NtDho67FgeyLnoTIGmUNB_H75_I-lyQ4vDdujzGJQkw",
+    "expected_caid": "canactid:1:health.medical-prior-authorization-review.1:jcs-sha256:NtDho67FgeyLnoTIGmUNB_H75_I-lyQ4vDdujzGJQkw",
     "expected_action_digest": "sha256:36d0e1a3aec581ec8b9e84c81a650d07f1fbe7f23e972438bc376e8f3189424c",
     "expected_outcome": "denied",
     "reviewer_required": true,

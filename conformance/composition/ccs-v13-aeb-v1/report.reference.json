@@ -71,7 +71,7 @@
       "passed": true,
       "observed": {
         "mapping": "MATCH",
-        "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+        "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
         "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
         "reasons": []
       }
@@ -270,5 +270,5 @@
     "The adapter verifies the Ed25519 signature. The legacy HMAC receipt field is retained as signed issuer data, not a cross-domain trust root.",
     "A passing report is a self-attested reproduction package until an external operator independently runs it."
   ],
-  "report_digest": "sha256:755819ae70a0333b979398ffd814627eae740f2c8a2900b1ac1bb94753180838"
+  "report_digest": "sha256:495cae2f981ac7384d71a222725db47ab803052c87b15ed6e5f35169d5ee295b"
 }

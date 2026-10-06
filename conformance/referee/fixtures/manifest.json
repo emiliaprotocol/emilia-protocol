@@ -30,9 +30,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "exact-match",
         "phase": "ADMISSION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:exact-match", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:exact-match", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:exact-match", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
         "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
@@ -45,9 +45,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "exact-action-mismatch",
         "phase": "ADMISSION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:exact-action-mismatch", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:exact-action-mismatch", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:exact-action-mismatch", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
         "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
@@ -60,9 +60,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "rp-acceptance-rejected",
         "phase": "ADMISSION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:rp-rejected", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "REJECTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:rp-rejected", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "REJECTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:rp-rejected", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
         "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
@@ -75,9 +75,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "material-loss-indeterminate",
         "phase": "ADMISSION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:material-loss", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "LOST" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:material-loss", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "LOST" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:material-loss", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
         "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
@@ -90,7 +90,7 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "wrong-root-native-failure",
         "phase": "ADMISSION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
           { "evidence_id": "evidence:wrong-root", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:attacker", "state": "WRONG" }, "native_verification": "FAILED", "rp_acceptance": "REJECTED", "mapping": { "caid": null, "normalized_action_digest": null, "material_fields": "INDETERMINATE" }, "status": "CURRENT" }
         ],
@@ -105,9 +105,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "stale-status",
         "phase": "ADMISSION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:stale-status", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "STALE" }
+          { "evidence_id": "evidence:stale-status", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "STALE" }
         ],
         "custody": { "operation_id": "operation:stale-status", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
         "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
@@ -120,9 +120,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "unavailable-status",
         "phase": "ADMISSION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:unavailable-status", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "UNAVAILABLE" }
+          { "evidence_id": "evidence:unavailable-status", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "UNAVAILABLE" }
         ],
         "custody": { "operation_id": "operation:unavailable-status", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
         "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
@@ -135,9 +135,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "stable-replay-identity",
         "phase": "ADMISSION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:rewrapped", "wrapper_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:rewrapped", "wrapper_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:rewrapped", "state": "UNRESERVED", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
         "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
@@ -150,9 +150,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "provider-timeout",
         "phase": "INVOCATION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:provider-timeout", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:provider-timeout", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:provider-timeout", "state": "INVOKING", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
         "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "TIMEOUT" },
@@ -165,9 +165,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "crash-to-indeterminate",
         "phase": "INVOCATION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:provider-crash", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:provider-crash", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:provider-crash", "state": "INVOKING", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
         "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "CRASH" },
@@ -180,9 +180,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "authenticated-reconcile",
         "phase": "RECONCILIATION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:authenticated-reconcile", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:authenticated-reconcile", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:authenticated-reconcile", "state": "INDETERMINATE", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
         "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "TIMEOUT" },
@@ -195,9 +195,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "committed-diverged",
         "phase": "RECONCILIATION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:committed-diverged", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:committed-diverged", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:committed-diverged", "state": "INDETERMINATE", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
         "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "TIMEOUT" },
@@ -210,9 +210,9 @@
         "@version": "AEB-1-REFEREE-CASE-v1",
         "case_id": "proven-not-committed",
         "phase": "RECONCILIATION",
-        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "exact_action": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "native_evidence": [
-          { "evidence_id": "evidence:proven-not-committed", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+          { "evidence_id": "evidence:proven-not-committed", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "canactid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
         ],
         "custody": { "operation_id": "operation:proven-not-committed", "state": "INDETERMINATE", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
         "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "TIMEOUT" },

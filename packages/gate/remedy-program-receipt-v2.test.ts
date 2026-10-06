@@ -29,7 +29,7 @@ import type { FipsPosture } from '@emilia-protocol/verify/fips-mode';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 
 const HASH = (character: string) => `sha256:${character.repeat(64)}`;
-const CAID = (operation: string, character: string) => `caid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`;
+const CAID = (operation: string, character: string) => `canactid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`;
 
 const CONTEXT = {
   issuer: 'emilia-gate-operator',

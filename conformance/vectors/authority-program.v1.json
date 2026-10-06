@@ -12,7 +12,7 @@
   "program": {
     "@version": "EP-AUTHORITY-PROGRAM-v1",
     "program_id": "authority-program:conformance:v1",
-    "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+    "root_caid": "canactid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
     "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
     "expression": {
       "type": "sequence",
@@ -75,11 +75,11 @@
       "algorithm": "Ed25519",
       "organization_id": "org:governance",
       "key_id": "key:program",
-      "signature_b64u": "E3be1c7B0foxq3pCZje6u1hayDM3o-3nuKQBBGtclUo93kRxm4ZvLnBmnm3vvnkGLIIY6P7c8tkDmU7GfZhwDA"
+      "signature_b64u": "Z0-rHP6hBf4-cMXhvu5Xfw-SbYmg7jh3JG8qOGDCp9u4evUYBaghFf0SKp1shwt2SZ1imCJZryBxsan2HfVdBw"
     }
   },
   "program_pin": {
-    "digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
+    "digest": "sha256:8286e59ca3ed0db3635d3193b9567146be86170d19fba9980a7ee34a534c3395",
     "organization_id": "org:governance",
     "key_id": "key:program",
     "public_key": "MCowBQYDK2VwAyEAQt4xWGRs20v-Mu7hhgG2_J5n1ujnGzcXpAgEGcX8tXY"
@@ -102,8 +102,8 @@
     {
       "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
       "receipt_id": "authority-stage-receipt:stage-a:conformance",
-      "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
-      "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+      "program_digest": "sha256:8286e59ca3ed0db3635d3193b9567146be86170d19fba9980a7ee34a534c3395",
+      "root_caid": "canactid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
       "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
       "stage_id": "stage-a",
       "issuer": {
@@ -127,14 +127,14 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "key:alpha",
-        "signature_b64u": "CY-hZhvSrVWXVhHbHuNp4ixElqycIOkKWm4hcbVGqjitXVsCsXA5ekLmCjIqu9YVMlaf0kxggZy7Bx_WmzkdAA"
+        "signature_b64u": "DzwaOM4tictBoK_eNRBxzV7gQiDRFjbzME7bJq6XuKRPpxT0Ic2KjKn4zkWASLrNL591WS5YjACe972NKOVtAA"
       }
     },
     {
       "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
       "receipt_id": "authority-stage-receipt:stage-b:conformance",
-      "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
-      "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+      "program_digest": "sha256:8286e59ca3ed0db3635d3193b9567146be86170d19fba9980a7ee34a534c3395",
+      "root_caid": "canactid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
       "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
       "stage_id": "stage-b",
       "issuer": {
@@ -142,7 +142,7 @@
         "key_id": "key:beta"
       },
       "predecessor_receipt_digests": [
-        "sha256:facf9a5b582ec997308bf395f23685e20a6f13a9ff7299379d446336c8b2053a"
+        "sha256:205405e962a3a210d77797f02012d2b58340972e9e145396c8bbd4973d01854e"
       ],
       "aec": {
         "requirement_digest": "sha256:2c0d586c0a1dc0f0e6b1cb317da8e2188c5fa9f7e7cbf79388c3f3677a8aacbd",
@@ -160,14 +160,14 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "key:beta",
-        "signature_b64u": "_1PgjGUu_Ich2DXG1JLDBHqVisN65tZonn2dJFXOd_J2EholIqRoefob-S7eOijsWAgQHH44suUT6MgsJB0cDQ"
+        "signature_b64u": "ymQFAPKamNaBJIzR1XgO9zg9J3_w4UIR-9Cr13W6frDC88GxsDGopGuxnuyQLQcprDjox_JsL0irLyItfDt2Dg"
       }
     },
     {
       "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
       "receipt_id": "authority-stage-receipt:stage-c:conformance",
-      "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
-      "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+      "program_digest": "sha256:8286e59ca3ed0db3635d3193b9567146be86170d19fba9980a7ee34a534c3395",
+      "root_caid": "canactid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
       "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
       "stage_id": "stage-c",
       "issuer": {
@@ -175,7 +175,7 @@
         "key_id": "key:gamma"
       },
       "predecessor_receipt_digests": [
-        "sha256:facf9a5b582ec997308bf395f23685e20a6f13a9ff7299379d446336c8b2053a"
+        "sha256:205405e962a3a210d77797f02012d2b58340972e9e145396c8bbd4973d01854e"
       ],
       "aec": {
         "requirement_digest": "sha256:d1a549fb97f22f1f7c3a4a02b47ea5871a87d28ff479416e46a2ad9db7c535b3",
@@ -193,14 +193,14 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "key:gamma",
-        "signature_b64u": "GVTT36KmclGCEqKeO14IDYddAe66MsdztAdPUx4mZV2wr6AHiQKg8CFXQuBUXwZa4I9jxk1Vmrd5bFJJzrJLDg"
+        "signature_b64u": "3J5SrBprm_4dotTCkLFdG4669_Ki1wkQ6eYL9YTZFX_tzb25VsYuliB4oAoQrclZhmB4GQOLkdsXlyvOC6RHCQ"
       }
     },
     {
       "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
       "receipt_id": "authority-stage-receipt:stage-d:conformance",
-      "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
-      "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+      "program_digest": "sha256:8286e59ca3ed0db3635d3193b9567146be86170d19fba9980a7ee34a534c3395",
+      "root_caid": "canactid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
       "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
       "stage_id": "stage-d",
       "issuer": {
@@ -208,8 +208,8 @@
         "key_id": "key:delta"
       },
       "predecessor_receipt_digests": [
-        "sha256:d7a38098348fe3d388804f756d9f3d7a10a1f7c541ee1f4a012c7e294122882c",
-        "sha256:e6b1872c3751e4d837d5af4f2c8ec19111d0c76fa5e7080ab1e541994c8aff06"
+        "sha256:0322d9839356e2fa0891bf985d40a3ca9ed6f9ca5e90d0ea03c0ec8afe07d79a",
+        "sha256:40aef95ef4fae8023b22b1274321a591c59ea45bb6cd73e20cb30c9ed0c489e9"
       ],
       "aec": {
         "requirement_digest": "sha256:9482a050f9a159886eaff760c8f048464db766fddfc33ab2e8b22e9f296e1c1a",
@@ -227,7 +227,7 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "key:delta",
-        "signature_b64u": "G78Eb4IHUGHVyMezjafQP8frgltpVmktWNajDvBz4uS3eSDflSJbXkovIT5vGfAnNqjlKdNgdgPs3O_uMSQPAA"
+        "signature_b64u": "FsXJWCnIqJt1rw2_N8Rzua15g9aYbzRei1FtKRWD3_xXoXmIZj2HawdEu2NWDEB8itjIqR97wdD9qTdL4qvsDw"
       }
     }
   ],
@@ -343,8 +343,8 @@
       "replacement_receipt": {
         "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
         "receipt_id": "authority-stage-receipt:stage-d:conformance",
-        "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
-        "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+        "program_digest": "sha256:8286e59ca3ed0db3635d3193b9567146be86170d19fba9980a7ee34a534c3395",
+        "root_caid": "canactid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
         "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
         "stage_id": "stage-d",
         "issuer": {
@@ -352,7 +352,7 @@
           "key_id": "key:delta"
         },
         "predecessor_receipt_digests": [
-          "sha256:d7a38098348fe3d388804f756d9f3d7a10a1f7c541ee1f4a012c7e294122882c"
+          "sha256:0322d9839356e2fa0891bf985d40a3ca9ed6f9ca5e90d0ea03c0ec8afe07d79a"
         ],
         "aec": {
           "requirement_digest": "sha256:9482a050f9a159886eaff760c8f048464db766fddfc33ab2e8b22e9f296e1c1a",
@@ -370,7 +370,7 @@
         "proof": {
           "algorithm": "Ed25519",
           "key_id": "key:delta",
-          "signature_b64u": "t2SYAhxx2Ihe-SiDWoz1IjHkf2LpD_Lw9vScYXX2oKgxL9bw9YSbvHVwgc2fPj3hSV-Q7SVbzxrRM0F0muarBA"
+          "signature_b64u": "o-nGEKYGcp_-sTroC4kf1ehbqDNHo4AfLdR8PKu1PJq2f-Tz1z8ZVDdRFJTgrN8pRLXWx67Ba3YJnvBlED5mAg"
         }
       },
       "expected_reason": "predecessor_receipt_digest_mismatch"
@@ -381,8 +381,8 @@
       "replacement_receipt": {
         "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
         "receipt_id": "authority-stage-receipt:stage-b:conformance",
-        "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
-        "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+        "program_digest": "sha256:8286e59ca3ed0db3635d3193b9567146be86170d19fba9980a7ee34a534c3395",
+        "root_caid": "canactid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
         "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
         "stage_id": "stage-b",
         "issuer": {
@@ -390,7 +390,7 @@
           "key_id": "key:beta"
         },
         "predecessor_receipt_digests": [
-          "sha256:facf9a5b582ec997308bf395f23685e20a6f13a9ff7299379d446336c8b2053a"
+          "sha256:205405e962a3a210d77797f02012d2b58340972e9e145396c8bbd4973d01854e"
         ],
         "aec": {
           "requirement_digest": "sha256:2c0d586c0a1dc0f0e6b1cb317da8e2188c5fa9f7e7cbf79388c3f3677a8aacbd",
@@ -408,7 +408,7 @@
         "proof": {
           "algorithm": "Ed25519",
           "key_id": "key:beta",
-          "signature_b64u": "9U0ewYoPgb_MYVUL8xekiCHtN08GQeIyp24-4gGf9E4frIvCYVLYZkhdl9tRAhFqjT8RMhRNP2i7SFMB1KWrDg"
+          "signature_b64u": "T3IuoohU1v3r1bxG5WYg2q1PINGEQUL667emdA6nJKzsD9i6vMeGaJn3GPivqFxLuEK68S3_jveW-T9a2cslCg"
         }
       },
       "expected_reason": "aec_verification_mismatch"
@@ -419,8 +419,8 @@
       "replacement_receipt": {
         "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
         "receipt_id": "authority-stage-receipt:stage-c:conformance",
-        "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
-        "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+        "program_digest": "sha256:8286e59ca3ed0db3635d3193b9567146be86170d19fba9980a7ee34a534c3395",
+        "root_caid": "canactid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
         "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
         "stage_id": "stage-c",
         "issuer": {
@@ -428,7 +428,7 @@
           "key_id": "key:gamma"
         },
         "predecessor_receipt_digests": [
-          "sha256:facf9a5b582ec997308bf395f23685e20a6f13a9ff7299379d446336c8b2053a"
+          "sha256:205405e962a3a210d77797f02012d2b58340972e9e145396c8bbd4973d01854e"
         ],
         "aec": {
           "requirement_digest": "sha256:d1a549fb97f22f1f7c3a4a02b47ea5871a87d28ff479416e46a2ad9db7c535b3",
@@ -446,7 +446,7 @@
         "proof": {
           "algorithm": "Ed25519",
           "key_id": "key:gamma",
-          "signature_b64u": "0ffK6UJhJfKZgIpBEUmTr0zXPfN9M4Ep9wKSjqq7PNq7HsNRnMW2NvEoEYTmQagPPMUwWsXi4HzFGtABXTsnAA"
+          "signature_b64u": "nWsGGXhN6hENMgttpqwq79iW8uSRgqY-dM6qu8MEacCsp4Adttal8p_68OeTgtiB-eAPDEO5vFhS4vHfIeB9Bg"
         }
       },
       "expected_reason": "aom_requirement_mismatch"

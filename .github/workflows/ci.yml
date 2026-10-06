@@ -1749,11 +1749,12 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.27.0'
-      - name: CAID -03 and -04 packets, WIMSE CAID scope profile
+      - name: CAID -03 and -04 packets, current WIMSE CAID scope profile
         run: |
           node scripts/check-caid-03.mjs
           node scripts/check-caid-04.mjs
-          node standards/profiles/NEXT-WIMSE-CAID-SCOPE-01/validate.mjs
+          node standards/profiles/NEXT-WIMSE-CAID-SCOPE-02/generate-vectors.mjs --check
+          node standards/profiles/NEXT-WIMSE-CAID-SCOPE-02/validate.mjs
 
   # Required status check. Branch protection requires a check named
   # `conformance`; this job is it. `if: always()` makes it report even when

@@ -10,18 +10,18 @@
   },
   "workspace": {
     "path": "examples/aeb-crossing-lab/ccs-wang-draft08-v13",
-    "workspace_digest": "sha256:9abd1507ab476759d3266c353801449aa84647fc7565af9e69560f5df1801dd7",
+    "workspace_digest": "sha256:97ba954f17418b75c2706e5a074fc2ccece23d6142cbfc9d59d1661bc73efed6",
     "artifact_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
-    "adapter_module_digest": "sha256:4b8e08d496a665c7b1de3caf0b9ea15409d20b5122dbea2d4659cdbd835d549b",
+    "adapter_module_digest": "sha256:3b32fca79527d5bc3701c03467bbc205cf6490c3f1de4014f788509f0fa4fb94",
     "mapping_profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716"
   },
   "crossing_lab": {
     "@version": "EMILIA-CROSSING-LAB-LOCAL-REPORT-v1",
-    "workspace_digest": "sha256:9abd1507ab476759d3266c353801449aa84647fc7565af9e69560f5df1801dd7",
+    "workspace_digest": "sha256:97ba954f17418b75c2706e5a074fc2ccece23d6142cbfc9d59d1661bc73efed6",
     "adapter": {
       "id": "native:ccs-draft08-v1.3-ed25519",
       "version": "1.0.0",
-      "module_digest": "sha256:4b8e08d496a665c7b1de3caf0b9ea15409d20b5122dbea2d4659cdbd835d549b"
+      "module_digest": "sha256:3b32fca79527d5bc3701c03467bbc205cf6490c3f1de4014f788509f0fa4fb94"
     },
     "evaluated_at": "2030-09-01T00:00:20Z",
     "adapter_rows": [
@@ -50,9 +50,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
           "composition": {
-            "action_digest": "sha256:58265fbbc24cdebbc16d6f67613f00e6f960328e20ab490d2da400ad1963e5eb",
+            "action_digest": "sha256:006ad85c73e07df558f1be4f50837e1c28a77782afa46ed24c203a872d857270",
             "engine": "EP-AEC-v1",
             "requirement_expression": "machine-policy-decision",
             "satisfied": true
@@ -64,7 +64,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:ea12ac71ddeec9c710a840d477fcf39945fb858714eda7cb53a3a016b62e3b94",
+          "evidence_digest": "sha256:da2a462911f0de847f3981c2c277adaa28014eb0013a59b29f79961863dead30",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -74,7 +74,7 @@
               "adapter_id": "native:ccs-draft08-v1.3-ed25519",
               "adapter_version": "1.0.0",
               "artifact_ref": "ccs:draft08:v13:allow-live-sum",
-              "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+              "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
               "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
               "evidence_role": "machine-policy-decision",
               "freshness": {
@@ -113,7 +113,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "JjehCcNoAWLBXRt038SCIbO3mI2TQciX0yCB8M4BAXi0zawmFbVccbAChmC2jJFfmbjVNuGTkX2V_wG60bO3CA"
+            "value": "Ljgt0RYJz050xaJa7PRXrNhVAPMzeI9slZfO81QoLpKjzYAkdzaiGvSdXw5tOFbW9SAMG0U4e2Ny-h96m39rBg"
           }
         }
       },
@@ -145,9 +145,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
           "composition": {
-            "action_digest": "sha256:78a2b27e9895d8fd24fbec0cb8ce53f32dc1f693a09b3927be9dd876341b8cc3",
+            "action_digest": "sha256:7532dd53d7e0cb1fc87e851242b45a92acf6d36301f9fddfa3cbc9c627223f2b",
             "engine": "EP-AEC-v1",
             "requirement_expression": "machine-policy-decision",
             "satisfied": false
@@ -213,7 +213,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "gl8D9DBGSv1oA7XTElh0PtZAhaH9P1sD_C1pSqSUhKODPEtg__ytK2WsnFmb6YEXH_ict-u4l6FIr7Rk3awEBw"
+            "value": "Y7Iow3wSZTnvlLvghTZUeBn1xgbA_n64zRY-cYvU0tARZas1FRp4ioK8QW-z48_QgNHn2JAFFqE4JisLgIj6Dw"
           }
         }
       },
@@ -248,9 +248,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
           "composition": {
-            "action_digest": "sha256:78a2b27e9895d8fd24fbec0cb8ce53f32dc1f693a09b3927be9dd876341b8cc3",
+            "action_digest": "sha256:7532dd53d7e0cb1fc87e851242b45a92acf6d36301f9fddfa3cbc9c627223f2b",
             "engine": "EP-AEC-v1",
             "requirement_expression": "machine-policy-decision",
             "satisfied": false
@@ -322,7 +322,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "lwGZYjqrWUuQycxxeVIDfr301JEaj0XvYD20h4heb4zB8Vg-_7D5E-YAPBd00dzaPxA_7DGZiGlO_CKbmWfKBg"
+            "value": "YC92j8qCPcs_gKjXQ8K879uPySr6hBjU7tjK5_hdiYUFd2I81GlGzg6aTxU00myMzivTljOngmLJPBrO3P9mAA"
           }
         }
       },
@@ -353,9 +353,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
           "composition": {
-            "action_digest": "sha256:78a2b27e9895d8fd24fbec0cb8ce53f32dc1f693a09b3927be9dd876341b8cc3",
+            "action_digest": "sha256:7532dd53d7e0cb1fc87e851242b45a92acf6d36301f9fddfa3cbc9c627223f2b",
             "engine": "EP-AEC-v1",
             "requirement_expression": "machine-policy-decision",
             "satisfied": false
@@ -367,7 +367,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:9f0cc2866407d5eca535c9cfdb75d113765eac0ea9c1396aa80e3a812e3b67cf",
+          "evidence_digest": "sha256:9b19e6af634e8e4b3cbdbd98105106ef29e28f0ad9df2aa56f894369bef04716",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -377,7 +377,7 @@
               "adapter_id": "native:ccs-draft08-v1.3-ed25519",
               "adapter_version": "1.0.0",
               "artifact_ref": "ccs:draft08:v13:allow-live-sum",
-              "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+              "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
               "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
               "evidence_role": "machine-policy-decision",
               "freshness": {
@@ -420,7 +420,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "UR_v7UFf5A679oJGD4tC7pHY_XhJuKXpvgZKdzATf0bZ7oYShy1A5KFjWYbqtTPNytAPnFwWwfwXvYmZn_UwCg"
+            "value": "9tT888KuSAtarBQ-iXC3-TjepBR-xpxnQCPucYtsbw1L5Ka48lsdlzNrAlVLUuCVERiVYdCIdcV4M0XrYYoiAQ"
           }
         }
       },
@@ -451,9 +451,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
           "composition": {
-            "action_digest": "sha256:78a2b27e9895d8fd24fbec0cb8ce53f32dc1f693a09b3927be9dd876341b8cc3",
+            "action_digest": "sha256:7532dd53d7e0cb1fc87e851242b45a92acf6d36301f9fddfa3cbc9c627223f2b",
             "engine": "EP-AEC-v1",
             "requirement_expression": "machine-policy-decision",
             "satisfied": false
@@ -465,7 +465,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:ff870b75fa679282f7baf61dffc6096e76c6ff71e62e1d4e7396eddc7e3d960a",
+          "evidence_digest": "sha256:03ec690834fb51a5e2cac01ed5f57110440b0b384e6839123c8762ba63ce89ad",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -475,7 +475,7 @@
               "adapter_id": "native:ccs-draft08-v1.3-ed25519",
               "adapter_version": "1.0.0",
               "artifact_ref": "ccs:draft08:v13:allow-live-sum",
-              "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+              "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
               "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
               "evidence_role": "machine-policy-decision",
               "freshness": {
@@ -518,7 +518,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "BK5JHBC0BLVupBBeSiJiOW4COZt09v2qUadj16cJuwwlvemAtXm8ycDNLhNSsOVOQwNSyrcTbfZOeNg18pKeCw"
+            "value": "t_d31sPdimzzYRBiEm7j3INspO6xtnBo8fOUsNUUJDL02UAARABL4Sh5J_5n2RLjLq0v6aVzsePbyGtVXtVcCg"
           }
         }
       },
@@ -547,9 +547,9 @@
             "initiator_exclusion": true,
             "one_time_consumption": true
           },
-          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
           "composition": {
-            "action_digest": "sha256:58265fbbc24cdebbc16d6f67613f00e6f960328e20ab490d2da400ad1963e5eb",
+            "action_digest": "sha256:006ad85c73e07df558f1be4f50837e1c28a77782afa46ed24c203a872d857270",
             "engine": "EP-AEC-v1",
             "requirement_expression": "machine-policy-decision",
             "satisfied": true
@@ -561,7 +561,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:29ed9954ac5e4e87f73fce9b6aea53adb1220fc5b69abd200c67f43364ab01f5",
+          "evidence_digest": "sha256:7cc1e538f3514b1e88d7dcfd7892ee2a9324353635b6ed0d0413dfba930c105f",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -571,7 +571,7 @@
               "adapter_id": "native:ccs-draft08-v1.3-ed25519",
               "adapter_version": "1.0.0",
               "artifact_ref": "ccs:draft08:v13:allow-live-sum:rewrapped",
-              "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+              "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
               "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
               "evidence_role": "machine-policy-decision",
               "freshness": {
@@ -610,7 +610,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "X0eeNAbIf0do4wcLrM3XKUBX9sfxMwl_5jHF5B4Pnj1C-HBUDg67ceD4gKRJm_bQTBNKAy-rpZCIelCsoLosBw"
+            "value": "jBoCvSwyhcxHmE0epwOBQow_CDSRRHHcRh3bwSjy-KE4xJNyA0kMuKloof1jozp2DgaYbfzi6RzHm06Q6LtZBQ"
           }
         }
       }
@@ -661,7 +661,7 @@
       "native_specification_correctness",
       "native_protocol_equivalence"
     ],
-    "report_digest": "sha256:10a6d3cebbfb597ca6050a42ab0038550062e9a28e3faa789f0a2e670a5b9110"
+    "report_digest": "sha256:9a2847c6a5341fb2ddbf09a7d7d7d8824e4362065b2bf2cb3c623dbf404abff4"
   },
   "checks": [
     {
@@ -744,7 +744,7 @@
       "passed": true,
       "observed": {
         "mapping": "MATCH",
-        "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+        "caid": "canactid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
         "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
         "reasons": []
       }
@@ -1050,5 +1050,5 @@
     "A second runner reproduces the pinned report.",
     "One real system installs the profile beside its CCS verifier and Gate deployment."
   ],
-  "report_digest": "sha256:73e381103d94bfe861aad8f8240fb49ee9e724785a2dac418e84bfd64225ada7"
+  "report_digest": "sha256:840033cc2bbef7f31b72796a4c06ddab88198bc757030ec30d55d0c1eab763a3"
 }

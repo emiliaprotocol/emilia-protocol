@@ -213,7 +213,7 @@ test('sub is the action CAID, recomputable from the payload', () => {
   const built = build();
   const caid = must<{ caid: string }>(receiptActionCaid((RECEIPT as any).payload.action), 'caid');
   assert.equal(built.sub, caid.caid);
-  assert.match(built.sub, /^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]+$/);
+  assert.match(built.sub, /^canactid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]+$/);
 });
 
 test('the payload IS the receipt canonical JSON, byte for byte', () => {
@@ -505,7 +505,7 @@ test('caller pins on iss and sub are enforced', () => {
     'iss_mismatch',
   );
   assert.equal(
-    verifyEpScittSignedStatement(built.statement, { ...PINS, expectedSub: 'caid:1:a.b.1:jcs-sha256:AA' }).reason,
+    verifyEpScittSignedStatement(built.statement, { ...PINS, expectedSub: 'canactid:1:a.b.1:jcs-sha256:AA' }).reason,
     'sub_mismatch',
   );
   assert.equal(

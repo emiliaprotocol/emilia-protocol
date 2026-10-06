@@ -20,11 +20,11 @@ hide. Checks per rule:
                           not from the generated pattern), else malformed_caid
   pattern:action_type     compute_caid({"action_type": s}) is anything but
                           invalid_action_type exactly when s matches
-  pattern:suite           parse_caid("caid:1:a.b.1:<s>:<43 x A>") is not
+  pattern:suite           parse_caid("canactid:1:a.b.1:<s>:<43 x A>") is not
                           malformed_caid exactly when s matches
   pattern:digest          parse_caid under an unregistered suite is
                           unknown_suite exactly when s matches
-  suite_digest:<suite>    parse_caid("caid:1:a.b.1:<suite>:<s>") is ok exactly
+  suite_digest:<suite>    parse_caid("canactid:1:a.b.1:<suite>:<s>") is ok exactly
                           when s matches
   pattern:amount_string   an amount-string field computes exactly when s
   pattern:digest_field    matches; likewise digest; timestamp also needs the
@@ -155,13 +155,13 @@ def probe(rule, s, match):
         result = caid.compute_caid({"action_type": s}, {"suite": "jcs-sha256", "definitions": []})
         return (result.get("refusals") != ["invalid_action_type"]) == (match and len(s) <= MAX["action_type"]), False, result
     if kind == "pattern" and name == "suite":
-        result = caid.parse_caid("caid:1:a.b.1:" + s + ":" + VALID_DIGEST)
+        result = caid.parse_caid("canactid:1:a.b.1:" + s + ":" + VALID_DIGEST)
         return (result.get("refusals") != ["malformed_caid"]) == match, False, result
     if kind == "pattern" and name == "digest":
-        result = caid.parse_caid("caid:1:a.b.1:" + UNREGISTERED_SUITE + ":" + s)
+        result = caid.parse_caid("canactid:1:a.b.1:" + UNREGISTERED_SUITE + ":" + s)
         return (result.get("refusals") == ["unknown_suite"]) == match, False, result
     if kind == "suite_digest":
-        result = caid.parse_caid("caid:1:a.b.1:" + name + ":" + s)
+        result = caid.parse_caid("canactid:1:a.b.1:" + name + ":" + s)
         return result["ok"] == match, False, result
     if kind == "pattern" and name in ("amount_string", "digest_field", "timestamp"):
         field_type = {"amount_string": "amount-string", "digest_field": "digest", "timestamp": "timestamp"}[name]

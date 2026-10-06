@@ -1,6 +1,6 @@
 {
   "@version": "CAID-SPEC-DATA-v1",
-  "draft": "draft-schrock-canonical-action-identifier-04",
+  "draft": "draft-schrock-canonical-action-identifier-05",
   "license": "CC0-1.0",
   "grammar": {
     "file": "caid.abnf",
@@ -42,7 +42,8 @@
     "timestamp_date_offsets": {"year": [0, 4], "month": [5, 7], "day": [8, 10]}
   },
   "identifier": {
-    "scheme": "caid",
+    "scheme": "canactid",
+    "legacy_v04_scheme": "caid",
     "version": "1",
     "separator": ":",
     "parts": 5

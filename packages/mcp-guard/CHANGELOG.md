@@ -5,6 +5,23 @@ All notable changes to `@emilia-protocol/mcp-guard` are documented here.
 
 ## Unreleased
 
+## 0.7.0 (2026-10-06)
+
+### Added
+
+- Let the credential-owning MCP server attach a recomputed `canactid:` value
+  to successful `CallToolResult._meta` under
+  `ai.emiliaprotocol/canactid`, without mutating the provider result.
+
+### Security
+
+- Accept only the current `canactid:` grammar from the server-side resolver.
+  Legacy `caid:` values, malformed identifiers, conflicting metadata, and
+  resolver failures refuse before the protected provider is entered; signed
+  historical artifacts remain unchanged and outside this current-issuance API.
+- Require the current 0.9.x receipt boundary so the Guard cannot be paired
+  with a verifier that still accepts the obsolete `caid:` selector spelling.
+
 ## 0.6.1 (2026-10-04)
 
 ### Security

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """CAID Action-Mapping Profile v1 (Python, standard library only).
 
-Implements Section 8 of draft-schrock-canonical-action-identifier-04. The
+Implements Section 8 of draft-schrock-canonical-action-identifier-05. The
 profile members, member rules, limits, closed sets and reason ranks come
 from caid_spec.py (generated from caid/spec/core.json).
 

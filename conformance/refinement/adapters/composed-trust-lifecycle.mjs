@@ -14,8 +14,8 @@ import { runModelToMatterScenario } from "./model-to-matter.mjs";
 import { runNetworkWitnessScenario } from "./network-witness.mjs";
 import { runRevocationScenario } from "./revocation.mjs";
 const HASH = (char) => `sha256:${char.repeat(64)}`;
-const ORIGINAL_CAID = `caid:1:commerce.purchase.1:jcs-sha256:${"A".repeat(43)}`;
-const REMEDY_CAID = `caid:1:payments.refund.1:jcs-sha256:${"B".repeat(43)}`;
+const ORIGINAL_CAID = `canactid:1:commerce.purchase.1:jcs-sha256:${"A".repeat(43)}`;
+const REMEDY_CAID = `canactid:1:payments.refund.1:jcs-sha256:${"B".repeat(43)}`;
 const NOW = Date.parse("2026-07-22T19:00:00.000Z");
 function initialState() {
     return {

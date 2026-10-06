@@ -18,7 +18,7 @@ describe('coverage reconciliation reference scenario', () => {
       exception: 1,
     });
     expect(scenario.bypass.record_id).toBe('pas:effect:PA-1002');
-    expect(scenario.bypass.caid).toMatch(/^caid:1:/);
+    expect(scenario.bypass.caid).toMatch(/^canactid:1:/);
     expect(scenario.sources.system_of_record.operator_id)
       .not.toBe(scenario.sources.receipt_population.operator_id);
     expect(scenario.report_hash).toMatch(/^sha256:[a-f0-9]{64}$/);

@@ -19,7 +19,7 @@ function rootActionBinding() {
     const hash = crypto.createHash('sha256').update(canonicalize(rootAction), 'utf8').digest();
     return {
         valid: true,
-        root_caid: `caid:1:${rootAction.action_type}:jcs-sha256:${hash.toString('base64url')}`,
+        root_caid: `canactid:1:${rootAction.action_type}:jcs-sha256:${hash.toString('base64url')}`,
         root_action_digest: `sha256:${hash.toString('hex')}`,
     };
 }
@@ -354,7 +354,7 @@ test('rejects the wrong stage organization and receipt replay across every bindi
     assert.equal(verifyAuthorityProgram(otherProgram, bundle.receipts, otherOptions).reason, 'stage_program_digest_mismatch');
     const otherRoot = signProgram({
         ...bundle.program,
-        root_caid: `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`,
+        root_caid: `canactid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`,
     });
     const otherRootOptions = { ...options, programPin: { ...options.programPin, digest: authorityProgramDigest(otherRoot) } };
     assert.equal(verifyAuthorityProgram(otherRoot, bundle.receipts, otherRootOptions).reason, 'root_action_binding_mismatch');

@@ -15,7 +15,7 @@ export const AP2_NATIVE_AEB_ADAPTER_ID = 'native:ap2-agent-authorization';
 export const AP2_NATIVE_AEB_ADAPTER_VERSION = 'experimental-1';
 export const AP2_NATIVE_AEB_CONFIG_VERSION = 'EP-AP2-NATIVE-AEB-CONFIG-v1';
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
-const CAID_RE = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const CAID_RE = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9_.:@/#-]{0,511}$/;
 const CONFIG_KEYS = new Set([
     '@version', 'source_revision', 'evidence_role', 'subject',

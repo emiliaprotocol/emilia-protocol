@@ -10,7 +10,7 @@ public enum EmiliaActionContinuityError: Error, Equatable {
 
 private enum EmiliaContinuityFormat {
     static let caidPattern =
-        #"^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$"#
+        #"^canactid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$"#
     static let digestPattern = #"^sha256:[0-9a-f]{64}$"#
 
     static func matches(_ value: String, pattern: String) -> Bool {
@@ -138,7 +138,7 @@ public struct EmiliaActionIdentity: Sendable, Equatable, Codable {
         let caidDigest = try EmiliaCanonicalJSON.sha256(wrapper)
         return try Self(
             actionCAID:
-                "caid:1:\(Self.actionType):jcs-sha256:\(caidDigest.emiliaBase64URL)",
+                "canactid:1:\(Self.actionType):jcs-sha256:\(caidDigest.emiliaBase64URL)",
             actionDigest: actionDigest
         )
     }

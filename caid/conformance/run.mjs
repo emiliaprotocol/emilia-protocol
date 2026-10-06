@@ -10,13 +10,13 @@
 //   2. Registry: identity against the corpora, and caid/registry/check.mjs
 //      (v5 invariants, strict decoding, history v4 bytes, digests.json,
 //      definition checks).
-//   3. Corpora: vectors.json (v5), grammar-vectors.json and
-//      mapping-vectors.json (v2) equal their builders' output; version 4 and
+//   3. Corpora: vectors.json (v6), grammar-vectors.json and
+//      mapping-vectors.json (v3) equal their builders' output; version 4 and
 //      mapping version 1 carry forward (check-v4.mjs); the JavaScript runner
 //      passes every vector against the spec oracle itself.
 //   4. Ports: the core and grammar corpora in JavaScript, Python and Go
 //      through public entry points (caid/conformance/runners), the unit
-//      tests of all three ports, and the mapping corpus v2 and
+//      tests of all three ports, and the mapping corpus v3 and
 //      consequential-interoperability corpus in all three with
 //      cross-language parity.
 //
@@ -113,10 +113,10 @@ const stable = (value) => {
 run('registry check (caid/registry/check.mjs)', 'node', ['caid/registry/check.mjs'], REPO);
 
 // ---------------------------------------------------------------- 3. corpora
-run('core corpus v5 is its builder\'s output', 'node', ['caid/conformance/tools/build-core.mjs', '--check'], REPO);
+run('core corpus v6 is its builder\'s output', 'node', ['caid/conformance/tools/build-core.mjs', '--check'], REPO);
 run('grammar corpus is its builder\'s output', 'node', ['caid/conformance/tools/build-grammar.mjs', '--check',
   ...(process.env.CAID_GRAMMAR_CASES ? ['--cases', path.resolve(process.env.CAID_GRAMMAR_CASES)] : [])], REPO);
-run('mapping corpus v2 is its builder\'s output', 'node', ['caid/conformance/tools/build-mapping.mjs', '--check'], REPO);
+run('mapping corpus v3 is its builder\'s output', 'node', ['caid/conformance/tools/build-mapping.mjs', '--check'], REPO);
 run('version 4 and mapping version 1 carried forward (check-v4.mjs)', 'node', ['caid/conformance/check-v4.mjs'], REPO);
 run('core and grammar corpora against the spec oracle', 'node', ['caid/conformance/runners/run.mjs', '--impl', 'caid/conformance/tools/reference-port.mjs'], REPO);
 
@@ -161,9 +161,9 @@ function parity(label, outputs) {
   steps.push(report);
 }
 parity('cross-language mapping verdict and reason parity', [
-  ['JavaScript', run(`JavaScript mapping v2: ${mappingCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--json'])],
-  ['Python', run(`Python mapping v2: ${mappingCorpus.vectors.length} vectors`, PYTHON, ['impl/python/run_mapping_vectors.py', '--json'])],
-  ['Go', run(`Go mapping v2: ${mappingCorpus.vectors.length} vectors`, 'go', ['run', './cmd/mapping-vectors', '--json'], GO_ROOT)],
+  ['JavaScript', run(`JavaScript mapping v3: ${mappingCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--json'])],
+  ['Python', run(`Python mapping v3: ${mappingCorpus.vectors.length} vectors`, PYTHON, ['impl/python/run_mapping_vectors.py', '--json'])],
+  ['Go', run(`Go mapping v3: ${mappingCorpus.vectors.length} vectors`, 'go', ['run', './cmd/mapping-vectors', '--json'], GO_ROOT)],
 ]);
 parity('cross-language consequential-interoperability parity', [
   ['JavaScript', run(`JavaScript consequential interop: ${interopCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--corpus', interopCorpusPath, '--json'])],

@@ -514,7 +514,7 @@ export function receiptActionCaid(action: unknown): CborResult<{ caid: string; d
   return {
     ok: true,
     value: {
-      caid: `caid:1:${action.action_type}:jcs-sha256:${digestBytes.toString('base64url')}`,
+      caid: `canactid:1:${action.action_type}:jcs-sha256:${digestBytes.toString('base64url')}`,
       digest: `sha256:${digestBytes.toString('hex')}`,
     },
   };

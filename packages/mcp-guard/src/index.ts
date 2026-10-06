@@ -57,7 +57,7 @@ import {
 type AnyRecord = Record<string, any>;
 
 /** Runtime/package identity used by generated consumers that pin this release. */
-export const MCP_GUARD_RUNTIME_VERSION = '0.6.1';
+export const MCP_GUARD_RUNTIME_VERSION = '0.7.0';
 
 // ---------------------------------------------------------------------------
 // Canonicalization (RFC 8785-style, key-sorted) — used ONLY for the additive
@@ -67,6 +67,48 @@ export const MCP_GUARD_RUNTIME_VERSION = '0.6.1';
 // ---------------------------------------------------------------------------
 
 const canonicalize = canonicalizeStrictJson;
+
+/** MCP result metadata key for a server-computed canonical action identifier. */
+export const MCP_CANACTID_META_KEY = 'ai.emiliaprotocol/canactid';
+const CURRENT_CANACTID = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+
+function plainRecord(value: unknown): value is AnyRecord {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * Add the current canonical action identifier to an MCP CallToolResult.
+ *
+ * The caller must supply the identifier recomputed from server-observed action
+ * material. This function does not derive it from presenter-controlled MCP
+ * metadata and deliberately rejects historical `caid:` identifiers. Historical
+ * signed artifacts remain verifiable through their explicit legacy profile;
+ * they are never rewritten into a current identifier.
+ */
+export function attachCanactidMetadata(result: unknown, canactid: unknown): AnyRecord {
+  if (typeof canactid !== 'string' || !CURRENT_CANACTID.test(canactid)) {
+    throw new TypeError('attachCanactidMetadata requires a current canactid identifier');
+  }
+  if (!plainRecord(result)) {
+    throw new TypeError('attachCanactidMetadata requires an MCP result object');
+  }
+  const existingMeta = result._meta;
+  if (existingMeta !== undefined && !plainRecord(existingMeta)) {
+    throw new TypeError('attachCanactidMetadata requires object _meta');
+  }
+  if (existingMeta && Object.hasOwn(existingMeta, MCP_CANACTID_META_KEY)
+      && existingMeta[MCP_CANACTID_META_KEY] !== canactid) {
+    throw new TypeError('attachCanactidMetadata refuses conflicting canactid metadata');
+  }
+  const copy = structuredClone(result);
+  copy._meta = {
+    ...(copy._meta || {}),
+    [MCP_CANACTID_META_KEY]: canactid,
+  };
+  return copy;
+}
 
 function sha256Hex(s: string): string {
   return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -1119,7 +1161,11 @@ export function withMcpReceiptGuard(handler: (...args: any[]) => any, options: A
     executingSystem = 'mcp-server',
     receiptParams,
     returnEnvelope = false,
+    resolveCanactid,
   } = options;
+  if (resolveCanactid !== undefined && typeof resolveCanactid !== 'function') {
+    throw new TypeError('withMcpReceiptGuard: resolveCanactid must be a function');
+  }
 
   const resolveAnnotations = (name: string): AnyRecord => {
     let fromResolver;
@@ -1184,7 +1230,31 @@ export function withMcpReceiptGuard(handler: (...args: any[]) => any, options: A
       });
     }
 
-    const lifecycle = await client.requireReceipt(params, () => handler(name, executionArgs, extra));
+    let canactid: string | null = null;
+    if (resolveCanactid) {
+      try {
+        const resolved = await resolveCanactid({
+          tool: name,
+          args: callbackArgs(),
+          action_type: params.actionType,
+          target_resource_id: params.targetResourceId,
+        });
+        if (typeof resolved !== 'string' || !CURRENT_CANACTID.test(resolved)) {
+          throw new TypeError('current canactid required');
+        }
+        canactid = resolved;
+      } catch {
+        return refusal(String(params.actionType), 'Server could not recompute a current canonical action identifier.', {
+          stage: 'bind',
+          rejected: { ok: false, reason: 'canactid_binding_invalid' },
+        });
+      }
+    }
+
+    const lifecycle = await client.requireReceipt(params, async () => {
+      const result = await handler(name, executionArgs, extra);
+      return canactid === null ? result : attachCanactidMetadata(result, canactid);
+    });
     return returnEnvelope ? lifecycle : lifecycle.result;
   };
 

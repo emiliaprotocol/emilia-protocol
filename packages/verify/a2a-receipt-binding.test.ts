@@ -18,7 +18,7 @@ import { verifyReceipt } from './index.js';
 import { canonicalizeStrictJson } from './strict-json.js';
 
 const NOW = '2026-08-06T18:00:00.000Z';
-const CAID = 'caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw';
+const CAID = 'canactid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw';
 const TRACE_EXTENSION = 'https://example.com/extensions/tracing/v1';
 
 const ACTION = Object.freeze({

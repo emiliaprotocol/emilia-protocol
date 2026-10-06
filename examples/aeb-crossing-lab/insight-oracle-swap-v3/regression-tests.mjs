@@ -78,7 +78,7 @@ async function testPinnedSynchronousAdapterShape() {
   const mapped = mapAction(verified, fixture.expectedAction);
   assert.deepEqual(Object.keys(mapped), ['mapping', 'caid', 'action_digest', 'reasons']);
   assert.equal(mapped.mapping, 'MATCH');
-  assert.match(mapped.caid, /^caid:1:evm-swap-exact-input-single\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+  assert.match(mapped.caid, /^canactid:1:evm-swap-exact-input-single\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
   assert.match(mapped.action_digest, /^sha256:[0-9a-f]{64}$/);
   const wrapperOnlyChange = structuredClone(bundle);
   wrapperOnlyChange.authorization.label = 'wrapper metadata does not define replay identity';
@@ -113,7 +113,7 @@ async function testPositivePath() {
   assert.equal(result.decision, 'SUBMITTED');
   assert.equal(submitterCalls, 1);
   assert.equal(store.snapshot(result.replayUnit).state, 'CONSUMED');
-  assert.match(result.caid, /^caid:1:/);
+  assert.match(result.caid, /^canactid:1:/);
   return 'authenticated commit drives adapter/store/submitter and consumes authority';
 }
 

@@ -164,14 +164,16 @@ const xmlText = xmlCharacterData(xml).replace(/\s+/g, ' ');
 
 // ---- The renders belong to this source -------------------------------------
 invariant(txt.includes(basename) && html.includes(basename), 'renders do not name the -08 draft');
-invariant(/^Internet-Draft .* October 2026$/m.test(txt) && txt.includes('4 October 2026'),
-  'TXT render does not carry the source date 4 October 2026');
+invariant(/^Internet-Draft .* October 2026$/m.test(txt) && txt.includes('6 October 2026'),
+  'TXT render does not carry the source date 6 October 2026');
+invariant((xml.match(/canactid:1:/g) ?? []).length === 2, 'source must show the current CAID-05 scheme in both examples');
+invariant(!xml.includes('"caid:1:'), 'source must not show the obsolete CAID-04 scheme in a current example');
 
 // ---- Required -08 text -----------------------------------------------------
 for (const required of [
   `docName="${basename}"`,
   `value="${basename}"`,
-  '<date year="2026" month="October" day="4"/>',
+  '<date year="2026" month="October" day="6"/>',
   '<name>Changes in -08</name>',
   '<name>Changes in -07</name>',
   'operator = %s"AND" / %s"OR" / "&&" / "||"',
@@ -245,8 +247,11 @@ for (const required of [
   'already agree with every vector of the new corpus on syntax validity and Boolean value',
   'or the strict JSON error when the requirement is not I-JSON',
   'No wire-format change.',
-  '@emilia-protocol/verify 6.0.0, implements EP-AEC-EVALUATOR-07-v1',
-  'is not yet in a published release',
+  'changed the two CAID examples to its current canactid: scheme',
+  'A legacy identifier is not rewritten.',
+  '@emilia-protocol/verify 7.0.0, implements EP-AEC-EVALUATOR-08-v1',
+  'published Python verifier package 2.9.0 and Go verifier module 2.5.0',
+  'does not imply deployment, adoption, or interoperability',
   'aec_requirement_invalid',
   'their agreement with the JavaScript implementation on the corpus is agreement on expression evaluation only',
   'their agreement is a consistency check, not independent implementation',

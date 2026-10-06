@@ -10,7 +10,7 @@ import { PROPOSAL_TO_EFFECT_VERSION, createProposalToEffect, proposalToEffectCon
 import { MemoryConsumptionStore } from "../../../packages/gate/dist/store.js";
 import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, pinnedConfigDigest, registryEntryDigest, unifiedRegistryDigest, verifyAebEvaluation, } from "../../../packages/verify/aeb-adapter-contract.js";
 const NOW = "2026-07-22T12:00:00.000Z";
-const CAID = `caid:1:payment.release.1:jcs-sha256:${"A".repeat(43)}`;
+const CAID = `canactid:1:payment.release.1:jcs-sha256:${"A".repeat(43)}`;
 const PROPOSAL_INTEGRITY_KEY = crypto
     .createHash("sha256")
     .update("formal-consequence-lifecycle-key")
@@ -608,7 +608,7 @@ async function refuseInvalidAdmissions(fixture) {
         receipt: fixture.harness.mint(),
         evaluation: {
             ...structuredClone(fixture.aeb.evaluation),
-            caid: "caid:1:payment.release.1:jcs-sha256:WRONG",
+            caid: "canactid:1:payment.release.1:jcs-sha256:WRONG",
         },
     }, async () => {
         providerCalls += 1;
@@ -662,7 +662,7 @@ export async function runConsequenceLifecycleScenario(scenario) {
         evaluation: fixture.aeb.evaluation,
         attempt: entered.attempt,
         provider_evidence: providerEvidence(fixture.proposal, entered.attempt, {
-            caid: "caid:1:payment.release.1:jcs-sha256:WRONG",
+            caid: "canactid:1:payment.release.1:jcs-sha256:WRONG",
         }),
     });
     ensure(wrongCaid?.ok === false &&

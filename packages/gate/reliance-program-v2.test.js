@@ -15,7 +15,7 @@ import { TRUST_PROGRAM_V2_VERSION } from './trust-program.js';
 import { RELIANCE_PROGRAM_SOURCE_VERSION, RELIANCE_PROGRAM_VERSION, RELIANCE_PROGRAM_SOURCE_V2_VERSION, RELIANCE_PROGRAM_V2_VERSION, RELIANCE_PROGRAM_V2_REQUIRED_ALGORITHMS, RelianceProgramValidationError, compileRelianceProgram, compileRelianceProgramV2, relianceProgramSourceV2Digest, signRelianceProgram, signRelianceProgramV2, verifyRelianceProgram, verifyRelianceProgramV2, verifyRelianceProgramEnvelope, } from './reliance-program.js';
 const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js');
 const D = (character) => `sha256:${character.repeat(64)}`;
-const C = (character) => `caid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
+const C = (character) => `canactid:1:health.prior-authorization-determination.1:jcs-sha256:${character.repeat(43)}`;
 const KEY_ID = 'rp-key-1';
 const RP_ID = 'payer:example-health-plan';
 function profile(id = 'rp:admissibility:human-review:v1') {

@@ -703,7 +703,7 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
 
     const wrongCaid = refreshPackageDigest({
       ...scannerPackage(),
-      caid: `caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:${'A'.repeat(43)}`,
+      caid: `canactid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:${'A'.repeat(43)}`,
     });
     const caidResult = await base.control.prepare({
       tenant_id: TENANT,

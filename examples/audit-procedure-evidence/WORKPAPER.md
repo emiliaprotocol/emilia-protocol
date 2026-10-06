@@ -13,9 +13,9 @@ Result: **EXCEPTIONS-NOTED**. 12 reconciling items tested (full population), 11 
 | Procedure | C-2.1: Full-population cash tie-out of all general-ledger cash accounts to bank statements at period end, resolving every reconciling item against the closing documents |
 | Accounts in scope | OPER-001, PAYR-002, RESV-003 |
 | Population digest | `sha256:30f069f6c50915cc8a4c2d08f40a9af898d646a12ffa3f6296bd4cdaadbacbdc` |
-| Procedure CAID | `caid:1:assurance.cash-tie-out.1:jcs-sha256:mhT-dBvWJNWRVYttb5pAHHlHKcgvUvaNttV7h9VUaeg` |
+| Procedure CAID | `canactid:1:assurance.cash-tie-out.1:jcs-sha256:mhT-dBvWJNWRVYttb5pAHHlHKcgvUvaNttV7h9VUaeg` |
 | Authorized action hash | `sha256:9a14fe741bd624d591558b6d6f9a401c794729c82f52f68db6d57b87d55469e8` |
-| Results digest | `sha256:8ee2290d0f3368aa5c5e7d84ec16a889fc504e449aed20f4033c5cd3e67728b5` |
+| Results digest | `sha256:1e1ebf4da88a1bcdf97f1030e3d18c2d4534e3b65b1adcd7e030629da34806ac` |
 
 ## Tie-out by account
 
@@ -49,7 +49,7 @@ Every residual is fully attributed to named unresolved items; nothing is plugged
 - **TRF-0912** is INDETERMINATE: Claimed in-transit transfer of 25000.00 into RESV-003 appears in neither closing document: no subsequent credit on the Coastal Trust statement and no counterpart entry or line for the operating account.
 - An indeterminate item never authorizes anything and is never auto-cleared. The tie-out reported EXCEPTIONS-NOTED instead of completing, and finalization of this workpaper was refused (`exception_undispositioned:TRF-0912`) until a human ceremony dispositioned the exception.
 - Disposition: `exception_noted` under sign-off receipt `auditsig_1` (quorum of 2 fixture approvers: ep:approver:eg1:cfo, ep:approver:eg1:security-officer), recorded 2026-08-16T09:30:00Z. Follow-up: Confirm the transfer instruction directly with both banks and reperform the tie-out for RESV-003 on receipt of the confirmations.
-- The disposition is its own Gate-admitted action, `caid:1:assurance.exception-disposition.1:jcs-sha256:2FuKhDoLkt_Xjpso-bhPVg1vch5VHuuloWd9nVj9McQ`, joined to this exact procedure by `procedure_caid`. It records the exception; the item remains INDETERMINATE and the procedure result remains EXCEPTIONS-NOTED.
+- The disposition is its own Gate-admitted action, `canactid:1:assurance.exception-disposition.1:jcs-sha256:ZOVAOHqeMLVIQKofyqhAhZmmTiAJbxrkolVpkYScT4g`, joined to this exact procedure by `procedure_caid`. It records the exception; the item remains INDETERMINATE and the procedure result remains EXCEPTIONS-NOTED.
 
 ## Evidence-to-concept map
 
@@ -58,13 +58,13 @@ Each artifact the run produced is mapped to the audit documentation concept it e
 | EMILIA artifact | Identity in this run | Documentation concept it evidences |
 | --- | --- | --- |
 | Authorization receipt (EP-RECEIPT-v1, quorum threshold 2) | receipt `audit_1`, naming the procedure CAID in its signed claim | Who directed the procedure and the exact nature, timing, and extent they authorized |
-| CAID (canonical action identifier) | `caid:1:assurance.cash-tie-out.1:jcs-sha256:mhT-dBvWJNWRVYttb5pAHHlHKcgvUvaNttV7h9VUaeg` | Identification of the specific procedure performed, pinned to its full item population |
+| CAID (canonical action identifier) | `canactid:1:assurance.cash-tie-out.1:jcs-sha256:mhT-dBvWJNWRVYttb5pAHHlHKcgvUvaNttV7h9VUaeg` | Identification of the specific procedure performed, pinned to its full item population |
 | Gate admission record | observed-action hash recomputed at the boundary, equal to the authorized action hash and to the CAID digest (run-bound decision hash on stdout) | Evidence that the procedure performed is the one authorized, admitted once |
 | Execution evidence | execution record bound to the admitted decision (run-bound hashes on stdout) | That the procedure was performed, and its results |
 | Full-population item table | the Items tested table above; population digest in the procedure identity | Items tested and the extent of testing |
 | Origin-label evidence (EP-ORIGIN-LABELS-v1) | per-field trust floors over ledger, statement, and derived values | Source and reliability class of the information used as evidence |
 | INDETERMINATE verdict + EXCEPTIONS-NOTED result | item TRF-0912; account RESV-003 residual -25000.00 | Results of the procedure and exceptions noted |
-| Exception disposition (Gate-admitted action) | receipt `auditsig_1`, `caid:1:assurance.exception-disposition.1:jcs-sha256:2FuKhDoLkt_Xjpso-bhPVg1vch5VHuuloWd9nVj9McQ` | How exceptions were resolved or carried, and by whom |
+| Exception disposition (Gate-admitted action) | receipt `auditsig_1`, `canactid:1:assurance.exception-disposition.1:jcs-sha256:ZOVAOHqeMLVIQKofyqhAhZmmTiAJbxrkolVpkYScT4g` | How exceptions were resolved or carried, and by whom |
 | Sign-off ceremony (quorum evidence) | two per-signer-verifiable approvals over the disposition action | Reviewer identity and date of review (sign-off) |
 
 ## Claim boundary and residuals

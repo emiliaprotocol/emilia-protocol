@@ -7,7 +7,7 @@ import test from 'node:test';
 import { COVERAGE_RECONCILIATION_REPORT_VERSION, COVERAGE_SOURCE_INVENTORY_VERSION, assertCoveragePopulationConservation, coveragePopulationRoot, runCoverageReconciliation, signCoverageSourceInventory, verifyCoverageReconciliationReportBinding, verifyCoverageSourceInventory, } from './coverage-reconciliation-runner.js';
 import { verifyCoverageReconciliationAttestation } from './coverage-reconciliation-attestation.js';
 const D = (character) => `sha256:${character.repeat(64)}`;
-const C = (character) => (`caid:1:health.medical-prior-authorization-review.1:jcs-sha256:${character.repeat(43)}`);
+const C = (character) => (`canactid:1:health.medical-prior-authorization-review.1:jcs-sha256:${character.repeat(43)}`);
 const PERIOD = {
     start: '2026-07-01T00:00:00Z',
     end: '2026-08-01T00:00:00Z',

@@ -1,10 +1,10 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-09-28",
+  "updated": "2026-10-05",
   "active_datatracker_count": 26,
   "active_schrock_datatracker_count": 22,
   "sole_authored_datatracker_count": 21,
-  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 21 active sole-authored draft-schrock-* Datatracker records represented in this repository; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Checked against the Datatracker API on 2026-09-28, the standards/posted snapshot of each of the 21 is its current revision. A later revision is not mirrored automatically, so the Datatracker remains authoritative for current revisions. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. Authorization Receipts-13, Presentation Binding-01, Quorum-04, Bounded Capability Receipts-06, Agent Operation Continuity-00, CAID-04, AEB-07, AEC-06, CAID-03, Architecture-03, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the corrective revision Bounded Capability Receipts-05 is retained as exact archive-verified XML in its standards/staged provenance packet listed in september_6_2026_corrective_wave; it was never mirrored into standards/posted and is superseded by Bounded Capability Receipts-06. The other three corrective revisions were mirrored into standards/posted: AEC-06 and Architecture-03 on 2026-09-26, recorded in september_6_2026_aec_posted_snapshot and september_6_2026_architecture_posted_snapshot, and Quorum-04 on 2026-09-27, recorded in september_6_2026_quorum_posted_snapshot. Authorization Receipts-13 and Presentation Binding-01 (both posted 2026-09-12) were mirrored into standards/posted on 2026-09-27 and are recorded in september_12_2026_posted_snapshots; their submitted sources remain in their standards/staged provenance packets. Bounded Capability Receipts-06 (posted 2026-09-09) and Agent Operation Continuity-00 (posted 2026-09-15) had no source in this repository; their XML and TXT were fetched from the IETF archive and mirrored into standards/posted on 2026-09-27, and are recorded in september_27_2026_posted_mirror. The superseded Authorization Receipts-12, Presentation Binding-00, Quorum-03, and Bounded Capability Receipts-04 snapshots moved to standards/archive on 2026-09-27. CAID-04 (posted 2026-09-28) was mirrored into standards/posted on 2026-09-28 and is recorded in september_28_2026_caid_wave; its submitted source remains in standards/staged/NEXT-CAID-04, and the superseded CAID-03 snapshot moved to standards/archive the same day. Change canonical_four_document_surface.documents[Authorization Receipts].source and revision only after the new revision is mirrored into standards/posted: app/spec/page.tsx renders only standards/posted/draft-schrock-ep-authorization-receipts-<revision>.xml and returns 404 when that file does not exist, it logs a source value that names any other path, and tests/site-spec-route.test.ts fails on any source other than that posted path.",
+  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 21 active sole-authored draft-schrock-* Datatracker records represented in this repository. The portfolio-wide snapshot was checked against the Datatracker API on 2026-09-28; CAID alone was rechecked on 2026-10-05 and advanced to -05. A later revision is not mirrored automatically, so the Datatracker remains authoritative for every current revision. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. CAID-05, Authorization Receipts-13, Presentation Binding-01, Quorum-04, Bounded Capability Receipts-06, Agent Operation Continuity-00, CAID-04, AEB-07, AEC-06, CAID-03, Architecture-03, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. CAID-05 was posted on 2026-10-02, mirrored into standards/posted on 2026-10-05, and is recorded in october_2_2026_caid_wave; the superseded CAID-04 snapshot remains immutable. IANA provisionally registered the canactid URI scheme on 2026-10-05; this registration is recorded separately and is not IETF adoption, endorsement, certification, permanent registration, or implementation evidence. Change canonical_four_document_surface.documents[Authorization Receipts].source and revision only after the new revision is mirrored into standards/posted: app/spec/page.tsx renders only standards/posted/draft-schrock-ep-authorization-receipts-<revision>.xml and returns 404 when that file does not exist, it logs a source value that names any other path, and tests/site-spec-route.test.ts fails on any source other than that posted path.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -110,10 +110,10 @@
         "order": 2,
         "label": "CAID",
         "draft": "draft-schrock-canonical-action-identifier",
-        "revision": "04",
-        "source": "standards/posted/draft-schrock-canonical-action-identifier-04.xml",
+        "revision": "05",
+        "source": "standards/posted/draft-schrock-canonical-action-identifier-05.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/",
-        "snapshot_sha256": "2327aa36bba57c368140d7573184113df38e6c4f75a97fe09625d76a91162b93",
+        "snapshot_sha256": "581c2d1e902f5365a3578c62751d32be728f2b6072354f873ce6b74bb77f1ebc",
         "runtime_role": "Identifies and profile-matches the exact material action without authorizing it."
       },
       {
@@ -255,12 +255,12 @@
     },
     {
       "draft": "draft-schrock-canonical-action-identifier",
-      "revision": "04",
+      "revision": "05",
       "layer": "material_action_identity_mapping",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published September 28 (Datatracker posting 2026-09-28T07:24:09Z) as an individual Internet-Draft, not adopted; use -04 for target-bound tool-call identity and profile-bounded cross-format matching. -04 is a substantive revision that makes the processing model complete and checkable: a strict I-JSON input profile, host values refused and never rewritten, one data model with one table of limits, definition conformance and definition_sha256, the code field type with named code formats, the monotone enum advance, a fixed reason order with verification details, and normative mapping stages A through D. The suites, the digest, and the canonical form of every object that both -03 and -04 accept do not change; the identifier syntax changes only by refusing the forms its Section 14.1 lists, and some action objects whose CAIDs were valid under -03 are now refused. The reference registry advances to version 5: 62 type versions, 53 active, all of which compute, and 9 deprecated. It adds Privacy Considerations and an Implementation Status section, revises Security Considerations, and requests seven IANA registries and the caid URI scheme. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-04.xml and is recorded in september_28_2026_caid_wave.",
+      "next_action": "Published October 2 (Datatracker posting 2026-10-02T19:53:38Z) as an individual Internet-Draft, not adopted; use -05 for new identifiers. -05 changes the literal URI scheme from the unregistered caid prefix to canactid and leaves the action object, canonicalization, suites, digest bytes, mapping algorithm, and registry version unchanged. The change is wire-breaking: legacy caid identifiers and current canactid identifiers are unequal even when their suffixes match, and signed legacy identifiers are never rewritten. A -05 verifier refuses the legacy prefix unless the deployment explicitly selects a legacy -04 verification profile. IANA provisionally registered canactid on 2026-10-05, referencing -05. Provisional registration is not permanent registration, IETF adoption, endorsement, certification, implementation evidence, or deployment evidence. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-05.xml and is recorded in october_2_2026_caid_wave.",
       "maintenance_status": "maintained",
-      "datatracker_expires": "2027-04-01"
+      "datatracker_expires": "2027-04-05"
     },
     {
       "draft": "draft-schrock-emilia-eye",
@@ -993,6 +993,42 @@
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]
+  },
+  "october_2_2026_caid_wave": {
+    "filing_date": "2026-10-02",
+    "datatracker_posted_at": "2026-10-02T19:53:38Z",
+    "item_count": 1,
+    "publication_status": "published_and_ietf_archive_verified_2026_10_02",
+    "filing_order": [
+      "draft-schrock-canonical-action-identifier-05"
+    ],
+    "xml_sha256": "581c2d1e902f5365a3578c62751d32be728f2b6072354f873ce6b74bb77f1ebc",
+    "txt_sha256": "a077a99964977f0d027f9f2391996e23cd12393bcfbd11881566d7e18657374a",
+    "html_sha256": "7256ac3bce6ed1faeea5d58f5d586d7f16d7b89ead84d999d14441caff5caf15",
+    "verification": "Checked on 2026-10-05. The posted XML and TXT are byte-for-byte identical to the immutable IETF archive artifacts and to the submitted source and text render retained in the provenance packet. The posted HTML is the IETF archive HTML with the request-specific Cloudflare challenge script removed; a fresh fetch is byte-identical after removing that script. Publication is not working-group adoption, RFC status, implementation evidence, deployment evidence, or IETF endorsement.",
+    "provenance_packets": [
+      "standards/staged/NEXT-CAID-05"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-canonical-action-identifier-05",
+        "source": "standards/posted/draft-schrock-canonical-action-identifier-05.xml",
+        "snapshot_sha256": "581c2d1e902f5365a3578c62751d32be728f2b6072354f873ce6b74bb77f1ebc",
+        "txt_sha256": "a077a99964977f0d027f9f2391996e23cd12393bcfbd11881566d7e18657374a",
+        "html_sha256": "7256ac3bce6ed1faeea5d58f5d586d7f16d7b89ead84d999d14441caff5caf15",
+        "datatracker_submission_id": 169802,
+        "datatracker_posted_at": "2026-10-02T19:53:38Z",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
+  "october_5_2026_canactid_iana_registration": {
+    "registration_date": "2026-10-05",
+    "scheme": "canactid",
+    "status": "provisional",
+    "registry_url": "https://www.iana.org/assignments/uri-schemes/prov/canactid",
+    "reference": "draft-schrock-canonical-action-identifier-05",
+    "claim_boundary": "This is an IANA provisional URI-scheme registration under RFC 7595. It is not permanent registration, IETF adoption, IETF endorsement, certification, implementation evidence, deployment evidence, authorization, or proof of execution."
   },
   "retired_absorbed": [
     {

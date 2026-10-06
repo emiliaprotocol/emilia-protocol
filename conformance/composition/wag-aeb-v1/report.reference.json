@@ -18,7 +18,7 @@
     "aeb_adapter_version": "1",
     "mapping_version": "AEB-WAG-TOKEN-ISSUANCE-CAID-MAPPING-v1",
     "source_lock_sha256": "sha256:38d7afea8823234a537e7defdf8a18552eacae4d640368d57bbd433dc294bfb9",
-    "profile_sha256": "sha256:e0c69ee240c3be9df6b9ccedced610c71ffc4d6ce5fd03f68e406d2cfa873c33",
+    "profile_sha256": "sha256:8123e5f544ff7df2a950b23a391259779a993e769bdd75e7b4d761d2b5c10f86",
     "vectors_sha256": "sha256:94c3cc453eadfa1eab840995de9e1913500ee7c1ba6cbeeb034228b4733cea2e"
   },
   "checks": [
@@ -40,7 +40,7 @@
       "observed": {
         "acceptance": "ACCEPTED",
         "mapping": "MATCH",
-        "caid": "caid:1:oauth.access-token.issue.1:jcs-sha256:LJ7Vb8hPnLOw6QbNaUejbtuuIlES882SPdF7wcUmLLM"
+        "caid": "canactid:1:oauth.access-token.issue.1:jcs-sha256:MFWQeml757uAhbixquGMKtyrcEJ4tpgzxrJp2DXeo1I"
       }
     },
     {
@@ -75,7 +75,7 @@
       "observed": {
         "acceptance": "ACCEPTED",
         "mapping": "MATCH",
-        "caid": "caid:1:oauth.access-token.issue.1:jcs-sha256:yPbAxMCZH4ulzvUROiFl05Mqlii131iLMfCUrzHYONo"
+        "caid": "canactid:1:oauth.access-token.issue.1:jcs-sha256:-2SP_TSFTGEZ5pxNBgx6HLtsUuQs1DnTfDkv_5xe_3U"
       }
     },
     {
@@ -194,8 +194,8 @@
   ],
   "composition": {
     "action_type": "oauth.access-token.issue.1",
-    "action_digest": "sha256:2c9ed56fc84f9cb3b0e906cd6947a36edbae225112f3cd923dd17bc1c5262cb3",
-    "caid": "caid:1:oauth.access-token.issue.1:jcs-sha256:LJ7Vb8hPnLOw6QbNaUejbtuuIlES882SPdF7wcUmLLM",
+    "action_digest": "sha256:3055907a697be7bb8085b8b1aae18c2adcab704278b69833c6b269d835dea352",
+    "caid": "canactid:1:oauth.access-token.issue.1:jcs-sha256:MFWQeml757uAhbixquGMKtyrcEJ4tpgzxrJp2DXeo1I",
     "evidence_role": "workload-authorization-grant",
     "subject_kind": "workload",
     "replay_unit": "sha256:68f7f5629045ab13f499f867d33c634f40b34d66ed0bd0569704a2e9f6368234",
@@ -212,5 +212,5 @@
     "A passing report is not IETF adoption, employer endorsement, certification, or production-readiness evidence."
   ],
   "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA WAG -00 to AEB token-issuance profile at agent/wag-aeb-interop on 2026-08-13T20:00:00Z: 15/15 checks passed against draft-carleton-workload-authz-grant-00 (sha256:4b92283fefdce2093e11f70bbfce5aa00af9191f7b278d498f30f2b34a78f798). The run verified per-tenancy issuer and key pinning, exact token-request projection, stable replay identity, second replay-unit reservation refusal, and downstream-action non-substitution. This is a reproduction of the EMILIA reference implementation, not an independent implementation, IETF adoption, or employer endorsement.",
-  "report_digest": "sha256:6b6a7fb8117afa8d45c931662d5d832d58783d69077062f6ebcccfa16b56a0d1"
+  "report_digest": "sha256:c5f522743c57fb8aff1ca7c0d3b7ae07d192e1fe89dd2d055942079121624c40"
 }

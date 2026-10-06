@@ -9,7 +9,12 @@
 // action recomputes to the claimed identifier. AEB evidence satisfaction and
 // Gate authorization remain separate decisions.
 import crypto from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { canonicalize, computeCaid, verifyCaid, } from '../../caid/impl/js/caid.mjs';
+const HERE = dirname(fileURLToPath(import.meta.url));
+const VECTOR_PATH = resolve(HERE, 'cpb-caid-aeb-cross-vector.v1.json');
 const ACTION_DEFINITION = {
     action_type: 'payment.release.1',
     required_fields: [
@@ -121,7 +126,17 @@ export function evaluateCpbCaidAebComposition(vector) {
     };
 }
 function main() {
-    const result = evaluateCpbCaidAebComposition(buildCpbCaidAebVector());
+    const vector = buildCpbCaidAebVector();
+    const expectedBytes = `${JSON.stringify(vector, null, 2)}\n`;
+    if (process.argv.includes('--emit'))
+        writeFileSync(VECTOR_PATH, expectedBytes, 'utf8');
+    if (process.argv.includes('--check')) {
+        const actualBytes = readFileSync(VECTOR_PATH, 'utf8');
+        if (actualBytes !== expectedBytes) {
+            throw new Error('CPB -> CAID -> AEB vector drifted; inspect and re-pin deliberately with --emit');
+        }
+    }
+    const result = evaluateCpbCaidAebComposition(vector);
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     if (result.cpb_binding !== 'VERIFIED'
         || result.caid_match !== 'MATCH'

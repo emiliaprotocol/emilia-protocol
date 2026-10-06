@@ -188,7 +188,7 @@ class HostValueTest(unittest.TestCase):
         d = {}
         d["self"] = d
         self.assertEqual(caid.compute_caid({"action_type": "t.a.1", "a": "x", "free": d}, OPTS), {"refusals": ["unsupported_value"]})
-        result = caid.verify_caid(d, "caid:1:t.a.1:jcs-sha256:" + "A" * 43, OPTS)
+        result = caid.verify_caid(d, "canactid:1:t.a.1:jcs-sha256:" + "A" * 43, OPTS)
         self.assertEqual(result["reasons"], ["action_type_mismatch", "invalid_object"])
 
     def test_shared_substructure_is_not_a_cycle(self):
@@ -257,7 +257,7 @@ class HostValueTest(unittest.TestCase):
         from unittest import mock
 
         spoofs = [mock.Mock(spec=dict), mock.Mock(spec=str), mock.Mock(spec=list), mock.Mock(spec=int), mock.MagicMock(spec=dict)]
-        caid_string = "caid:1:t.a.1:jcs-sha256:" + "A" * 43
+        caid_string = "canactid:1:t.a.1:jcs-sha256:" + "A" * 43
         for spoof in spoofs:
             self.assertEqual(caid.compute_caid(spoof, OPTS), {"refusals": ["invalid_action_type"]}, repr(spoof))
             self.assertEqual(caid.verify_caid(spoof, caid_string, OPTS)["reasons"], ["invalid_object"], repr(spoof))
@@ -333,7 +333,7 @@ class HostValueTest(unittest.TestCase):
         for text in texts:
             value = decode(text)["value"]
             self.assertEqual(caid.compute_caid(value, OPTS), caid.compute_caid_json(text.encode(), OPTS), text)
-            c = "caid:1:t.a.1:jcs-sha256:" + "A" * 43
+            c = "canactid:1:t.a.1:jcs-sha256:" + "A" * 43
             self.assertEqual(caid.verify_caid(value, c, OPTS), caid.verify_caid_json(text.encode(), c, OPTS), text)
 
 
@@ -354,22 +354,36 @@ class OptionGuardTest(unittest.TestCase):
         # of any type, is definition_mismatch (Section 6).
         right = caid.definition_sha256(STRING_DEF[0])["definition_sha256"]
         for pin in (["x"], [right], None, 5, b"sha256:" + right[7:].encode(), right.upper(), {"x": 1}, True):
-            result = caid.verify_caid(obj, "caid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF, "expected_definition_sha256": pin})
+            result = caid.verify_caid(obj, "canactid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF, "expected_definition_sha256": pin})
             self.assertEqual(result["reasons"], ["definition_mismatch", "digest_mismatch"], repr(pin))
-        result = caid.verify_caid(obj, "caid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF, "expected_definition_sha256": right})
+        result = caid.verify_caid(obj, "canactid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF, "expected_definition_sha256": right})
         self.assertEqual(result["reasons"], ["digest_mismatch"])
-        result = caid.verify_caid(obj, "caid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF})
+        result = caid.verify_caid(obj, "canactid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF})
         self.assertEqual(result["reasons"], ["digest_mismatch"])
 
 
 class ParseTest(unittest.TestCase):
+    def test_new_issuance_and_explicit_legacy_v04_verification(self):
+        obj = {"action_type": "t.a.1", "a": "x"}
+        computed = caid.compute_caid(obj, OPTS)
+        self.assertTrue(computed["caid"].startswith("canactid:1:t.a.1:jcs-sha256:"))
+        self.assertTrue(caid.parse_caid(computed["caid"])["ok"])
+
+        legacy = "caid:" + computed["caid"].split(":", 1)[1]
+        self.assertEqual(caid.parse_caid(legacy), {"ok": False, "refusals": ["malformed_caid"]})
+        self.assertFalse(caid.verify_caid(obj, legacy, OPTS)["valid"])
+        self.assertTrue(caid.parse_legacy_caid_v04(legacy)["ok"])
+        self.assertTrue(caid.verify_legacy_caid_v04(obj, legacy, OPTS)["valid"])
+        self.assertTrue(caid.verify_legacy_caid_v04_json(b'{"action_type":"t.a.1","a":"x"}', legacy, OPTS)["valid"])
+        self.assertEqual(caid.parse_legacy_caid_v04(computed["caid"]), {"ok": False, "refusals": ["malformed_caid"]})
+
     def test_parse_order(self):
-        good = "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+        good = "canactid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
         self.assertTrue(caid.parse_caid(good)["ok"])
         self.assertTrue(caid.parse_caid(good.replace("jcs-sha256", "cbor-sha256"))["ok"])
         self.assertEqual(caid.parse_caid(good.replace("jcs-sha256", "zz-unregistered")), {"ok": False, "refusals": ["unknown_suite"]})
-        self.assertEqual(caid.parse_caid("caid:1:a.1:foo:x"), {"ok": False, "refusals": ["unknown_suite"]})
-        for bad in (good.upper(), "CAID" + good[4:], good + "\n", good[:-1] + "Z", good[:-1], good + "A", good.replace("jcs-sha256", "Jcs"),
+        self.assertEqual(caid.parse_caid("canactid:1:a.1:foo:x"), {"ok": False, "refusals": ["unknown_suite"]})
+        for bad in (good.upper(), "Canactid" + good[len("canactid"):], good + "\n", good[:-1] + "Z", good[:-1], good + "A", good.replace("jcs-sha256", "Jcs"),
                     good.replace(":1:", ":2:"), None, 5, "", good.replace("payment.release.1", "payment.release.01")):
             self.assertEqual(caid.parse_caid(bad), {"ok": False, "refusals": ["malformed_caid"]}, repr(bad))
 
@@ -485,7 +499,7 @@ class ComputeTest(unittest.TestCase):
 
 
 class VerifyTest(unittest.TestCase):
-    CAID = "caid:1:t.a.1:jcs-sha256:" + "A" * 43
+    CAID = "canactid:1:t.a.1:jcs-sha256:" + "A" * 43
 
     def test_valid_and_details(self):
         obj = {"action_type": "t.a.1", "a": "x"}
@@ -517,7 +531,7 @@ class VerifyTest(unittest.TestCase):
                 {"reason": "invalid_action_type", "field": "action_type", "rule": "action-type", "observed": kind}]})
 
     def test_parse_failures(self):
-        self.assertEqual(caid.verify_caid({}, "caid:1:t.a.1:foo:x", OPTS)["details"],
+        self.assertEqual(caid.verify_caid({}, "canactid:1:t.a.1:foo:x", OPTS)["details"],
                          [{"reason": "unknown_suite", "field": None, "rule": "suite", "observed": None}])
         self.assertEqual(caid.verify_caid({})["details"][0]["observed"], "absent")
         self.assertEqual(caid.verify_caid({}, 5)["details"][0]["observed"], "number")

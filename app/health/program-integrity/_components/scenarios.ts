@@ -40,9 +40,9 @@ export const STAGES: Stage[] = [
 ];
 
 const ACTION_CAID =
-  'caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:_gaImSfYxk3C1BAqP2t3_bYhoHLb1FbGdvh8uk9jM28';
+  'canactid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:_gaImSfYxk3C1BAqP2t3_bYhoHLb1FbGdvh8uk9jM28';
 const DESTINATION_MISMATCH_CAID =
-  'caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:wXcsyN3_SxaS5xeYe5Owb10NCbcQDdB_2BqW9Ges0lQ';
+  'canactid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:wXcsyN3_SxaS5xeYe5Owb10NCbcQDdB_2BqW9Ges0lQ';
 const MEMBER_REF = `member:sha256:${'1'.repeat(64)}`;
 const AUTHORIZATION_FORM_DIGEST = `sha256:${'2'.repeat(64)}`;
 const AUTHORITY_PROOF_DIGEST = `sha256:${'4'.repeat(64)}`;

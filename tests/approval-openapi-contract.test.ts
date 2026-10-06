@@ -15,7 +15,7 @@ const ACQUISITION_POLL_PATH = '/api/v1/approvals/{requestId}';
 const EXPECTED_PERMISSIONS = ['approval_request', 'admin'];
 const EXPECTED_MATURITY = 'experimental-pre-standard-prototype';
 const EXPECTED_CAID_PATTERN =
-  '^caid:1:payment\\.release\\.1:jcs-sha256:[A-Za-z0-9_-]{43}$';
+  '^canactid:1:payment\\.release\\.1:jcs-sha256:[A-Za-z0-9_-]{43}$';
 const ACQUISITION_REQUIRED_FIELDS = [
   'action_type',
   'amount_usd',

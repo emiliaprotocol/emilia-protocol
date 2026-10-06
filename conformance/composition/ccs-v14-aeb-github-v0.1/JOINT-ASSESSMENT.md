@@ -129,7 +129,7 @@ test stub in the harness.
 In this harness, the pinned CCS v1.4 L1 conformance receipt **can be independently
 verified** by a party that imports none of the issuer's code, and **can be bound to
 one exact EMILIA action** (`github.issue-update.1`, CAID
-`caid:1:github.issue-update.1:jcs-sha256:hcpVY2uUgF1xTGcDoqhuSzYB2avddWtiPXEQVE6p-kk`)
+`canactid:1:github.issue-update.1:jcs-sha256:hcpVY2uUgF1xTGcDoqhuSzYB2avddWtiPXEQVE6p-kk`)
 **and one relying-party admission domain** (`rp:emilia-github-gate`), with the
 current authority state in the harness and provider entry separate and closed
 (at-most-one concerns the counting provider entry, not a physical effect). Both

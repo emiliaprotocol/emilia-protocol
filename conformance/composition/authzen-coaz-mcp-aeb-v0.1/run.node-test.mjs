@@ -276,7 +276,7 @@ test('preflight attestation and observation substitution fails before mapping', 
 test('preflight validly signed reference, action, and mapping disagreements fail closed', () => {
   for (const [options, reason] of [
     [{ attestation_native_artifact_ref: 'urn:emilia:authzen-local-pep:substituted' }, 'pep_observation_reference_mismatch'],
-    [{ attestation_mapping_overrides: { caid: `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}` } }, 'pep_observation_action_mismatch'],
+    [{ attestation_mapping_overrides: { caid: `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}` } }, 'pep_observation_action_mismatch'],
     [{ attestation_mapping_overrides: { normalized_action_digest: `sha256:${'a'.repeat(64)}` } }, 'pep_observation_action_mismatch'],
     [{ attestation_mapping_overrides: { mapper_id: 'mapper:substituted' } }, 'pep_observation_mapping_mismatch'],
     [{ attestation_mapping_overrides: { profile_digest: `sha256:${'a'.repeat(64)}` } }, 'pep_observation_mapping_mismatch'],

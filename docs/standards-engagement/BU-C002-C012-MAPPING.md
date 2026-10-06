@@ -24,14 +24,17 @@ The EMILIA source locks are the checked-in snapshots recorded by
   mapping was first written against);
 - `draft-schrock-action-evidence-boundary-07`, XML SHA-256
   `938f4d6538dc5e9b40da7934090013fa91906638d587e7dec05c940922ad6045`;
-- `draft-schrock-canonical-action-identifier-04`, XML SHA-256
-  `2327aa36bba57c368140d7573184113df38e6c4f75a97fe09625d76a91162b93`
-  (byte-identical to the IETF archive copy; -04 keeps the suites, the digest,
-  and the canonical form of every object that both -03 and -04 accept,
-  changes the identifier syntax only by refusing forms -03 admitted, and
-  still has the relying party pin the mapping profiles whose closed results,
+- `draft-schrock-canonical-action-identifier-05`, XML SHA-256
+  `581c2d1e902f5365a3578c62751d32be728f2b6072354f873ce6b74bb77f1ebc`
+  (byte-identical to the IETF archive copy; -05 changes the identifier URI
+  scheme from the unregistered `caid` prefix to the provisionally registered
+  `canactid` scheme while leaving the action object, canonicalization, suites,
+  digest bytes, mapping algorithm, and registry version unchanged. The scheme
+  transition is wire-breaking: current identifiers do not compare equal to
+  legacy -04 identifiers even when their suffixes match. The relying party
+  still pins the mapping profiles whose closed results,
   `EQUIVALENT_UNDER_PROFILE`, `NOT_EQUIVALENT`, and `INDETERMINATE`, this
-  mapping uses; it refuses some inputs that -03 accepted); and
+  mapping uses); and
 - `draft-schrock-ep-quorum-03`, XML SHA-256
   `2c534bead66095bdf1d378100c2d7dd01e157702b3acef945bbfdf1edd0bf557`.
 

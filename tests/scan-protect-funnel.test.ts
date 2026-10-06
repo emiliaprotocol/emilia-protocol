@@ -51,10 +51,10 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(guard).toContain('href="/guides/require-receipt"');
     expect(guard).toContain('href="/mcp"');
     expect(guard).toContain('href="/scan"');
-    expect(guide).toContain('npm install --save-exact @emilia-protocol/mcp-guard@0.6.1');
-    expect(guide).toContain('npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action release_payment --apply --verify');
+    expect(guide).toContain('npm install --save-exact @emilia-protocol/mcp-guard@0.7.0');
+    expect(guide).toContain('npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action release_payment --apply --verify');
     expect(flattenShellCommand(guide)).toContain(
-      'npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action release_payment --reviewed --crossing-profile ccs-wang-draft08-v13',
+      'npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action release_payment --reviewed --crossing-profile ccs-wang-draft08-v13',
     );
     expect(guide).toContain('durable provenance ledger');
     expect(guide).toContain('shared atomic consumption store');
@@ -98,11 +98,11 @@ describe('scan to protected MCP boundary funnel', () => {
 
   it('makes the passive scanner discoverable without bloating global navigation', () => {
     expect(sitemap).toContain("{ path: '/scan'");
-    expect(repositoryReadme).toContain('npm install --save-exact @emilia-protocol/mcp-guard@0.6.1');
+    expect(repositoryReadme).toContain('npm install --save-exact @emilia-protocol/mcp-guard@0.7.0');
     expect(repositoryReadme).not.toContain('@emilia-protocol/mcp-guard@0.5.0');
-    expect(repositoryReadme).toContain('npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --apply --verify');
+    expect(repositoryReadme).toContain('npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action sendWire --apply --verify');
     expect(flattenShellCommand(repositoryReadme)).toContain(
-      'npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --reviewed --crossing-profile ccs-wang-draft08-v13',
+      'npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action sendWire --reviewed --crossing-profile ccs-wang-draft08-v13',
     );
     expect(repositoryReadme).toContain('durable provenance ledger');
     expect(repositoryReadme).toContain('shared atomic consumption store');

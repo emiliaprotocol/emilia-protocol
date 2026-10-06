@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 //
-// Builds the CAID mapping conformance corpus, version 2
+// Builds the CAID mapping conformance corpus, version 3
 // (caid/conformance/mapping-vectors.json), from the frozen version 1 corpus
 // (caid/conformance/history/mapping-vectors.v1.json) and the cases below.
 //
 //   node caid/conformance/tools/build-mapping.mjs           write it
 //   node caid/conformance/tools/build-mapping.mjs --check   exit 1 unless current
 //
-// Version 2 keeps the version 1 layout, which the JavaScript, Python and Go
+// Version 3 keeps the version 2 layout and moves current mapped-action
+// issuance to `canactid:`. Version 2 kept the version 1 layout, which the
+// JavaScript, Python and Go
 // mapping runners already read, and makes every expectation an exact
 // reason list: reason_contains is gone. Each expectation comes from the
 // mapping oracle (./mapping-oracle.mjs) and must match what the case
@@ -28,6 +30,8 @@ const ROOT = path.resolve(HERE, '../../..');
 const OUT = path.join(ROOT, 'caid/conformance/mapping-vectors.json');
 const V1_PATH = 'caid/conformance/history/mapping-vectors.v1.json';
 const V1_SHA256 = 'sha256:6941463cdb42ad5242d1e44efa6937a9db3edbfa77ea2c5df5573ce301be6f24';
+const V2_SHA256 = 'sha256:1d3c24370f0308835ef28c183022636e7ce7dd933ee6fa330e9919f70f783d57';
+const V2_VECTORS = 86;
 
 const V1_CHANGES = {
   'target-field-trailing-newline-abstains': {
@@ -363,15 +367,20 @@ if (problems.length) {
 }
 const { vectors: _v, ...envelope } = corpus;
 const out = {
-  '@version': 'CAID-ACTION-MAPPING-VECTORS-v2',
-  version: 2,
-  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be), as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6), as fill ({n, v}: an array of n elements, each the value v, built once and shared), or as host, a host value no JSON text carries: "cyclic", a reference to the object or array that holds the member (its parent), or "opaque", a host value of no JSON kind (JavaScript new Map(), Python set(), Go struct{}{}).`,
+  '@version': 'CAID-ACTION-MAPPING-VECTORS-v3',
+  version: 3,
+  description: `${v1.description} Version 3 uses canactid: for current mapped-action identifiers. Every expectation is an exact reason list in the -05 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be), as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6), as fill ({n, v}: an array of n elements, each the value v, built once and shared), or as host, a host value no JSON text carries: "cyclic", a reference to the object or array that holds the member (its parent), or "opaque", a host value of no JSON kind (JavaScript new Map(), Python set(), Go struct{}{}).`,
   previous_versions: [{
     version: 1,
     vectors: v1.vectors.length,
     sha256: V1_SHA256,
     history: V1_PATH,
     note: 'Version 2 keeps the layout and every version 1 vector under the same id. The 10 vectors that pinned only reason_contains now pin the whole list; one vector changes because -04 widens target_field to the field-name rule (change_since_v1).',
+  }, {
+    version: 2,
+    vectors: V2_VECTORS,
+    sha256: V2_SHA256,
+    note: 'Byte digest of mapping corpus version 2 as last published on main before the canactid: migration. Version 3 changes only current mapped-action identifier issuance to canactid:; mapping inputs, profile hashes, verdicts and refusal reasons remain unchanged.',
   }],
   ...Object.fromEntries(Object.entries(envelope).filter(([k]) => !['@version', 'description'].includes(k))),
 };
@@ -386,7 +395,7 @@ if (process.argv.includes('--check')) {
     process.stderr.write('build-mapping: caid/conformance/mapping-vectors.json is not current; run node caid/conformance/tools/build-mapping.mjs\n');
     process.exit(1);
   }
-  console.log(`PASS mapping corpus v2 is current (${vectors.length} vectors)`);
+  console.log(`PASS mapping corpus v3 is current (${vectors.length} vectors)`);
 } else {
   writeFileSync(OUT, text);
   console.log(`wrote caid/conformance/mapping-vectors.json: ${vectors.length} vectors`);

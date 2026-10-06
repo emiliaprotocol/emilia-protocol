@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import { TRUST_PROGRAM_VERSION, createMemoryTrustProgramStore, createTrustProgramKernel, trustProgramDigest, validateTrustProgram, verifyTrustStageReceipt, } from './trust-program.js';
 const NOW = Date.parse('2026-07-21T16:00:00.000Z');
-const ROOT_CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const ROOT_CAID = `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const ACTION_DIGEST = `sha256:${'a'.repeat(64)}`;
 const DIGEST = (char) => `sha256:${char.repeat(64)}`;
 function requirement(requirementId, profile, policyChar) {

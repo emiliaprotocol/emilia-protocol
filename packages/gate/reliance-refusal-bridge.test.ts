@@ -33,7 +33,7 @@ function context(overrides = {}) {
       program_digest: `sha256:${'e'.repeat(64)}`,
     },
     relying_party_id: 'rp.example',
-    caid: 'caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo',
+    caid: 'canactid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo',
     action_digest: DIGEST,
     refusal_id: 'refusal-0001',
     nonce: 'nonce-0001',

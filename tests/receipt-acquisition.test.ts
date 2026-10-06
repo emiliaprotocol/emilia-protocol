@@ -29,7 +29,7 @@ const requesterAuthorization = `Bearer ept_test_${'a'.repeat(64)}`;
 
 const challenge = Object.freeze({
   action: 'payment.release',
-  action_hash: 'sha256:63539c8f0d053f0de6fe0049130f77322482483aeda92d0ca2496a40eebc6f89',
+  action_hash: 'sha256:aff52d3a9555f1402f2e709f12b816c5e0d18cfc5d7ba101a067f9785e727405',
   required_fields: ['action_type', 'amount', 'currency', 'beneficiary_account_hash'],
   caid_selector: { field: 'action_caid' },
 });
@@ -39,7 +39,7 @@ const action = Object.freeze({
   amount: 200,
   currency: 'USD',
   beneficiary_account_hash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-  action_caid: 'caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  action_caid: 'canactid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
 });
 
 function signedReceipt(claimOverrides = {}) {
@@ -161,7 +161,7 @@ describe('EP-APPROVAL-v1 challenge contract', () => {
       currency: 'USD',
       payment_instruction_id: 'payment:bike:0001',
       beneficiary_account_hash: `sha256:${'a'.repeat(64)}`,
-      action_caid: `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_caid: `canactid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
     };
     const result = await gate.check({
       selector: { protocol: 'mcp', tool: 'release_payment' },
@@ -522,7 +522,7 @@ describe('EP-APPROVAL-v1 demand-side binding', () => {
   it('rejects a CAID whose action-type segment violates the deployed v1 grammar', () => {
     const malformedAction = {
       ...action,
-      action_caid: `caid:1:payment.9release.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_caid: `canactid:1:payment.9release.1:jcs-sha256:${'A'.repeat(43)}`,
     };
     const malformed = signedReceipt({
       canonical_action: malformedAction,

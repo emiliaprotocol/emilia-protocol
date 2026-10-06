@@ -20,7 +20,7 @@ import {
 
 const HASH = (character: string) => `sha256:${character.repeat(64)}`;
 const CAID = (operation: string, character: string) => (
-  `caid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`
+  `canactid:1:${operation}.1:jcs-sha256:${character.repeat(43)}`
 );
 const CONTEXT = {
   issuer: 'emilia-gate-operator',

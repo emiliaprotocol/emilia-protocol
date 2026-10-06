@@ -46,12 +46,12 @@ func TestDecoderByteOrderMarkAndWhitespaceEqualTheGeneratedData(t *testing.T) {
 
 func TestPatternLengthLimitsComeFirst(t *testing.T) {
 	// A string over its limit is refused before the pattern runs, however
-	// long it is (draft -04 Section 2.6).
+	// long it is (draft -05 Section 2.6).
 	long := strings.Repeat("a", 8_000_000) + ".1"
 	if got := refusals(obj{"action_type": long, "c": "x"}, stringDefinition); !reflect.DeepEqual(got, []string{"invalid_action_type"}) {
 		t.Errorf("8-million-octet action type: %v", got)
 	}
-	if got := ParseCaid("caid:1:" + long + ":jcs-sha256:" + strings.Repeat("A", 43)); got.OK || !reflect.DeepEqual(got.Refusals, []string{"malformed_caid"}) {
+	if got := ParseCaid("canactid:1:" + long + ":jcs-sha256:" + strings.Repeat("A", 43)); got.OK || !reflect.DeepEqual(got.Refusals, []string{"malformed_caid"}) {
 		t.Errorf("8-million-octet CAID: %#v", got)
 	}
 	at := strings.Repeat("a", specPatternMaxOctets["action_type"]-2) + ".1"

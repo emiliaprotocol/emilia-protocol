@@ -1245,7 +1245,7 @@ li > p:last-of-type:only-child {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock</td>
-<td class="center">Expires 7 April 2027</td>
+<td class="center">Expires 9 April 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1258,12 +1258,12 @@ li > p:last-of-type:only-child {
 <dd class="internet-draft">draft-schrock-ep-authorization-evidence-chain-08</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-10-04" class="published">4 October 2026</time>
+<time datetime="2026-10-06" class="published">6 October 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Informational</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-04-07">7 April 2027</time></dd>
+<dd class="expires"><time datetime="2027-04-09">9 April 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1317,7 +1317,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 7 April 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 9 April 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1612,7 +1612,7 @@ li > p:last-of-type:only-child {
   "@version": "EP-AEC-v1",
   "action": { "...": "Action Object" },
   "action_digest": "sha256:&lt;hex&gt;",
-  "action_caid": "caid:1:&lt;action-type&gt;:&lt;suite&gt;:&lt;digest-b64url&gt;",
+  "action_caid": "canactid:1:&lt;type&gt;:&lt;suite&gt;:&lt;digest-b64url&gt;",
   "components": [
     {
       "type": "ep-quorum",
@@ -2489,7 +2489,7 @@ parse-identity = "sha256:" lowercase-hex( SHA-256(
   "evaluator_profile_digest": "sha256:&lt;hex&gt;",
   "aec_digest": "sha256:&lt;hex&gt;",
   "expected_action_digest": "sha256:&lt;hex&gt;",
-  "expected_caid": "caid:1:&lt;action-type&gt;:&lt;suite&gt;:&lt;digest-b64url&gt;",
+  "expected_caid": "canactid:1:&lt;type&gt;:&lt;suite&gt;:&lt;digest-b64url&gt;",
   "requirement_profile_digest": "sha256:&lt;hex&gt;",
   "verification_time": "2026-07-27T17:00:00Z",
   "facts": [
@@ -2927,8 +2927,9 @@ native VERIFIED
         expression exactly as stored. Section 14 adds parser
         differentials.<a href="#section-18-1.9" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-18-1.10">Updated the implementation status, cited CAID -05, and added
-        RFC 7405.<a href="#section-18-1.10" class="pilcrow">¶</a>
+        <li class="normal" id="section-18-1.10">Updated the implementation status, cited CAID -05, changed the
+        two CAID examples to its current <code>canactid:</code> scheme, and added
+        RFC 7405. A legacy identifier is not rewritten.<a href="#section-18-1.10" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
@@ -3060,11 +3061,10 @@ native VERIFIED
       original evidence under those configuration pins; serialized facts
       are not trusted merely because their digest matches.<a href="#section-22-1" class="pilcrow">¶</a></p>
 <p id="section-22-2">At the time of writing, the latest published release of the
-      JavaScript package, @emilia-protocol/verify 6.0.0, implements
-      <code>EP-AEC-EVALUATOR-07-v1</code>. <code>EP-AEC-EVALUATOR-08-v1</code> is
-      implemented in the reference repository and is not yet in a published
-      release; this draft revision does not by itself imply a released
-      package.<a href="#section-22-2" class="pilcrow">¶</a></p>
+      JavaScript package, @emilia-protocol/verify 7.0.0, implements
+      <code>EP-AEC-EVALUATOR-08-v1</code>. The package release is separate from
+      this draft's publication and does not imply deployment, adoption, or
+      interoperability.<a href="#section-22-2" class="pilcrow">¶</a></p>
 <p id="section-22-3">The -08 evaluator parses the relying party's expression once, when
       the evaluator is constructed, and evaluates that tree. It exposes the
       canonical parse, parse identity, and token count as diagnostics outside
@@ -3079,10 +3079,9 @@ native VERIFIED
       reports a record of another revision, including -07, as unsupported
       without modifying it, and always returns a new -08 record. The
       structured result reports <code>authorization_decision</code> as false.<a href="#section-22-3" class="pilcrow">¶</a></p>
-<p id="section-22-4">The Python and Go verifier packages implement the Section 8
-      expression algorithm and its diagnostics and use it in their legacy
-      chain interfaces, also in the reference repository and not yet
-      released. They
+<p id="section-22-4">The published Python verifier package 2.9.0 and Go verifier module
+      2.5.0 implement the Section 8 expression algorithm and its diagnostics
+      and use it in their legacy chain interfaces. They
       do not implement the structured EP-AEC-REQUIREMENT-v1 and
       EP-AEC-REPLAY-v1 contract, and their agreement with the JavaScript
       implementation on the corpus is agreement on expression evaluation

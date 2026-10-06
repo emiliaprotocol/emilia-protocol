@@ -3,7 +3,7 @@
 // The spec oracle for the conformance corpora and the fuzz harness: the
 // dev-time reference validator (caid/spec/reference.mjs, built from the
 // generated spec data), the JSON text oracle (./strict-json.mjs), and the
-// entry-point rules of the -04 draft:
+// entry-point rules of the -05 draft:
 //
 //   decode(bytes)                         {ok, value} | {ok: false, refusals}
 //   computeText(bytes, options)           compute from JSON text
@@ -99,4 +99,3 @@ export function definitionSha256(definition) {
   const digest = reference.definitionSha256(definition);
   return digest === null ? { refusals: ['invalid_definition'] } : { definition_sha256: digest };
 }
-

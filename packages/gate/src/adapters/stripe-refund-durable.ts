@@ -237,7 +237,7 @@ function context(config: Configured, p: RefundParameters) {
     action_type: `${ACTION_TYPE}.1`, provider_account_id: config.account_id,
     payment_intent: p.payment_intent, amount: p.amount, operation_id: p.operation_id,
   };
-  const caid = `caid:1:${ACTION_TYPE}.1:jcs-sha256:${Buffer.from(hashCanonical(caidAction), 'hex').toString('base64url')}`;
+  const caid = `canactid:1:${ACTION_TYPE}.1:jcs-sha256:${Buffer.from(hashCanonical(caidAction), 'hex').toString('base64url')}`;
   const metadata = {
     emilia_operation_id: p.operation_id,
     emilia_request_digest: binding.request_digest,

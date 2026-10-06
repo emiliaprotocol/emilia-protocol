@@ -25,7 +25,7 @@ const ATTEMPT = Object.freeze({
 const NONCE = 'bm9uY2U6MDAwMDAwMDAwMDAwMDAwMQ';
 const EXPECTED = Object.freeze({
   operation_id: 'operation:0000000000000001',
-  caid: `caid:1:github.issue.update.1:jcs-sha256:${'A'.repeat(43)}`,
+  caid: `canactid:1:github.issue.update.1:jcs-sha256:${'A'.repeat(43)}`,
   action_digest: digestAeb(ACTION),
   tenant_id: 'tenant:emilia',
   provider_id: 'github',

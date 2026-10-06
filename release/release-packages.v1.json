@@ -61,12 +61,12 @@
       "mode": "npm_reusable",
       "registry_dependency_tarballs": [
         {
-          "spec": "@emilia-protocol/require-receipt@0.8.2",
-          "sha256": "729285f38f4224b7c3d6ac32f8adae7243223bca4f14b0d211adafe77dc4849e"
+          "spec": "@emilia-protocol/require-receipt@0.9.0",
+          "sha256": "b103e5e71fdeb83ee880e627995efdf90388e52ad14b8ed42310037bf47852db"
         },
         {
-          "spec": "@emilia-protocol/verify@7.0.0",
-          "sha256": "0e12fc69151f2e50ba49b1e3bac5ce77cf186adfba415e8d8632446e47fb0532"
+          "spec": "@emilia-protocol/verify@8.0.0",
+          "sha256": "4cf1752819363de886338b3fc2c4afd2eae18556bcd8066ee49dabec686c0a38"
         }
       ]
     },
@@ -74,11 +74,50 @@
     { "package": "@emilia-protocol/langchain", "ecosystem": "npm", "path": "packages/langchain", "workflow": "publish-langchain.yml", "tag_prefix": "langchain-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/langgraph", "ecosystem": "npm", "path": "packages/langgraph", "workflow": "publish-langgraph.yml", "tag_prefix": "langgraph-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/mcp-guard", "ecosystem": "npm", "path": "packages/mcp-guard", "workflow": "publish-mcp-guard.yml", "tag_prefix": "mcp-guard-v", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/mobile", "ecosystem": "npm", "path": "packages/mobile", "workflow": "publish-mobile.yml", "tag_prefix": "mobile-v", "mode": "npm_reusable" },
+    {
+      "package": "@emilia-protocol/mobile",
+      "ecosystem": "npm",
+      "path": "packages/mobile",
+      "workflow": "publish-mobile.yml",
+      "tag_prefix": "mobile-v",
+      "mode": "npm_reusable",
+      "registry_dependency_tarballs": [
+        {
+          "spec": "@emilia-protocol/verify@8.0.0",
+          "sha256": "4cf1752819363de886338b3fc2c4afd2eae18556bcd8066ee49dabec686c0a38"
+        }
+      ]
+    },
     { "package": "@emilia-protocol/openai-agents", "ecosystem": "npm", "path": "packages/openai-agents", "workflow": "publish-openai-agents.yml", "tag_prefix": "openai-agents-v", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/openai-guard", "ecosystem": "npm", "path": "packages/openai-guard", "workflow": "publish-openai-guard.yml", "tag_prefix": "openai-guard-v", "mode": "npm_reusable" },
+    {
+      "package": "@emilia-protocol/openai-guard",
+      "ecosystem": "npm",
+      "path": "packages/openai-guard",
+      "workflow": "publish-openai-guard.yml",
+      "tag_prefix": "openai-guard-v",
+      "mode": "npm_reusable",
+      "registry_dependency_tarballs": [
+        {
+          "spec": "@emilia-protocol/require-receipt@0.9.0",
+          "sha256": "b103e5e71fdeb83ee880e627995efdf90388e52ad14b8ed42310037bf47852db"
+        }
+      ]
+    },
     { "package": "@emilia-protocol/require-receipt", "ecosystem": "npm", "path": "packages/require-receipt", "workflow": "publish-require-receipt.yml", "tag_prefix": "require-receipt-v", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/scan", "ecosystem": "npm", "path": "packages/scan", "workflow": "publish-scan.yml", "tag_prefix": "scan-v", "mode": "npm_reusable" },
+    {
+      "package": "@emilia-protocol/scan",
+      "ecosystem": "npm",
+      "path": "packages/scan",
+      "workflow": "publish-scan.yml",
+      "tag_prefix": "scan-v",
+      "mode": "npm_reusable",
+      "registry_dependency_tarballs": [
+        {
+          "spec": "@emilia-protocol/verify@3.21.0",
+          "sha256": "bd9adc23c7d859994ca6532e4104d2d3eb608348a53e81d6b8ebeba6aceb3af4"
+        }
+      ]
+    },
     { "package": "@emilia-protocol/verify", "ecosystem": "npm", "path": "packages/verify", "workflow": "publish-verify-sdk.yml", "tag_prefix": "verify-v", "mode": "npm_direct" },
     { "package": "@emilia-protocol/mcp-server", "ecosystem": "npm", "path": "mcp-server", "workflow": "publish-mcp.yml", "tag_prefix": "mcp-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/sdk", "ecosystem": "npm", "path": "sdks/typescript", "workflow": "publish-typescript-sdk.yml", "tag_prefix": "ts-sdk-v", "mode": "npm_reusable" },

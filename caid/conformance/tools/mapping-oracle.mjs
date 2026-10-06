@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Dev-time reference for the Action-Mapping Profile (draft -04 Section 8),
+// Dev-time reference for the Action-Mapping Profile (draft -05 Section 8),
 // built from caid/spec/core.json mapping data and the core oracle. It sets
-// the expected reasons of mapping corpus version 2 and is the fuzz oracle
+// the expected reasons of mapping corpus version 3 and is the fuzz oracle
 // for map and compare cases. It is not a port.
 //
 // Stages (core.json mapping.stages), each list deduplicated:

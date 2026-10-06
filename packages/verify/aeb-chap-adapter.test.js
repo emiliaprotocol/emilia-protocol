@@ -176,7 +176,7 @@ test('signed CHAP override binds the patched artifact to the exact Gate action',
 
   const mapped = adapter.mapAction({ ...input(overrideEnvelope()), profile: profile(), native });
   assert.equal(mapped.mapping, 'MATCH');
-  assert.match(mapped.caid ?? '', /^caid:1:payment\.transfer\.1:jcs-sha256:/);
+  assert.match(mapped.caid ?? '', /^canactid:1:payment\.transfer\.1:jcs-sha256:/);
   assert.equal(mapped.action_digest, digestAeb(expectedAction));
 });
 

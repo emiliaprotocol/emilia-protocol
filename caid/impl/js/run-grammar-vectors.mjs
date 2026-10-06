@@ -142,7 +142,7 @@ function check(rule, input, match) {
   const family = rule.slice(0, colon);
   const name = rule.slice(colon + 1);
   if (family === "suite_digest") {
-    const r = parseCaid(`caid:1:${TYPE}:${name}:${input}`);
+    const r = parseCaid(`canactid:1:${TYPE}:${name}:${input}`);
     return r.ok === match ? null : `parseCaid ok=${r.ok}`;
   }
   if (family === "code_format") {
@@ -158,7 +158,7 @@ function check(rule, input, match) {
     }
     case "action_type": {
       const accepted = match && input.length <= MAX.action_type;
-      const parsed = parseCaid(`caid:1:${input}:jcs-sha256:${DIGEST}`);
+      const parsed = parseCaid(`canactid:1:${input}:jcs-sha256:${DIGEST}`);
       if (parsed.ok !== accepted) return `parseCaid ok=${parsed.ok}`;
       const r = computeCaid({ action_type: input }, {
         suite: "jcs-sha256",
@@ -169,7 +169,7 @@ function check(rule, input, match) {
       return refusal === "invalid_action_type" ? null : `computeCaid gave ${JSON.stringify(r)}`;
     }
     case "suite": {
-      const r = parseCaid(`caid:1:${TYPE}:${input}:${DIGEST}`);
+      const r = parseCaid(`canactid:1:${TYPE}:${input}:${DIGEST}`);
       const malformed = !r.ok && first(r) === "malformed_caid";
       return malformed === !match ? null : `parseCaid gave ${JSON.stringify(r)}`;
     }
@@ -177,7 +177,7 @@ function check(rule, input, match) {
       // Under an unregistered suite the digest rule alone decides: a match
       // reaches the registry check (unknown_suite), anything else is
       // malformed_caid.
-      const r = parseCaid(`caid:1:${TYPE}:${UNREGISTERED_SUITE}:${input}`);
+      const r = parseCaid(`canactid:1:${TYPE}:${UNREGISTERED_SUITE}:${input}`);
       const want = match ? "unknown_suite" : "malformed_caid";
       return !r.ok && first(r) === want ? null : `parseCaid gave ${JSON.stringify(r)}, want ${want}`;
     }

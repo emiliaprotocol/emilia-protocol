@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 //
-//   npx @emilia-protocol/scan@0.5.2 protect <actions.json|--sample> [--out ./emilia]
+//   npx @emilia-protocol/scan@0.6.0 protect <actions.json|--sample> [--out ./emilia]
 //     [--action <selected-tool>] [--apply] [--verify] [--force]
-//   npx @emilia-protocol/scan@0.5.2 protect <actions.json|--sample> [--out ./emilia]
+//   npx @emilia-protocol/scan@0.6.0 protect <actions.json|--sample> [--out ./emilia]
 //     --action <selected-tool> --reviewed --crossing-profile <launch-profile>
 //
 // Turns a scan into drop-in files: a proposed action-control manifest, a local
@@ -34,7 +34,7 @@ try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json'))
 catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 const MAX_GENERATED_FILE_BYTES = 64 * 1024 * 1024;
-const MCP_GUARD_VERSION = '0.6.1';
+const MCP_GUARD_VERSION = '0.7.0';
 const MCP_GUARD_INSTALL_SPEC = `@emilia-protocol/mcp-guard@${MCP_GUARD_VERSION}`;
 const MCP_GUARD_MODULE_ENV = 'EMILIA_SCAN_MCP_GUARD_MODULE_URL';
 const CROSSING_LAB_VERIFY_VERSION = '3.21.0';

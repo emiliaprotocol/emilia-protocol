@@ -8,7 +8,7 @@ import { canonicalize } from './execution-binding.js';
 import { REMEDY_CASE_SET_EVENT_TABLE, REMEDY_CASE_SET_POSTGRES_DDL, REMEDY_CASE_SET_POSTGRES_SQL, REMEDY_CASE_SET_TABLE, createRemedyCaseSetPostgresStore, } from './remedy-case-set-postgres.js';
 const VERSION = 'EP-GATE-REMEDY-CASE-SET-v1';
 const HASH = (char) => `sha256:${char.repeat(64)}`;
-const CAID = (char) => `caid:1:remedy.perform.1:jcs-sha256:${char.repeat(43)}`;
+const CAID = (char) => `canactid:1:remedy.perform.1:jcs-sha256:${char.repeat(43)}`;
 function digest(value) {
     return `sha256:${createHash('sha256').update(canonicalize(value)).digest('hex')}`;
 }

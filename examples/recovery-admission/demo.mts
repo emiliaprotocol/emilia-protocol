@@ -17,7 +17,7 @@ import {
 } from '../../packages/gate/recovery-admission-postgres.js';
 
 const d = (character: string) => `sha256:${character.repeat(64)}` as const;
-const caid = `caid:1:operations.update.1:jcs-sha256:${'A'.repeat(43)}`;
+const caid = `canactid:1:operations.update.1:jcs-sha256:${'A'.repeat(43)}`;
 const now = '2026-08-03T20:00:00.000Z';
 const validUntil = '2026-08-03T20:30:00.000Z';
 const admissionExpires = '2026-08-03T21:00:00.000Z';

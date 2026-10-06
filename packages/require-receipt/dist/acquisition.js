@@ -20,7 +20,7 @@ export const APPROVAL_STATUSES = Object.freeze([
 ]);
 const MAX_APPROVAL_RESPONSE_BYTES = 1024 * 1024;
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const CAID_PATTERN = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const CAID_PATTERN = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const FIELD_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,127}$/;
 const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const REQUESTER_BEARER = /^Bearer (?:ep|ept)_[A-Za-z0-9._~-]{8,512}$/;

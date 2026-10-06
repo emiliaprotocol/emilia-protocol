@@ -20,14 +20,14 @@ const codeBox: React.CSSProperties = {
 };
 
 const PROTECT = `# install the exact local runtime used by the generated check
-npm install --save-exact @emilia-protocol/mcp-guard@0.6.1
+npm install --save-exact @emilia-protocol/mcp-guard@0.7.0
 
 # prepare one selected action and run the bounded local RR-1 check
-npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action release_payment --apply --verify
+npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action release_payment --apply --verify
 
 # only after reading the generated map and manifest, bind the reviewed bytes
 # and initialize one explicitly unsealed Crossing Lab workspace
-npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action release_payment --reviewed \
+npx @emilia-protocol/scan@0.6.0 protect ./tools.json --action release_payment --reviewed \
   --crossing-profile ccs-wang-draft08-v13`;
 
 const MANIFEST = `{

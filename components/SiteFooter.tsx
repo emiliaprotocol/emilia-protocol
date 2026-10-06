@@ -27,6 +27,7 @@ const COL_SOLUTIONS: FooterLink[] = [
 
 const COL_DEVELOPERS: FooterLink[] = [
   ['/docs', 'Docs'],
+  ['/caid', 'CAID Playground'],
   ['/scan', 'Local Scan + Gate Starter'],
   ['/quickstart', 'Gate Quickstart'],
   ['/verify', 'Open Verifier'],

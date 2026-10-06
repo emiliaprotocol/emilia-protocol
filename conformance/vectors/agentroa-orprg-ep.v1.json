@@ -55,7 +55,7 @@
         "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       "expected_caid": {
-        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "value": "canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
         "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
       },
       "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
@@ -88,7 +88,7 @@
               "authorization": {
                 "auth_strength": "dual_control",
                 "approval_state": "granted",
-                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+                "approval_artifact_ref": "caid:canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
               },
               "evidence": {
                 "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -100,7 +100,7 @@
                 {
                   "signer": "policy-engine:prod",
                   "alg": "EdDSA",
-                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                  "sig": "g9W4_DEqWqZKnUFYZUbsRqvnwX8JGlcaHbEi9BiWjuQ4f-VI4Cjcx8xR3Rw96m_a5qtSCPUAxYG_u91g5TnjDg"
                 }
               ]
             },
@@ -111,7 +111,7 @@
               "upstream_ref": {
                 "ref_type": "roa_envelope",
                 "ref_id": "env:4a7c9f2b1e8d3a6f",
-                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+                "ref_digest": "sha256:f71012bf1cdc7ea4c61e63c9cff5a575543ee2f654e7d646767c0c0bd484baab"
               },
               "delegating_agent": {
                 "agent_id": "aha:acme/ops/root-agent",
@@ -134,7 +134,7 @@
                 {
                   "signer": "aha:acme/ops/root-agent",
                   "alg": "EdDSA",
-                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                  "sig": "JomgbfujFoZDYY4z12xcgIn7TQqlrfOqKGVuK_OgzueFj8KX-8Xmh_RT8ri6EkWHMczBNZJqca5sxYaKJpxvAQ"
                 }
               ]
             }
@@ -163,7 +163,7 @@
             "chain_summary": {
               "chain_depth": 1,
               "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
-              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+              "chain_digest": "sha256:ceb3d18ad54570980dc0d93be2194be59078583bf902c183249350568e1434d8"
             },
             "border_gateway": {
               "gateway_id": "gateway:prod-us-east-1",
@@ -173,7 +173,7 @@
               {
                 "signer": "gateway:prod-us-east-1",
                 "alg": "EdDSA",
-                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+                "sig": "T0hAsj8paSkBElAwjcNYET4Yx3D--SrHKPb4FAP7uGt1O3dIkSZ0TVw5sOBnhNuzWLujCwJimLBSE5vNJoRTDg"
               }
             ]
           }
@@ -299,7 +299,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEYCIQCkDgI1v2duDxot3T67-9BpwPviN8ECCJR4O_ICqj-EOQIhAIR0addwSxT-FzXNoh2htPlikVtHXElWcWVVHwH1OrJQ"
+                  "signature": "MEYCIQCB9t1olbF9QA3ALv3YVzX38PpCXA-pgqstW2WhZCsG3AIhAPPovwxDxjD_xMZG9o0v_2iuf_EiocBZcQv7R7SjkMVy"
                 }
               }
             },
@@ -322,7 +322,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEYCIQDMTFUa4QPMKuO-JCuHavH5jXy6h4HLVuVHOnoK7Q4qGAIhAP94293Dr7QvPk1-bGlkGf6y8iWSD6T8v9PCiWPGaM9O"
+                  "signature": "MEUCIQDD3XVFOlwfZVdxAT_6YEzhHT7kqw2nknfV3mk4BfprzgIgF1U4_HB4IN7qkH3NRTi9ZfMqvcGATB7nh-RlwTecZM8"
                 }
               }
             }
@@ -480,7 +480,7 @@
         "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       "expected_caid": {
-        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "value": "canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
         "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
       },
       "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
@@ -513,7 +513,7 @@
               "authorization": {
                 "auth_strength": "dual_control",
                 "approval_state": "granted",
-                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+                "approval_artifact_ref": "caid:canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
               },
               "evidence": {
                 "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -525,7 +525,7 @@
                 {
                   "signer": "policy-engine:prod",
                   "alg": "EdDSA",
-                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                  "sig": "g9W4_DEqWqZKnUFYZUbsRqvnwX8JGlcaHbEi9BiWjuQ4f-VI4Cjcx8xR3Rw96m_a5qtSCPUAxYG_u91g5TnjDg"
                 }
               ]
             },
@@ -536,7 +536,7 @@
               "upstream_ref": {
                 "ref_type": "roa_envelope",
                 "ref_id": "env:4a7c9f2b1e8d3a6f",
-                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+                "ref_digest": "sha256:f71012bf1cdc7ea4c61e63c9cff5a575543ee2f654e7d646767c0c0bd484baab"
               },
               "delegating_agent": {
                 "agent_id": "aha:acme/ops/root-agent",
@@ -559,7 +559,7 @@
                 {
                   "signer": "aha:acme/ops/root-agent",
                   "alg": "EdDSA",
-                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                  "sig": "JomgbfujFoZDYY4z12xcgIn7TQqlrfOqKGVuK_OgzueFj8KX-8Xmh_RT8ri6EkWHMczBNZJqca5sxYaKJpxvAQ"
                 }
               ]
             }
@@ -588,7 +588,7 @@
             "chain_summary": {
               "chain_depth": 1,
               "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
-              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+              "chain_digest": "sha256:ceb3d18ad54570980dc0d93be2194be59078583bf902c183249350568e1434d8"
             },
             "border_gateway": {
               "gateway_id": "gateway:prod-us-east-1",
@@ -598,7 +598,7 @@
               {
                 "signer": "gateway:prod-us-east-1",
                 "alg": "EdDSA",
-                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+                "sig": "T0hAsj8paSkBElAwjcNYET4Yx3D--SrHKPb4FAP7uGt1O3dIkSZ0TVw5sOBnhNuzWLujCwJimLBSE5vNJoRTDg"
               }
             ]
           }
@@ -724,7 +724,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEQCIF10YM-uE8gio7WQkbuY31J82Um92cF1FTyiA_Ax3ITZAiBWP2dYKZx-ecjjDTIb_bzbVYkm8qLUHSbR3c_2SOdZgg"
+                  "signature": "MEQCIH25iceTiZTLAhuueRPGXXagllu7DIRXK4VoYHfl1A76AiAtfFA-cPpdyeJhXvKeGWXd_ARdq48Up-l6cayAlxlSRA"
                 }
               }
             },
@@ -747,7 +747,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEUCIQDbZ7CSWTdN19f-AoiCi58a2ywnB1VAh2gZvhUySHHjRgIgOI-GqWLl6pYRGMWBV4VUbHIVNx5DvJ94Yxjfr0jxJ5A"
+                  "signature": "MEUCIEo5BhQCkL-Qtt0iJ7TDmet-5hcvGL-D8xHXeyuaaGLyAiEAqMKhqHGNeph9MeFP6kmugsmQ4wDs-rL4z2UvUtMApM4"
                 }
               }
             }
@@ -905,7 +905,7 @@
         "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       "expected_caid": {
-        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "value": "canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
         "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
       },
       "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
@@ -938,7 +938,7 @@
               "authorization": {
                 "auth_strength": "dual_control",
                 "approval_state": "granted",
-                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+                "approval_artifact_ref": "caid:canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
               },
               "evidence": {
                 "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -950,7 +950,7 @@
                 {
                   "signer": "policy-engine:prod",
                   "alg": "EdDSA",
-                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                  "sig": "g9W4_DEqWqZKnUFYZUbsRqvnwX8JGlcaHbEi9BiWjuQ4f-VI4Cjcx8xR3Rw96m_a5qtSCPUAxYG_u91g5TnjDg"
                 }
               ]
             },
@@ -961,7 +961,7 @@
               "upstream_ref": {
                 "ref_type": "roa_envelope",
                 "ref_id": "env:4a7c9f2b1e8d3a6f",
-                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+                "ref_digest": "sha256:f71012bf1cdc7ea4c61e63c9cff5a575543ee2f654e7d646767c0c0bd484baab"
               },
               "delegating_agent": {
                 "agent_id": "aha:acme/ops/root-agent",
@@ -984,7 +984,7 @@
                 {
                   "signer": "aha:acme/ops/root-agent",
                   "alg": "EdDSA",
-                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                  "sig": "JomgbfujFoZDYY4z12xcgIn7TQqlrfOqKGVuK_OgzueFj8KX-8Xmh_RT8ri6EkWHMczBNZJqca5sxYaKJpxvAQ"
                 }
               ]
             }
@@ -1013,7 +1013,7 @@
             "chain_summary": {
               "chain_depth": 1,
               "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
-              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+              "chain_digest": "sha256:ceb3d18ad54570980dc0d93be2194be59078583bf902c183249350568e1434d8"
             },
             "border_gateway": {
               "gateway_id": "gateway:prod-us-east-1",
@@ -1023,7 +1023,7 @@
               {
                 "signer": "gateway:prod-us-east-1",
                 "alg": "EdDSA",
-                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+                "sig": "T0hAsj8paSkBElAwjcNYET4Yx3D--SrHKPb4FAP7uGt1O3dIkSZ0TVw5sOBnhNuzWLujCwJimLBSE5vNJoRTDg"
               }
             ]
           }
@@ -1149,7 +1149,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEYCIQCPHK61NE4A_HwHMmTCvrSxMc_5F3K5bxDhmAM-vdu3ngIhAKwjXPuk5116b5w1OCb_FL2NesEJY_urnZ2jnTa7IwP7"
+                  "signature": "MEUCIQCo91NRr-fzhg_lCtWxc652PIbDZURsWzBmnw_ksZPZeQIgVcbrmZqLVzEZS5qo7YmpfBD6t0Gq210eruqh3fntcU4"
                 }
               }
             },
@@ -1172,7 +1172,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEQCIGqtttkBRY4lvQzH-L5T6rzGJp1-Dwvhu-f_JQvYFQCMAiB8UNvSokIl4BvkA_wjFRKUWpOKBIq0TBWvsVxEYYJv8Q"
+                  "signature": "MEQCIEiEN2e718SDt6EDtyiU5Vq5R8m97UOLyum46Ik8_z8WAiB1G0kTRyndD31Yd4XKm3PtTe8gcAOoCyGiEKHv9gC-aw"
                 }
               }
             }
@@ -1330,7 +1330,7 @@
         "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       "expected_caid": {
-        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "value": "canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
         "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
       },
       "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
@@ -1363,7 +1363,7 @@
               "authorization": {
                 "auth_strength": "dual_control",
                 "approval_state": "granted",
-                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+                "approval_artifact_ref": "caid:canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
               },
               "evidence": {
                 "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -1375,7 +1375,7 @@
                 {
                   "signer": "policy-engine:prod",
                   "alg": "EdDSA",
-                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                  "sig": "g9W4_DEqWqZKnUFYZUbsRqvnwX8JGlcaHbEi9BiWjuQ4f-VI4Cjcx8xR3Rw96m_a5qtSCPUAxYG_u91g5TnjDg"
                 }
               ]
             },
@@ -1386,7 +1386,7 @@
               "upstream_ref": {
                 "ref_type": "roa_envelope",
                 "ref_id": "env:4a7c9f2b1e8d3a6f",
-                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+                "ref_digest": "sha256:f71012bf1cdc7ea4c61e63c9cff5a575543ee2f654e7d646767c0c0bd484baab"
               },
               "delegating_agent": {
                 "agent_id": "aha:acme/ops/root-agent",
@@ -1409,7 +1409,7 @@
                 {
                   "signer": "aha:acme/ops/root-agent",
                   "alg": "EdDSA",
-                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                  "sig": "JomgbfujFoZDYY4z12xcgIn7TQqlrfOqKGVuK_OgzueFj8KX-8Xmh_RT8ri6EkWHMczBNZJqca5sxYaKJpxvAQ"
                 }
               ]
             }
@@ -1438,7 +1438,7 @@
             "chain_summary": {
               "chain_depth": 1,
               "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
-              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+              "chain_digest": "sha256:ceb3d18ad54570980dc0d93be2194be59078583bf902c183249350568e1434d8"
             },
             "border_gateway": {
               "gateway_id": "gateway:prod-us-east-1",
@@ -1448,7 +1448,7 @@
               {
                 "signer": "gateway:prod-us-east-1",
                 "alg": "EdDSA",
-                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+                "sig": "T0hAsj8paSkBElAwjcNYET4Yx3D--SrHKPb4FAP7uGt1O3dIkSZ0TVw5sOBnhNuzWLujCwJimLBSE5vNJoRTDg"
               }
             ]
           }
@@ -1570,7 +1570,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEUCIQCJHokNuRbCTXZKneak9QNGFlDYJJ_DgZkDOB5bua8lQwIgD2-xzQkJwJJAwxLqXdeVihn2TAE584ay_a5AxoQx4y8"
+                  "signature": "MEUCIQDc2UN06vI0wRcSnpTKS8upcuX2O5pnhrBvOanl55LaYAIgd6ZOXFlsHs8mg6H0o3Utc0lR1DD5pSJBlpsi3iKDXQY"
                 }
               }
             },
@@ -1593,7 +1593,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEYCIQCTftciVeqCc2EV3YVFPIEAQWg3hQogmCrrOExAQ1tDnAIhAJfMs03Chtuhb4KbwbpdFv3dSmZ718sZU0BGvG7vfZEY"
+                  "signature": "MEUCIQCHcLjXQCQt-lM_F-lID2Z91ZbX6SKcgt0qkhA2ihFd3AIgQefOR8QhxbVefVDwbx1Y0kOQDMzTDrJtKrifGw-AHZI"
                 }
               }
             }
@@ -1751,7 +1751,7 @@
         "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       "expected_caid": {
-        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "value": "canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
         "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
       },
       "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
@@ -1784,7 +1784,7 @@
               "authorization": {
                 "auth_strength": "dual_control",
                 "approval_state": "granted",
-                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+                "approval_artifact_ref": "caid:canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
               },
               "evidence": {
                 "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -1796,7 +1796,7 @@
                 {
                   "signer": "policy-engine:prod",
                   "alg": "EdDSA",
-                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                  "sig": "g9W4_DEqWqZKnUFYZUbsRqvnwX8JGlcaHbEi9BiWjuQ4f-VI4Cjcx8xR3Rw96m_a5qtSCPUAxYG_u91g5TnjDg"
                 }
               ]
             },
@@ -1807,7 +1807,7 @@
               "upstream_ref": {
                 "ref_type": "roa_envelope",
                 "ref_id": "env:4a7c9f2b1e8d3a6f",
-                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+                "ref_digest": "sha256:f71012bf1cdc7ea4c61e63c9cff5a575543ee2f654e7d646767c0c0bd484baab"
               },
               "delegating_agent": {
                 "agent_id": "aha:acme/ops/root-agent",
@@ -1830,7 +1830,7 @@
                 {
                   "signer": "aha:acme/ops/root-agent",
                   "alg": "EdDSA",
-                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                  "sig": "JomgbfujFoZDYY4z12xcgIn7TQqlrfOqKGVuK_OgzueFj8KX-8Xmh_RT8ri6EkWHMczBNZJqca5sxYaKJpxvAQ"
                 }
               ]
             }
@@ -1859,7 +1859,7 @@
             "chain_summary": {
               "chain_depth": 1,
               "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
-              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+              "chain_digest": "sha256:ceb3d18ad54570980dc0d93be2194be59078583bf902c183249350568e1434d8"
             },
             "border_gateway": {
               "gateway_id": "gateway:prod-us-east-1",
@@ -1869,7 +1869,7 @@
               {
                 "signer": "gateway:prod-us-east-1",
                 "alg": "EdDSA",
-                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+                "sig": "T0hAsj8paSkBElAwjcNYET4Yx3D--SrHKPb4FAP7uGt1O3dIkSZ0TVw5sOBnhNuzWLujCwJimLBSE5vNJoRTDg"
               }
             ]
           }
@@ -2109,7 +2109,7 @@
         "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       "expected_caid": {
-        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "value": "canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
         "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
       },
       "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
@@ -2142,7 +2142,7 @@
               "authorization": {
                 "auth_strength": "dual_control",
                 "approval_state": "granted",
-                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+                "approval_artifact_ref": "caid:canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
               },
               "evidence": {
                 "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -2154,7 +2154,7 @@
                 {
                   "signer": "policy-engine:prod",
                   "alg": "EdDSA",
-                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                  "sig": "g9W4_DEqWqZKnUFYZUbsRqvnwX8JGlcaHbEi9BiWjuQ4f-VI4Cjcx8xR3Rw96m_a5qtSCPUAxYG_u91g5TnjDg"
                 }
               ]
             },
@@ -2165,7 +2165,7 @@
               "upstream_ref": {
                 "ref_type": "roa_envelope",
                 "ref_id": "env:4a7c9f2b1e8d3a6f",
-                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+                "ref_digest": "sha256:f71012bf1cdc7ea4c61e63c9cff5a575543ee2f654e7d646767c0c0bd484baab"
               },
               "delegating_agent": {
                 "agent_id": "aha:acme/ops/root-agent",
@@ -2188,7 +2188,7 @@
                 {
                   "signer": "aha:acme/ops/root-agent",
                   "alg": "EdDSA",
-                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                  "sig": "JomgbfujFoZDYY4z12xcgIn7TQqlrfOqKGVuK_OgzueFj8KX-8Xmh_RT8ri6EkWHMczBNZJqca5sxYaKJpxvAQ"
                 }
               ]
             }
@@ -2217,7 +2217,7 @@
             "chain_summary": {
               "chain_depth": 1,
               "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
-              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+              "chain_digest": "sha256:ceb3d18ad54570980dc0d93be2194be59078583bf902c183249350568e1434d8"
             },
             "border_gateway": {
               "gateway_id": "gateway:prod-us-east-1",
@@ -2227,7 +2227,7 @@
               {
                 "signer": "gateway:prod-us-east-1",
                 "alg": "EdDSA",
-                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+                "sig": "T0hAsj8paSkBElAwjcNYET4Yx3D--SrHKPb4FAP7uGt1O3dIkSZ0TVw5sOBnhNuzWLujCwJimLBSE5vNJoRTDg"
               }
             ]
           }
@@ -2353,7 +2353,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEQCIFZqgCv-F5AL5Y-DTZlYj0p9-AClFV1-SQ50CyaXHcoPAiAEzb8uWuOCXsnemlQt8fA2zDz3SkDVIaR4I9cq119MTg"
+                  "signature": "MEUCIQCvSowfUuHmqtOTiAv2jWfGVcLbI26LkgmlzLiX1twYwwIgRMCiYGrT6k_3iGQLnGC-V646Jez1cyZ_zDnPe9dkuYY"
                 }
               }
             },
@@ -2376,7 +2376,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEQCIE7xzJzJ63OZC4ZoldL8ZwUTdHdj36040ONljZblOeh3AiB5y0k1K5ozlFEFbjIK_g_DZ9SM6FSmY4rvFPPdVuUbcw"
+                  "signature": "MEQCIFyUHlusV-_AXG003kujjz0QCZQSzkwBRPf1y4zyBwGDAiB9BvB8iL4wtz_FR8w_BfPS7fQhxyKl9mUG3_hZuzz6SA"
                 }
               }
             }
@@ -2534,7 +2534,7 @@
         "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       "expected_caid": {
-        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "value": "canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
         "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
       },
       "relying_party_requirement": null,
@@ -2567,7 +2567,7 @@
               "authorization": {
                 "auth_strength": "dual_control",
                 "approval_state": "granted",
-                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+                "approval_artifact_ref": "caid:canactid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
               },
               "evidence": {
                 "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -2579,7 +2579,7 @@
                 {
                   "signer": "policy-engine:prod",
                   "alg": "EdDSA",
-                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                  "sig": "g9W4_DEqWqZKnUFYZUbsRqvnwX8JGlcaHbEi9BiWjuQ4f-VI4Cjcx8xR3Rw96m_a5qtSCPUAxYG_u91g5TnjDg"
                 }
               ]
             },
@@ -2590,7 +2590,7 @@
               "upstream_ref": {
                 "ref_type": "roa_envelope",
                 "ref_id": "env:4a7c9f2b1e8d3a6f",
-                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+                "ref_digest": "sha256:f71012bf1cdc7ea4c61e63c9cff5a575543ee2f654e7d646767c0c0bd484baab"
               },
               "delegating_agent": {
                 "agent_id": "aha:acme/ops/root-agent",
@@ -2613,7 +2613,7 @@
                 {
                   "signer": "aha:acme/ops/root-agent",
                   "alg": "EdDSA",
-                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                  "sig": "JomgbfujFoZDYY4z12xcgIn7TQqlrfOqKGVuK_OgzueFj8KX-8Xmh_RT8ri6EkWHMczBNZJqca5sxYaKJpxvAQ"
                 }
               ]
             }
@@ -2642,7 +2642,7 @@
             "chain_summary": {
               "chain_depth": 1,
               "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
-              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+              "chain_digest": "sha256:ceb3d18ad54570980dc0d93be2194be59078583bf902c183249350568e1434d8"
             },
             "border_gateway": {
               "gateway_id": "gateway:prod-us-east-1",
@@ -2652,7 +2652,7 @@
               {
                 "signer": "gateway:prod-us-east-1",
                 "alg": "EdDSA",
-                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+                "sig": "T0hAsj8paSkBElAwjcNYET4Yx3D--SrHKPb4FAP7uGt1O3dIkSZ0TVw5sOBnhNuzWLujCwJimLBSE5vNJoRTDg"
               }
             ]
           }
@@ -2778,7 +2778,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEYCIQDIUYWjGk7eYwijQFJ8zjt5LpEtcIKcrIsJygd3_eZx3QIhALZiABPQr2qds5gqnnQbr_iWzYzHisOqQe78mP9y_aGi"
+                  "signature": "MEQCIDrKx8eTpSkQ8hQMUHNudIR00YEkK0RsFjVcEgDG0R0JAiABU8zGA7Q8_ngExXhC1en9N-9WMoOVhlGmtAtFNMB06A"
                 }
               }
             },
@@ -2801,7 +2801,7 @@
                 "webauthn": {
                   "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
                   "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
-                  "signature": "MEUCIQDR50JKsq6s-OdoPznIjwDpq_J5Mwuj4IZTETWvE8u1cAIgZ-rXDQWjoZ6_4D7JL60BdExmyLuuqDXMpmng2HIdFs0"
+                  "signature": "MEQCIFIawici59w8Px5OfgJ0NKMUqNTYTERxMES3nWDlHbZ2AiAr_PRlZwhRyygdhxKgUAkh9_XrIc1QUgi_JMMEJggfhA"
                 }
               }
             }

@@ -11,7 +11,7 @@
 import { verifyStatusArtifact, } from '@emilia-protocol/verify/status';
 export { PROPOSAL_TO_EFFECT_STATUS_HEAD_STORE_VERSION, PROPOSAL_TO_EFFECT_STATUS_HEAD_TABLE, PROPOSAL_TO_EFFECT_STATUS_HEAD_SQL, createPostgresProposalToEffectStatusHeadStore, } from './proposal-to-effect-status-head-store.js';
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
-const CAID_PATTERN = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const CAID_PATTERN = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const EXPECTED_KEYS = [
     'tenant_id',
     'executor_id',

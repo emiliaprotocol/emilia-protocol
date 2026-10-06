@@ -15,6 +15,7 @@ import { verifyAgileSignatureSync, mldsaRawPublicKeyFromSpki, } from './pq-signa
 import { verifyRevocation as verifyRevocationStatement } from './revocation.js';
 import { verifyOutcomeBindingCore, verifyOutcomeBindingSetCore } from './outcome-binding.js';
 export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
+export * from './canonical-action-identifier.js';
 export { AUTHORITY_PROGRAM_VERSION, AUTHORITY_PROGRAM_DOMAIN, AUTHORITY_STAGE_RECEIPT_VERSION, AUTHORITY_STAGE_RECEIPT_DOMAIN, AUTHORITY_PROGRAM_RESULT_VERSION, authorityProgramDigest, authorityStageReceiptDigest, deriveAuthorityProgramPredecessors, verifyAuthorityProgram, } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
 export * from './aeb-acceptance-profile.js';

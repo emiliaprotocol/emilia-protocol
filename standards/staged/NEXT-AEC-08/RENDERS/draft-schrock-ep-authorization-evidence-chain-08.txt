@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                            4 October 2026
-Expires: 7 April 2027
+Intended status: Informational                            6 October 2026
+Expires: 9 April 2027
 
 
   Authorization Evidence Chains: Composing Heterogeneous Agent-Action
@@ -53,7 +53,7 @@ Status of This Memo
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 1]
+Schrock                   Expires 9 April 2027                  [Page 1]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -63,7 +63,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 7 April 2027.
+   This Internet-Draft will expire on 9 April 2027.
 
 Copyright Notice
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 2]
+Schrock                   Expires 9 April 2027                  [Page 2]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -165,7 +165,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 3]
+Schrock                   Expires 9 April 2027                  [Page 3]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -221,7 +221,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 4]
+Schrock                   Expires 9 April 2027                  [Page 4]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -257,7 +257,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
      "@version": "EP-AEC-v1",
      "action": { "...": "Action Object" },
      "action_digest": "sha256:<hex>",
-     "action_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
+     "action_caid": "canactid:1:<type>:<suite>:<digest-b64url>",
      "components": [
        {
          "type": "ep-quorum",
@@ -277,7 +277,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 5]
+Schrock                   Expires 9 April 2027                  [Page 5]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -333,7 +333,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 6]
+Schrock                   Expires 9 April 2027                  [Page 6]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -389,7 +389,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 7]
+Schrock                   Expires 9 April 2027                  [Page 7]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -445,7 +445,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 8]
+Schrock                   Expires 9 April 2027                  [Page 8]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -501,7 +501,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                  [Page 9]
+Schrock                   Expires 9 April 2027                  [Page 9]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -557,7 +557,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 10]
+Schrock                   Expires 9 April 2027                 [Page 10]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -613,7 +613,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 11]
+Schrock                   Expires 9 April 2027                 [Page 11]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -669,7 +669,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 12]
+Schrock                   Expires 9 April 2027                 [Page 12]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -725,7 +725,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 13]
+Schrock                   Expires 9 April 2027                 [Page 13]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -781,7 +781,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 14]
+Schrock                   Expires 9 April 2027                 [Page 14]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -837,7 +837,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 15]
+Schrock                   Expires 9 April 2027                 [Page 15]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -893,7 +893,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 16]
+Schrock                   Expires 9 April 2027                 [Page 16]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -949,7 +949,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 17]
+Schrock                   Expires 9 April 2027                 [Page 17]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 18]
+Schrock                   Expires 9 April 2027                 [Page 18]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 19]
+Schrock                   Expires 9 April 2027                 [Page 19]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1087,7 +1087,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
      "evaluator_profile_digest": "sha256:<hex>",
      "aec_digest": "sha256:<hex>",
      "expected_action_digest": "sha256:<hex>",
-     "expected_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
+     "expected_caid": "canactid:1:<type>:<suite>:<digest-b64url>",
      "requirement_profile_digest": "sha256:<hex>",
      "verification_time": "2026-07-27T17:00:00Z",
      "facts": [
@@ -1117,7 +1117,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 20]
+Schrock                   Expires 9 April 2027                 [Page 20]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 21]
+Schrock                   Expires 9 April 2027                 [Page 21]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 22]
+Schrock                   Expires 9 April 2027                 [Page 22]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 23]
+Schrock                   Expires 9 April 2027                 [Page 23]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 24]
+Schrock                   Expires 9 April 2027                 [Page 24]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1397,7 +1397,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 25]
+Schrock                   Expires 9 April 2027                 [Page 25]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1453,7 +1453,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 26]
+Schrock                   Expires 9 April 2027                 [Page 26]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1509,7 +1509,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 27]
+Schrock                   Expires 9 April 2027                 [Page 27]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1565,7 +1565,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 28]
+Schrock                   Expires 9 April 2027                 [Page 28]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1587,8 +1587,9 @@ Internet-Draft        Authorization Evidence Chains         October 2026
       expression exactly as stored.  Section 14 adds parser
       differentials.
 
-   *  Updated the implementation status, cited CAID -05, and added RFC
-      7405.
+   *  Updated the implementation status, cited CAID -05, changed the two
+      CAID examples to its current canactid: scheme, and added RFC 7405.
+      A legacy identifier is not rewritten.
 
 19.  Changes in -07
 
@@ -1620,8 +1621,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-
-Schrock                   Expires 7 April 2027                 [Page 29]
+Schrock                   Expires 9 April 2027                 [Page 29]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1677,7 +1677,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 30]
+Schrock                   Expires 9 April 2027                 [Page 30]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1714,10 +1714,10 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    are not trusted merely because their digest matches.
 
    At the time of writing, the latest published release of the
-   JavaScript package, @emilia-protocol/verify 6.0.0, implements EP-AEC-
-   EVALUATOR-07-v1.  EP-AEC-EVALUATOR-08-v1 is implemented in the
-   reference repository and is not yet in a published release; this
-   draft revision does not by itself imply a released package.
+   JavaScript package, @emilia-protocol/verify 7.0.0, implements EP-AEC-
+   EVALUATOR-08-v1.  The package release is separate from this draft's
+   publication and does not imply deployment, adoption, or
+   interoperability.
 
 
 
@@ -1733,7 +1733,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 31]
+Schrock                   Expires 9 April 2027                 [Page 31]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1752,22 +1752,21 @@ Internet-Draft        Authorization Evidence Chains         October 2026
    without modifying it, and always returns a new -08 record.  The
    structured result reports authorization_decision as false.
 
-   The Python and Go verifier packages implement the Section 8
-   expression algorithm and its diagnostics and use it in their legacy
-   chain interfaces, also in the reference repository and not yet
-   released.  They do not implement the structured EP-AEC-REQUIREMENT-v1
-   and EP-AEC-REPLAY-v1 contract, and their agreement with the
-   JavaScript implementation on the corpus is agreement on expression
-   evaluation only.  Before this revision, the Go legacy interface
-   trimmed Unicode whitespace from a pinned requirement before
-   evaluating it, so a requirement made of NO-BREAK SPACE followed by
-   "a" was evaluated as "a"; that is corrected, and the three ports now
-   measure the length limit in UTF-8 octets.  All three run the corpus
-   of Section 8.7 and agree on every assertion.  The JavaScript tests
-   also inject faults that keep the parse identity unchanged while
-   evaluating an operator wrongly, matching roles without regard to
-   case, or crediting a component whose native verification FAILED, and
-   reject the resulting wrong verdicts.
+   The published Python verifier package 2.9.0 and Go verifier module
+   2.5.0 implement the Section 8 expression algorithm and its
+   diagnostics and use it in their legacy chain interfaces.  They do not
+   implement the structured EP-AEC-REQUIREMENT-v1 and EP-AEC-REPLAY-v1
+   contract, and their agreement with the JavaScript implementation on
+   the corpus is agreement on expression evaluation only.  Before this
+   revision, the Go legacy interface trimmed Unicode whitespace from a
+   pinned requirement before evaluating it, so a requirement made of NO-
+   BREAK SPACE followed by "a" was evaluated as "a"; that is corrected,
+   and the three ports now measure the length limit in UTF-8 octets.
+   All three run the corpus of Section 8.7 and agree on every assertion.
+   The JavaScript tests also inject faults that keep the parse identity
+   unchanged while evaluating an operator wrongly, matching roles
+   without regard to case, or crediting a component whose native
+   verification FAILED, and reject the resulting wrong verdicts.
 
    The structured evaluator separates the two results.  Native verifier
    callbacks return separate verified and accepted results; every replay
@@ -1789,7 +1788,8 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 32]
+
+Schrock                   Expires 9 April 2027                 [Page 32]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1845,7 +1845,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 33]
+Schrock                   Expires 9 April 2027                 [Page 33]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1901,7 +1901,7 @@ Internet-Draft        Authorization Evidence Chains         October 2026
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 34]
+Schrock                   Expires 9 April 2027                 [Page 34]
 
 Internet-Draft        Authorization Evidence Chains         October 2026
 
@@ -1957,4 +1957,4 @@ Author's Address
 
 
 
-Schrock                   Expires 7 April 2027                 [Page 35]
+Schrock                   Expires 9 April 2027                 [Page 35]

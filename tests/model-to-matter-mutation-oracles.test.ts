@@ -306,7 +306,7 @@ describe('Model-to-Matter mutation oracles', () => {
     }
     expect(clearanceResult('refused', {
       action_digest: digest('a'),
-      action_caid: 'caid:1:science.bio.experiment.execute.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      action_caid: 'canactid:1:science.bio.experiment.execute.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       replay_digest: digest('b'),
       reasons: ['reason'],
       next_challenge: { id: 'next' },
@@ -314,7 +314,7 @@ describe('Model-to-Matter mutation oracles', () => {
       result: { graph: { nodes: 6 } },
     })).toMatchObject({
       action_digest: digest('a'),
-      action_caid: 'caid:1:science.bio.experiment.execute.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      action_caid: 'canactid:1:science.bio.experiment.execute.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       replay_digest: digest('b'),
       reasons: ['reason'],
       next_challenge: { id: 'next' },

@@ -36,7 +36,7 @@ type ReceiptDocument = {
 };
 
 const utf8 = new TextDecoder('utf-8', { fatal: true });
-const caidPattern = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const caidPattern = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 
 function isCanonicalizable(value: unknown): boolean {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;

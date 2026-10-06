@@ -9,7 +9,10 @@ package caid
 import "regexp"
 
 // specIdentifierScheme is the caid rule's fixed scheme.
-const specIdentifierScheme = "caid"
+const specIdentifierScheme = "canactid"
+
+// specIdentifierLegacyV04Scheme is the obsolete CAID-04 scheme accepted only by explicit legacy verification.
+const specIdentifierLegacyV04Scheme = "caid"
 
 // specIdentifierVersion is the caid rule's caid-version.
 const specIdentifierVersion = "1"
@@ -22,7 +25,7 @@ const specIdentifierParts = 5
 
 // Whole-string matchers: ^(?:R)$ over each portable expression R. Without
 // the m flag, RE2 matches $ only at the end of the text.
-var specPatternCaid = regexp.MustCompile(`^(?:caid\x3a1\x3a(?:[a-z][\x2d0-9a-z]*\x2e)+[1-9][0-9]*\x3a[a-z][\x2d0-9a-z]*\x3a[\x2d0-9A-Z\x5fa-z]+)$`)
+var specPatternCaid = regexp.MustCompile(`^(?:canactid\x3a1\x3a(?:[a-z][\x2d0-9a-z]*\x2e)+[1-9][0-9]*\x3a[a-z][\x2d0-9a-z]*\x3a[\x2d0-9A-Z\x5fa-z]+)$`)
 
 var specPatternActionType = regexp.MustCompile(`^(?:(?:[a-z][\x2d0-9a-z]*\x2e)+[1-9][0-9]*)$`)
 

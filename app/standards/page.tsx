@@ -35,6 +35,8 @@ const ADOPTION_PATH = standardsStatus.canonical_four_document_surface.documents.
   href: document.datatracker,
 }));
 
+const CAID_REGISTRATION = standardsStatus.october_5_2026_canactid_iana_registration;
+
 // Three interfaces with adjacent standards. These are composition points, not
 // claims that another standards body has adopted EMILIA.
 const PILLARS = [
@@ -249,6 +251,53 @@ export default function StandardsPage() {
             endorsement, production deployment, or consolidation of the wider draft portfolio. Verification, evidence
             satisfaction, local authorization, and observed execution remain separate decisions.
           </p>
+        </section>
+
+        {/* REGISTERED EXACT-ACTION NAMESPACE */}
+        <section style={{ ...styles.section, paddingTop: 24, paddingBottom: 48 }}>
+          <div style={styles.container}>
+            <div
+              style={{
+                ...styles.card,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+                gap: 36,
+                padding: '34px 36px',
+                borderTop: `3px solid ${color.gold}`,
+              }}
+            >
+              <div>
+                <div style={{ ...styles.eyebrow, color: goldText }}>
+                  IANA PROVISIONAL URI SCHEME · REGISTERED {CAID_REGISTRATION.registration_date}
+                </div>
+                <h2 style={{ ...styles.h2, fontSize: 30, marginTop: 12, marginBottom: 12 }}>
+                  One exact action. One portable identifier.
+                </h2>
+                <p style={{ ...styles.body, maxWidth: 720, margin: 0 }}>
+                  The registered <code>canactid:</code> name lets independently produced records refer to the same
+                  typed action. Keep the action unchanged and conforming systems recompute the same identifier. Change
+                  a material fact, such as the amount or destination, and the identifier changes.
+                </p>
+              </div>
+              <div style={{ alignSelf: 'center' }}>
+                <p style={{ ...styles.cardBody, marginTop: 0 }}>
+                  Registration reserves a common name. It does not authorize the action, prove execution, make CAID an
+                  RFC, or signal IETF endorsement.
+                </p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
+                  <Link href="/caid" style={cta.primary}>Try the exact-action demo</Link>
+                  <a
+                    href={CAID_REGISTRATION.registry_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={cta.secondary}
+                  >
+                    See the IANA record
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* ADJACENT-STANDARD INTERFACES */}

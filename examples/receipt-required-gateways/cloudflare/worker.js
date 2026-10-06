@@ -7,7 +7,7 @@ import { createReceiptRequiredEdgeHandler } from '../../../packages/require-rece
 import { strictJsonGate } from '../../../packages/require-receipt/src/strict-json.js';
 import { canonicalize, verifyReceipt as verifyReceiptWeb } from '../../../packages/verify/src/web.js';
 const utf8 = new TextDecoder('utf-8', { fatal: true });
-const caidPattern = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const caidPattern = /^canactid:1:[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 function isCanonicalizable(value) {
     if (value === null || typeof value === 'string' || typeof value === 'boolean')
         return true;
