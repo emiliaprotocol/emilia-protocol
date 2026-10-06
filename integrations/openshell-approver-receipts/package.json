@@ -19,7 +19,7 @@
     "protobufjs": "^8.0.0"
   },
   "devDependencies": {
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.3",
     "typescript": "7.0.2"
   },
   "engines": {
