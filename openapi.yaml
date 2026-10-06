@@ -131,10 +131,13 @@ paths:
                 destinationReference:
                   type: string
                   minLength: 1
-                  maxLength: 256
+                  pattern: '\S'
+                  x-max-utf8-bytes: 256
                   description: |
-                    Synthetic destination reference. The service hashes this
-                    value before placing it in the typed action.
+                    Synthetic destination reference containing at least one
+                    non-whitespace character. The value must be no more than
+                    256 bytes after UTF-8 encoding. The service hashes it before
+                    placing it in the typed action.
                   example: Acme Supply / settlement / account 7834
       responses:
         '200':

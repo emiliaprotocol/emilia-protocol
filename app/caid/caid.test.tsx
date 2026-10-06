@@ -1,12 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import { readFileSync } from 'node:fs';
+
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 import CaidPlayground from './CaidPlayground';
 import { buildCaidComparison } from './model';
 import { BASELINE_CAID_INPUT, type CaidComparison } from './types';
 import { POST } from '../api/caid/route';
+
+type CaidOpenApiDocument = {
+  paths: {
+    '/api/caid': {
+      post: {
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                additionalProperties: boolean;
+                properties: {
+                  destinationReference: Record<string, unknown>;
+                };
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+};
 
 describe('/caid exact-action playground', () => {
   it('recomputes the same exact typed action to the same registered URI', () => {
@@ -52,12 +76,43 @@ describe('/caid exact-action playground', () => {
   it('refuses malformed or oversized public inputs before CAID computation', () => {
     expect(() => buildCaidComparison({ ...BASELINE_CAID_INPUT, amount: '82,000' }))
       .toThrow('Enter an amount such as 82000.00');
-    expect(() => buildCaidComparison({ ...BASELINE_CAID_INPUT, destinationReference: ' ' }))
+    expect(() => buildCaidComparison({ ...BASELINE_CAID_INPUT, amount: '\t\n' }))
+      .toThrow('Enter an amount such as 82000.00');
+    expect(() => buildCaidComparison({ ...BASELINE_CAID_INPUT, destinationReference: ' \t\n\u00a0' }))
       .toThrow('Enter a destination reference');
     expect(() => buildCaidComparison({
       ...BASELINE_CAID_INPUT,
-      destinationReference: 'x'.repeat(257),
+      destinationReference: '\u00e9'.repeat(129),
     })).toThrow('Destination references must be 256 UTF-8 bytes or fewer');
+  });
+
+  it('accepts a 256-byte destination reference and rejects undeclared request fields', () => {
+    const exactLimit = buildCaidComparison({
+      ...BASELINE_CAID_INPUT,
+      destinationReference: '\u00e9'.repeat(128),
+    });
+
+    expect(exactLimit.proposedCaid).toMatch(/^canactid:1:/);
+    expect(() => buildCaidComparison({
+      ...BASELINE_CAID_INPUT,
+      memo: 'not part of the public request contract',
+    } as typeof BASELINE_CAID_INPUT)).toThrow(
+      'Only amount and destinationReference are accepted',
+    );
+  });
+
+  it('documents the same closed, whitespace-aware UTF-8 byte contract in OpenAPI', () => {
+    const document = parse(
+      readFileSync(new URL('../../openapi.yaml', import.meta.url), 'utf8'),
+    ) as CaidOpenApiDocument;
+    const requestSchema = document.paths['/api/caid'].post.requestBody
+      .content['application/json'].schema;
+    const destinationSchema = requestSchema.properties.destinationReference;
+
+    expect(requestSchema.additionalProperties).toBe(false);
+    expect(destinationSchema.pattern).toBe('\\S');
+    expect(destinationSchema['x-max-utf8-bytes']).toBe(256);
+    expect(destinationSchema).not.toHaveProperty('maxLength');
   });
 
   it('states the useful claim and every important non-claim in plain language', () => {
@@ -103,11 +158,20 @@ describe('/caid exact-action playground', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...BASELINE_CAID_INPUT, amount: '82,000' }),
     }));
+    const undeclared = await POST(new Request('https://example.test/api/caid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...BASELINE_CAID_INPUT, memo: 'ignore me' }),
+    }));
 
     expect(malformed.status).toBe(400);
     expect(await malformed.json()).toEqual({ error: 'Request body must be JSON' });
     expect(invalid.status).toBe(400);
     expect(await invalid.json()).toEqual({ error: 'Enter an amount such as 82000.00' });
+    expect(undeclared.status).toBe(400);
+    expect(await undeclared.json()).toEqual({
+      error: 'Only amount and destinationReference are accepted',
+    });
   });
 
   it('enforces the body limit even when content-length is absent', async () => {

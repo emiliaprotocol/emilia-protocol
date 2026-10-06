@@ -29,10 +29,22 @@ export class CaidDemoInputError extends Error {
 
 const PAYMENT_RELEASE_DEFINITION = activeCaidDefinition('payment.release.1');
 const AMOUNT_PATTERN = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
+const INPUT_FIELDS = new Set<PropertyKey>(['amount', 'destinationReference']);
+
+function hasUnknownOwnEnumerableField(input: object): boolean {
+  return Reflect.ownKeys(input).some((key) => (
+    Object.getOwnPropertyDescriptor(input, key)?.enumerable === true
+      && !INPUT_FIELDS.has(key)
+  ));
+}
 
 function validateInput(input: unknown): asserts input is CaidDemoInput {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new CaidDemoInputError('Enter an amount and destination reference');
+  }
+
+  if (hasUnknownOwnEnumerableField(input)) {
+    throw new CaidDemoInputError('Only amount and destinationReference are accepted');
   }
 
   const { amount, destinationReference } = input as Partial<CaidDemoInput>;
