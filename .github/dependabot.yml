@@ -4,6 +4,11 @@
 # For GitHub Actions: Dependabot opens PRs that update the SHA pin and
 # version comment whenever a new release is published. This gives both
 # supply-chain security (exact SHA) and automated upgrade signal.
+#
+# Volume: every entry groups patch and minor version updates into one PR
+# per run, and the subdirectory npm and pip entries run monthly. Groups use
+# applies-to: version-updates, so security updates are unaffected and still
+# open individually as soon as an advisory is published.
 
 version: 2
 
@@ -25,16 +30,16 @@ updates:
     commit-message:
       prefix: "ci(deps)"
     groups:
-      codeql-action:
+      # One weekly PR for every non-major action bump (codeql, actions/*,
+      # gitleaks, gradle, and the rest). Major bumps stay as standalone PRs
+      # so a breaking action release gets its own review.
+      actions-non-major:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
         patterns:
-          - "github/codeql-action/*"
-      github-official-actions:
-        patterns:
-          - "actions/*"
-      security-actions:
-        patterns:
-          - "gitleaks/*"
-          - "christophebedard/*"
+          - "*"
 
   # ── npm (root workspace) ────────────────────────────────────────────────────
   - package-ecosystem: npm
@@ -97,8 +102,10 @@ updates:
   - package-ecosystem: npm
     directory: /mcp-server
     schedule:
-      interval: weekly
-      day: monday
+      # Monthly runs on the first day of the month. This only paces routine
+      # version updates; security updates are opened as soon as an advisory
+      # lands, regardless of schedule, cooldown, or the PR limit.
+      interval: monthly
       time: "09:00"
       timezone: UTC
     cooldown:
@@ -110,13 +117,24 @@ updates:
       - mcp-server
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Patches and minors in one PR per run; majors stay separate PRs.
+      patch-and-minor:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+        patterns:
+          - "*"
 
   # ── npm (TypeScript SDK) ────────────────────────────────────────────────────
   - package-ecosystem: npm
     directory: /sdks/typescript
     schedule:
-      interval: weekly
-      day: monday
+      # Monthly runs on the first day of the month. This only paces routine
+      # version updates; security updates are opened as soon as an advisory
+      # lands, regardless of schedule, cooldown, or the PR limit.
+      interval: monthly
       time: "09:00"
       timezone: UTC
     cooldown:
@@ -128,13 +146,24 @@ updates:
       - sdk
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Patches and minors in one PR per run; majors stay separate PRs.
+      patch-and-minor:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+        patterns:
+          - "*"
 
   # ── npm (OpenShell approver receipts integration) ──────────────────────────
   - package-ecosystem: npm
     directory: /integrations/openshell-approver-receipts
     schedule:
-      interval: weekly
-      day: monday
+      # Monthly runs on the first day of the month. This only paces routine
+      # version updates; security updates are opened as soon as an advisory
+      # lands, regardless of schedule, cooldown, or the PR limit.
+      interval: monthly
       time: "09:00"
       timezone: UTC
     cooldown:
@@ -145,13 +174,24 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Patches and minors in one PR per run; majors stay separate PRs.
+      patch-and-minor:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+        patterns:
+          - "*"
 
   # ── pip (Python SDK) ────────────────────────────────────────────────────────
   - package-ecosystem: pip
     directory: /sdks/python
     schedule:
-      interval: weekly
-      day: monday
+      # Monthly runs on the first day of the month. This only paces routine
+      # version updates; security updates are opened as soon as an advisory
+      # lands, regardless of schedule, cooldown, or the PR limit.
+      interval: monthly
       time: "09:00"
       timezone: UTC
     cooldown:
@@ -163,3 +203,12 @@ updates:
       - sdk
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Patches and minors in one PR per run; majors stay separate PRs.
+      patch-and-minor:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+        patterns:
+          - "*"
