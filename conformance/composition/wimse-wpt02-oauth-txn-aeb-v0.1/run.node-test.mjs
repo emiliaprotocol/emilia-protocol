@@ -83,23 +83,36 @@ test('the candidate wrapper binds exact Txn-Token, challenge, and access-token b
   assert.equal(entry.observed.native.verification, 'VERIFIED');
   assert.equal(entry.observed.native.evidence_role, 'delegated-workload');
   assert.equal(
-    entry.observed.native_oauth_transaction_challenge_presentation,
-    'NOT_COMPLIANT_CUSTOM_HEADER_CANDIDATE_ONLY',
+    entry.observed.oauth_transaction_challenge_presentation,
+    'NOT_DEFINED_BY_PINNED_DRAFTS_APPLICATION_PROFILE_CANDIDATE',
+  );
+  assert.equal(
+    entry.observed.selected_wpt_bearer_authorization_composition,
+    'NOT_APPLICABLE_DISTINCT_HEADER_CANDIDATE',
   );
   assert.equal(entry.observed.wpt_authorization, 'NOT_EVALUATED');
 });
 
-test('the exact drafts refuse direct same-request composition because their Authorization schemes collide', () => {
-  const entry = profileCase(runSuite(), 'direct_http_authorization_scheme_collision');
-  assert.equal(entry.passed, true);
-  assert.equal(entry.observed.one_authorization_field, true);
-  assert.equal(
-    entry.observed.direct_same_request_composition,
-    'REFUSED_AUTHORIZATION_SCHEME_COLLISION',
+test('separately specified WPT and Bearer presentations form an invalid same-request composition attempt', () => {
+  const entry = profileCase(
+    runSuite(),
+    'incompatible_concurrent_authorization_presentations_invalid',
   );
+  assert.equal(entry.passed, true);
+  assert.equal(entry.observed.separately_specified_presentations, true);
+  assert.equal(entry.observed.individual_credential_validity, 'NOT_EVALUATED');
+  assert.equal(entry.observed.same_authorization_field_name, true);
+  assert.equal(entry.observed.incompatible_concurrent_presentation, true);
+  assert.equal(
+    entry.observed.selected_wpt_bearer_authorization_composition,
+    'INVALID_COMPOSITION_ATTEMPT',
+  );
+  assert.equal(entry.observed.defect_in_either_format_claimed, false);
+  assert.equal(entry.observed.protocol_wide_collision_claimed, false);
+  assert.equal(entry.observed.alternative_distinct_header_application_profile_required, true);
   assert.equal(
     entry.observed.candidate_other_header_status,
-    'NONSTANDARD_AND_NOT_NATIVE_OAUTH_PRESENTATION',
+    'NOT_DEFINED_BY_PINNED_DRAFTS_APPLICATION_PROFILE_CANDIDATE',
   );
 });
 
@@ -287,6 +300,10 @@ test('the report refuses any claim of broad Txn-Tokens-11 or WIMSE-06 conformanc
   assert.match(report.semantics.rctx, /refused when present/);
   assert.match(report.semantics.header_observation, /not proof of raw-wire singleton cardinality/);
   assert.match(report.semantics.replay_enforcement, /emits a receiver-scoped replay identity only/);
+  assert.match(report.semantics.oauth_transaction_challenge_http_composition, /invalid composition attempt/);
+  assert.match(report.semantics.oauth_transaction_challenge_http_composition, /does not identify a defect in either format/);
+  assert.match(report.semantics.oauth_transaction_challenge_presentation_scope, /selected Bearer presentation only/);
+  assert.match(report.semantics.candidate_wrapper, /alternative distinct-header application profile is required/);
 });
 
 test('the report is deterministic and keeps every nonclaim visible', () => {

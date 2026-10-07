@@ -1272,7 +1272,7 @@ test('the v3 adapter invokes only the WPT-02 and Txn-Tokens-11 vector profile', 
     'signed_content_type_substitution_changes_action',
     'configured_semantic_other_header_refused',
     'draft_revision_migration_does_not_rekey_spend',
-    'direct_http_authorization_scheme_collision',
+    'incompatible_concurrent_authorization_presentations_invalid',
   ]) {
     assert.ok(ids.has(id), `missing vector ${id}`);
   }

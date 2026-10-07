@@ -47,8 +47,8 @@ export const EXACT_NONCLAIMS = Object.freeze([
   'wpt_does_not_establish_local_admission',
   'wpt_does_not_prove_provider_entry_execution_or_effect',
   'wpt_does_not_validate_oauth_transaction_challenge_semantics',
-  'candidate_other_header_does_not_satisfy_oauth_bearer_presentation',
-  'exact_wpt02_and_oauth_txn_challenge_http_presentation_are_not_directly_composable',
+  'candidate_other_header_is_an_application_profile_candidate_not_a_pinned_draft_presentation',
+  'selected_wpt_and_oauth_txn_bearer_authorization_case_does_not_claim_a_protocol_defect_or_protocol_wide_collision',
   'oauth_access_token_does_not_prove_named_human_identity',
   'http_message_signature_does_not_make_wpt_authorizing',
   'wimse_response_signature_negotiation_not_supported',
@@ -459,8 +459,8 @@ function runFullCase(vector) {
       reasons: native.reasons,
     },
     mapping: mapping?.mapping ?? 'NOT_EVALUATED',
-    native_oauth_transaction_challenge_presentation: 'NOT_COMPLIANT_CUSTOM_HEADER_CANDIDATE_ONLY',
-    direct_same_request_composition: 'UNAVAILABLE_AUTHORIZATION_SCHEME_COLLISION',
+    oauth_transaction_challenge_presentation: 'NOT_DEFINED_BY_PINNED_DRAFTS_APPLICATION_PROFILE_CANDIDATE',
+    selected_wpt_bearer_authorization_composition: 'NOT_APPLICABLE_DISTINCT_HEADER_CANDIDATE',
     wpt_authorization: 'NOT_EVALUATED',
     local_admission: 'NOT_EVALUATED',
     provider_entry: 'NOT_EVALUATED',
@@ -645,37 +645,49 @@ function runReplayReceiverScopeCase(vector) {
   };
 }
 
-function runAuthorizationCollisionCase(vector) {
+function runIncompatibleAuthorizationPresentationCase(vector) {
   const requirements = [
     {
       source: WIMSE_WPT_REVISION,
-      field: 'authorization',
+      field: 'Authorization',
       scheme: 'WPT',
-      exclusive: true,
+      separately_specified: true,
+      other_authentication_schemes_allowed_in_authorization_field: false,
     },
     {
       source: 'draft-rosomakho-oauth-txn-challenge-00',
-      field: 'authorization',
+      field: 'Authorization',
       scheme: 'Bearer',
-      exclusive: false,
+      separately_specified: true,
+      selected_presentation_path: true,
     },
   ];
   const [wptRequirement, oauthRequirement] = requirements;
-  const collision = wptRequirement.field === oauthRequirement.field
+  const separatelySpecifiedPresentations = requirements.every(
+    (requirement) => requirement.separately_specified,
+  );
+  const incompatibleConcurrentPresentation = wptRequirement.field === oauthRequirement.field
     && wptRequirement.scheme !== oauthRequirement.scheme
-    && (wptRequirement.exclusive || oauthRequirement.exclusive);
+    && !wptRequirement.other_authentication_schemes_allowed_in_authorization_field;
   return {
     ...vector,
-    passed: vector.expected === 'REFUSED' && collision,
+    passed: vector.expected === 'INVALID_COMPOSITION_ATTEMPT'
+      && separatelySpecifiedPresentations
+      && incompatibleConcurrentPresentation,
     observed: {
       interpretation: 'SOURCE_PINNED_REQUIREMENT_MODEL_NOT_DRAFT_TEXT_EXECUTION',
       requirements,
-      one_authorization_field: wptRequirement.field === oauthRequirement.field,
-      mutually_exclusive_schemes: collision,
-      direct_same_request_composition: collision
-        ? 'REFUSED_AUTHORIZATION_SCHEME_COLLISION'
-        : 'NO_COLLISION_DERIVED',
-      candidate_other_header_status: 'NONSTANDARD_AND_NOT_NATIVE_OAUTH_PRESENTATION',
+      separately_specified_presentations: separatelySpecifiedPresentations,
+      individual_credential_validity: 'NOT_EVALUATED',
+      same_authorization_field_name: wptRequirement.field === oauthRequirement.field,
+      incompatible_concurrent_presentation: incompatibleConcurrentPresentation,
+      selected_wpt_bearer_authorization_composition: incompatibleConcurrentPresentation
+        ? 'INVALID_COMPOSITION_ATTEMPT'
+        : 'NO_INCOMPATIBILITY_DERIVED',
+      defect_in_either_format_claimed: false,
+      protocol_wide_collision_claimed: false,
+      alternative_distinct_header_application_profile_required: true,
+      candidate_other_header_status: 'NOT_DEFINED_BY_PINNED_DRAFTS_APPLICATION_PROFILE_CANDIDATE',
       wpt_authorization: 'NOT_EVALUATED',
       local_admission: 'NOT_EVALUATED',
       provider_entry: 'NOT_EVALUATED',
@@ -759,7 +771,7 @@ export function verifySourceLock() {
   }
   const expectedUpstream = new Map([
     [WIMSE_WPT_REVISION, [43002, '6a629ffd6bcc0e75ae1deb3e2ddd543ef09d0da6f108e85d085b09d2b9b42f82', [
-      'Section 2 aud, tth, and oth', 'Section 2 WPT validation', 'Section 2.2 Authorization exclusivity',
+      'Section 2 aud, tth, and oth', 'Section 2 WPT validation', 'Section 2.2 Coexistence with Bearer Tokens',
     ]]],
     [WIMSE_HTTP_SIGNATURE_REVISION, [45388, 'e44e2bc1340854e1c3aab3887bba4e9d89f4b9edb54865c43bfbd9c0e7d40f44', [
       'Section 3 request signatures', 'Section 3.1 wimse-aud',
@@ -860,8 +872,8 @@ export function verifySourceLock() {
 export function runSuite() {
   const sourceLock = verifySourceLock();
   const cases = VECTORS.cases.map((vector) => (
-    vector.mutation === 'EXACT_DRAFT_AUTHORIZATION_COLLISION'
-      ? runAuthorizationCollisionCase(vector)
+    vector.mutation === 'INCOMPATIBLE_CONCURRENT_AUTHORIZATION_PRESENTATIONS'
+      ? runIncompatibleAuthorizationPresentationCase(vector)
       : vector.mutation === 'REPLAY_REVISION_MIGRATION'
         ? runReplayRevisionMigrationCase(vector)
       : vector.mutation === 'CONFIGURE_SEMANTIC_OTHER_HEADER'
@@ -901,8 +913,9 @@ export function runSuite() {
       tth: 'required exactly when a Txn-Token is present; hashes its ASCII token value',
       oth: 'exact understood lower-case header set; hashes each trimmed ASCII header field value; JSON member order is not semantic',
       wpt_role: 'proof of possession and request token binding only',
-      oauth_transaction_challenge_http_composition: 'not directly available: WPT-02 and transaction-challenge -00 require mutually exclusive Authorization schemes',
-      candidate_wrapper: 'oth can bind candidate custom-header bytes, but that is not native OAuth transaction-challenge presentation',
+      oauth_transaction_challenge_http_composition: 'invalid composition attempt: WPT-02 and the selected transaction-challenge -00 Bearer presentation forms are separately specified and can each be valid under their own rules, but they are incompatible when presented concurrently in one Authorization field; this case does not revalidate either credential and does not identify a defect in either format',
+      oauth_transaction_challenge_presentation_scope: 'selected Bearer presentation only; transaction-challenge -00 also permits negotiated sender-constrained access-token formats with their corresponding presentation mechanisms',
+      candidate_wrapper: 'oth can bind candidate distinct-header bytes, but the pinned drafts do not define that carriage; an explicit alternative distinct-header application profile is required and cannot make concurrent WPT and Bearer credentials in Authorization valid',
       wpt_audience: 'exact canonical HTTPS origin and path; query ignored; fragments, rewrites, and aliases refused',
       replay_identity: 'stable native namespace plus Txn-Token aud Trust Domain, constructor-pinned receiving logical workload, and txn; draft revision and optional iss excluded',
       receiving_workload_scope: 'constructor-pinned relying-party identity; not presenter input and not a Txn-Token claim',
