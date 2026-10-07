@@ -1233,6 +1233,9 @@ jobs:
       # Test that exact version before the repo-linked steps below replace it.
       - name: Test against the lockfile-installed npm verifier
         working-directory: mcp-server
+        env:
+          # The root .npmrc (fetch-retries=5) is not read from mcp-server or the smoke copy.
+          NPM_CONFIG_FETCH_RETRIES: "5"
         run: |
           npm ci --ignore-scripts
           # shellcheck disable=SC2016 # JavaScript template literals, not shell
