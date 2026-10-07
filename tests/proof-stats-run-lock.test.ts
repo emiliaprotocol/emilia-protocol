@@ -60,7 +60,9 @@ function probeSource(
       : []),
     `const lock = acquireProofStatsRunLock({ cwd: ${JSON.stringify(cwd)}, timeoutMs: ${timeoutMs}, pollMs: 10 });`,
     'process.stdout.write(`ACQUIRED ${Date.now()}\\n`);',
-    `setTimeout(() => { lock.release(); process.stdout.write(\`RELEASED \${Date.now()}\\n\`); }, ${holdMs});`,
+    // Stamp before releasing: a waiter polling every 10 ms can acquire and stamp
+    // before this process writes, so a stamp taken after release can read 1 ms late.
+    `setTimeout(() => { const releasedAt = Date.now(); lock.release(); process.stdout.write(\`RELEASED \${releasedAt}\\n\`); }, ${holdMs});`,
     '',
   ].join('\n');
 }
