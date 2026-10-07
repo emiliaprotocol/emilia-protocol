@@ -282,7 +282,7 @@
     "@vitest/coverage-v8": "^5.0.2",
     "brace-expansion": "5.0.12",
     "eslint": "9.39.5",
-    "eslint-config-next": "^16.3.6",
+    "eslint-config-next": "^16.3.8",
     "fast-check": "^4.10.2",
     "google-auth-library": "^11.1.0",
     "husky": "^9.0.0",
