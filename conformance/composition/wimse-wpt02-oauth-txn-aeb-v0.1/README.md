@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # WPT-02 token binding at the OAuth transaction boundary
 
-This pack found a useful seam and a hard protocol collision.
+This pack found a useful binding seam and one invalid composition attempt.
 
 The source lock verifies the exact archived draft bytes named below. The
 executable cases implement a labeled, same-team interpretation of those
@@ -37,19 +37,24 @@ Case-folded duplicate keys that can be represented in the object also fail,
 but an object or map cannot prove raw-wire singleton cardinality. The HTTP
 stack must establish that before constructing the artifact.
 
-The collision is in HTTP carriage. WPT-02 requires `Authorization: WPT ...`
-and says the request cannot carry another authentication scheme in that
-field. The OAuth Transaction Authorization Challenge -00 bearer path exercised
-here presents its issued token as `Authorization: Bearer ...`. One HTTP
-request cannot satisfy both of those exact forms. This pack does not claim
-that every transaction-challenge token format is a bearer token.
+The direct-composition case is not a protocol collision or a defect in either
+format. WPT-02 requires `Authorization: WPT ...` and says a request presenting
+a WPT cannot carry another authentication scheme in that field. The OAuth
+Transaction Authorization Challenge -00 bearer path exercised here presents
+its issued token as `Authorization: Bearer ...`. Each presentation form is
+specified by its own draft; this case does not evaluate the validity of either
+credential. Attempting to present both concurrently on one HTTP request is
+invalid because the request has one `Authorization` credentials value and
+cannot make it both `WPT` and `Bearer`. The incompatibility belongs to that
+composition attempt. This pack does not claim that every transaction-challenge
+token format is a bearer token.
 
 The runner therefore treats `OAuth-Transaction-Access-Token` and
 `OAuth-Transaction-Challenge` as names in an EMILIA candidate wrapper. WPT can
-bind those bytes through `oth`, but the custom access-token header is not a
-native OAuth transaction-challenge presentation. The positive wrapper case is
-evidence for a possible application profile, not a claim that the two drafts
-already compose.
+bind those bytes through `oth`, but neither pinned draft defines that custom
+access-token header. The positive wrapper case is evidence for a possible
+application profile, not a claim that the two drafts already define or validate
+that composition.
 
 Txn-Tokens -11 defines `aud` as the Trust Domain, carries one `txn` through a
 call chain, and describes single-use refusal at the same receiving workload.
@@ -129,8 +134,10 @@ strict-canonical artifact can produce a verified evidence digest.
 - two valid current-v3 profiles under different pinned issuers and token bytes
   produce the frozen replay identity; a future revision must preserve that
   derivation or explicitly migrate replay state;
-- the exact WPT-02 and OAuth transaction-challenge HTTP rules produce an
-  explicit Authorization-scheme collision.
+- the exact WPT-02 and selected OAuth transaction-challenge Bearer
+  presentation forms are separately specified and can each be valid, but are
+  incompatible when attempted concurrently on one request, so that composition
+  attempt is invalid; the case does not revalidate either credential.
 
 The accepted WIMSE result has the role `delegated-workload`. It proves
 workload possession and request token binding under pinned keys. It does not
@@ -208,4 +215,6 @@ endorsement. A WPT does not validate the OAuth challenge or access token. The
 OAuth adapter must do that separately. Neither native verifier makes the local
 admission decision, reserves an operation, invokes a provider, or establishes
 what happened after provider entry. The artifact records a relying party's
-structured observation; it is not raw-wire HTTP evidence.
+structured observation; it is not raw-wire HTTP evidence. The incompatible
+same-request presentation case identifies an invalid composition attempt, not
+a defect in WPT-02 or OAuth Transaction Authorization Challenge -00.
