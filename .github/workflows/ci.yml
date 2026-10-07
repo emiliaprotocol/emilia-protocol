@@ -1228,6 +1228,38 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # The published bundle keeps @emilia-protocol/verify/* external, so users
+      # run whatever verifier mcp-server/package-lock.json installs from npm.
+      # Test that exact version before the repo-linked steps below replace it.
+      - name: Test against the lockfile-installed npm verifier
+        working-directory: mcp-server
+        env:
+          # The root .npmrc (fetch-retries=5) is not read from mcp-server or the smoke copy.
+          NPM_CONFIG_FETCH_RETRIES: "5"
+        run: |
+          npm ci --ignore-scripts
+          # shellcheck disable=SC2016 # JavaScript template literals, not shell
+          node --input-type=module -e '
+            import { readFileSync, realpathSync } from "node:fs";
+            import { fileURLToPath } from "node:url";
+            const name = "@emilia-protocol/verify";
+            const locked = JSON.parse(readFileSync("package-lock.json", "utf8")).packages[`node_modules/${name}`];
+            const installed = JSON.parse(readFileSync(`node_modules/${name}/package.json`, "utf8")).version;
+            if (!locked?.resolved?.startsWith("https://registry.npmjs.org/") || locked.link) throw new Error(`${name} is not locked to an npm registry tarball`);
+            if (installed !== locked.version) throw new Error(`${name} installed ${installed}, lockfile pins ${locked.version}`);
+            const resolved = realpathSync(fileURLToPath(import.meta.resolve(`${name}/strict-json`)));
+            if (!resolved.startsWith(realpathSync(`node_modules/${name}`) + "/")) throw new Error(`strict-json resolved outside the installed package: ${resolved}`);
+            const { strictJsonGate } = await import(`${name}/strict-json`);
+            if (typeof strictJsonGate !== "function") throw new Error("strictJsonGate export missing");
+            console.log(`${name} ${installed} (lockfile) resolves strict-json`);
+          '
+          npm test
+          # Stage an isolated runtime with no ../packages/verify fallback, so
+          # the minimum-Node smoke below can only load the npm-installed verifier.
+          SMOKE="$RUNNER_TEMP/mcp-lockfile-smoke/mcp-server"
+          mkdir -p "$SMOKE"
+          cp bundle.js package.json package-lock.json "$SMOKE/"
+          npm ci --ignore-scripts --omit=dev --prefix "$SMOKE"
       - name: Install dependencies against the local unreleased verifier
         run: |
           npm ci --ignore-scripts
@@ -1253,6 +1285,9 @@ jobs:
       - name: Smoke test — verify entry point loads
         working-directory: mcp-server
         run: node -e "import('./bundle.js').then(() => console.log('MCP server entry OK'))"
+      - name: Smoke test — bundle loads the lockfile-installed verifier
+        working-directory: ${{ runner.temp }}/mcp-lockfile-smoke/mcp-server
+        run: node -e "import('./bundle.js').then(() => console.log('MCP server entry OK with the lockfile verifier'))" < /dev/null
 
   # ── Job 9b: Benchmark gate — performance regression check ────────
   benchmark:
