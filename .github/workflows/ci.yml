@@ -389,6 +389,10 @@ jobs:
             examples/finance-loss-boundary/scenario.test.mjs \
             examples/ot-command-binding-v1/scenario.test.mjs \
             examples/ot-command-binding-v1/vectors.test.mjs \
+            examples/poppy-gate/evidence.test.mjs \
+            examples/poppy-gate/operations.test.mjs \
+            examples/poppy-gate/demo-auth.test.mjs \
+            examples/poppy-gate/demo.test.mjs \
             examples/receipt-program/demo.test.mjs \
             examples/regulatory-mobile-oversight/demo.test.mjs \
             examples/robot-sidecar/sidecar.test.js \
@@ -397,6 +401,7 @@ jobs:
             examples/self-modification-gate-v1/scenario.test.mjs \
             examples/supply-chain-authority-v1/scenario.test.mjs \
             examples/trusted-context-multi-provider/run.test.mjs
+          node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --strict --skipLibCheck --allowImportingTsExtensions --module nodenext --moduleResolution nodenext --target es2022 --types node examples/poppy-gate/*.mts
           node examples/external-verification/self-test.mjs
           node examples/wimse-pep/self-test.mjs
       # Runs the public Gate proof command on the repository's minimum Node

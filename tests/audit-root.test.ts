@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -74,6 +74,40 @@ afterEach(() => {
 });
 
 describe('root audit report validation', () => {
+  it('rejects the source-map-js advisory if a vulnerable copy returns after upgrading the lock', () => {
+    const result = runWithAuditReport({
+      auditReportVersion: 2,
+      vulnerabilities: {
+        'source-map-js': {
+          severity: 'high',
+          via: [{
+            name: 'source-map-js',
+            url: 'https://github.com/advisories/GHSA-68fv-2mgg-jv7q',
+            severity: 'high',
+            range: '>=1.0.0 <1.2.2',
+          }],
+          nodes: ['node_modules/source-map-js'],
+        },
+      },
+      metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 1, critical: 0, total: 1 } },
+    }, 1);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('unexpected');
+    expect(result.stderr).toContain('GHSA-68fv-2mgg-jv7q');
+    expect(result.stdout).not.toContain('AUDIT: PASS');
+  });
+
+  it('locks every source-map-js copy to the reviewed patch and registry integrity', () => {
+    const lock = JSON.parse(readFileSync(join(process.cwd(), 'package-lock.json'), 'utf8'));
+    const copies = Object.entries(lock.packages as Record<string, { version: string; integrity: string }>)
+      .filter(([location]) => location === 'node_modules/source-map-js' || location.endsWith('/node_modules/source-map-js'));
+    expect(copies).toHaveLength(1);
+    for (const [, copy] of copies) {
+      expect(copy.version).toBe('1.2.2');
+      expect(copy.integrity).toBe('sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==');
+    }
+  });
+
   it('fails closed when npm returns a JSON error response', () => {
     const result = runWithAuditReport({ error: { code: 'EAI_AGAIN' } }, 1);
     expect(result.status).not.toBe(0);
