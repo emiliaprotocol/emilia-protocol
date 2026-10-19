@@ -66,7 +66,7 @@
   "local_files": [
     {
       "path": ".github/workflows/authzen-pep-profile.yml",
-      "sha256": "72e235d32c0f1dddce06ee3b60148d31d2b36bd15465f61e6f037af45badd1e9"
+      "sha256": "a459b0864e226325bd6a079eb4c7e8497c6c4a7f87a440885830d78d581180ae"
     },
     {
       "path": "caid/impl/js/caid.mjs",

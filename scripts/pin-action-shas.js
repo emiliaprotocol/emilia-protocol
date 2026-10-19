@@ -7,8 +7,9 @@
  * One-shot migration: replaces version-tagged GitHub Action references
  * with commit SHA pins across all .github/workflows/*.yml files.
  *
- * SHA pins verified against upstream tags on 2026-08-31. Re-run after
- * Dependabot updates the SHAs.
+ * Baseline SHA pins verified against upstream tags on 2026-08-31; Node,
+ * artifact upload and CodeQL pins reverified on 2026-10-19. Keep this map
+ * aligned when Dependabot updates the governed workflow SHAs.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,15 +22,15 @@ const WORKFLOWS = path.join(ROOT, '.github', 'workflows');
 const PINS = {
     // ── GitHub official actions ──────────────────────────────────────────────
     'actions/checkout@v7': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1',
-    'actions/setup-node@v7': 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0',
+    'actions/setup-node@v7': 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0',
     'actions/setup-python@v7': 'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0',
-    'actions/upload-artifact@v7': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1',
+    'actions/upload-artifact@v7': 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2',
     'actions/setup-java@v6': 'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1',
     'actions/attest@v4': 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2',
     // ── CodeQL ───────────────────────────────────────────────────────────────
-    'github/codeql-action/init@v4': 'github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
-    'github/codeql-action/analyze@v4': 'github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
-    'github/codeql-action/autobuild@v4': 'github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
+    'github/codeql-action/init@v4': 'github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d  # v4.38.3',
+    'github/codeql-action/analyze@v4': 'github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d  # v4.38.3',
+    'github/codeql-action/autobuild@v4': 'github/codeql-action/autobuild@24c54180a607b1449ed407dd24f251e4e9147c8d  # v4.38.3',
     // ── Security / compliance ─────────────────────────────────────────────────
     'gitleaks/gitleaks-action@v2': 'gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2.3.9',
     'christophebedard/dco-check@v0.4.0': 'christophebedard/dco-check@30353d8deedf393cf55ba33355e71da7fdd095c7  # v0.4.0',

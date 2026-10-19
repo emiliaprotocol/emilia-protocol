@@ -38,12 +38,12 @@ describe('release-chain coverage', () => {
     const helper = readFileSync('scripts/pin-action-shas.ts', 'utf8');
     for (const [tag, pinned] of Object.entries({
       'actions/checkout@v7': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1',
-      'actions/setup-node@v7': 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0',
+      'actions/setup-node@v7': 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0',
       'actions/setup-python@v7': 'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0',
-      'actions/upload-artifact@v7': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1',
+      'actions/upload-artifact@v7': 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2',
       'actions/setup-java@v6': 'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1',
       'actions/attest@v4': 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2',
-      'github/codeql-action/init@v4': 'github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',
+      'github/codeql-action/init@v4': 'github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d  # v4.38.3',
       'pypa/gh-action-pypi-publish@release/v1': 'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2',
     })) {
       expect(helper).toContain(`'${tag}'`);
@@ -53,6 +53,14 @@ describe('release-chain coverage', () => {
 
     const expectedRefs = {
       'actions/checkout': '3d3c42e5aac5ba805825da76410c181273ba90b1',
+      'actions/setup-node': '949feb2413d6458794dcd2491c4babbbce0c15c1',
+      'actions/upload-artifact': 'cf430e030ddbb5b0abf93d22962f4752f3646cd9',
+      'actions/download-artifact': '9000827ccba6bdab643e8b6fd33ac0654aef8333',
+      'actions/create-github-app-token': '64ab729a6294000f5aa4a4bc0b73d1f32bc45510',
+      'github/codeql-action/init': '24c54180a607b1449ed407dd24f251e4e9147c8d',
+      'github/codeql-action/analyze': '24c54180a607b1449ed407dd24f251e4e9147c8d',
+      'github/codeql-action/upload-sarif': '24c54180a607b1449ed407dd24f251e4e9147c8d',
+      'ossf/scorecard-action': 'fa7117db83c52d787ae5a89f350999701505d78e',
       'actions/setup-java': 'de7274f081f381c8f8158605e0321c36c376e2e6',
       'actions/attest': '1e69f48acb82d1966a394da916b4c1698aa569d6',
       'pypa/gh-action-pypi-publish': 'dc37677b2e1c63e2034f94d8a5b11f265b73ba33',
