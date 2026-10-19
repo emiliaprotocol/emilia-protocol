@@ -17,18 +17,17 @@
     "install": {
       "exclude": [
         "expo",
-        "expo-asset",
-        "expo-screen-capture"
+        "expo-asset"
       ]
     }
   },
   "dependencies": {
     "@noble/curves": "2.3.0",
     "@noble/hashes": "2.3.0",
-    "expo": "57.0.26",
-    "expo-asset": "57.0.18",
+    "expo": "57.0.28",
+    "expo-asset": "57.0.19",
     "expo-local-authentication": "~57.0.3",
-    "expo-screen-capture": "~57.0.3",
+    "expo-screen-capture": "~57.0.4",
     "expo-secure-store": "57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -37,11 +36,12 @@
   "overrides": {
     "@expo/metro": "56.0.2",
     "brace-expansion": "5.0.12",
-    "expo-constants": "57.0.20",
+    "expo-constants": "57.0.21",
     "metro": "0.84.5",
     "nanoid": "3.3.18",
     "postcss": "8.5.25",
     "shell-quote": "1.11.0",
+    "source-map-js": "1.2.2",
     "uuid": "11.1.1"
   },
   "devDependencies": {

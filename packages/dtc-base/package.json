@@ -58,6 +58,7 @@
     "adm-zip": "0.6.1",
     "diff": "8.0.3",
     "fast-uri": "3.1.8",
+    "http-cache-semantics": "4.3.0",
     "serialize-javascript": "7.0.7",
     "tmp": "0.2.7",
     "undici": "6.28.1",

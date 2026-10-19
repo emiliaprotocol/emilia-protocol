@@ -255,6 +255,7 @@
     "proxy-addr": "2.0.8",
     "qs": "6.16.0",
     "sharp": "0.35.5",
+    "source-map-js": "1.2.2",
     "ws": "^8.21.0",
     "minimatch@3.1.5": {
       "brace-expansion": "2.1.7"
@@ -282,7 +283,7 @@
     "@vitest/coverage-v8": "^5.0.2",
     "brace-expansion": "5.0.12",
     "eslint": "9.39.5",
-    "eslint-config-next": "^16.3.8",
+    "eslint-config-next": "^16.4.0",
     "fast-check": "^4.10.2",
     "google-auth-library": "^11.1.0",
     "husky": "^9.0.0",
