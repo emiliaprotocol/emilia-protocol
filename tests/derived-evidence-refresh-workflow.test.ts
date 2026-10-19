@@ -48,7 +48,7 @@ describe('derived-evidence refresh workflow', () => {
     const steps = workflow.jobs.refresh.steps;
     const uses = steps.map((step: { uses?: string }) => step.uses).filter(Boolean);
     expect(uses).toEqual(expect.arrayContaining([
-      'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020',
+      'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1',
       'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6',
       'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97',
       'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e',
@@ -77,7 +77,7 @@ describe('derived-evidence refresh workflow', () => {
     const { source, workflow } = loadWorkflow();
     const upload = workflow.jobs.refresh.steps.find((step: { uses?: string }) =>
       step.uses?.startsWith('actions/upload-artifact@'));
-    expect(upload.uses).toBe('actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a');
+    expect(upload.uses).toBe('actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9');
     expect(upload.if).toBe('${{ success() }}');
     expect(upload.with['if-no-files-found']).toBe('error');
     expect(upload.with['include-hidden-files']).toBe(true);
