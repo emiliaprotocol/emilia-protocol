@@ -12,7 +12,7 @@ const temporaryDirectories: string[] = [];
 // Each stub invocation answers with the next entry, and every invocation past
 // the end repeats the last one, so a single-entry sequence behaves like a stub
 // that always returns the same payload.
-function runWithAuditSequence(responses: Array<{ report: unknown; exitCode: number }>) {
+function runWithAuditSequence(responses: Array<{ report: unknown; exitCode: number }>, script = 'scripts/audit-root.mjs') {
   const directory = mkdtempSync(join(tmpdir(), 'emilia-audit-root-'));
   temporaryDirectories.push(directory);
   const npm = join(directory, 'npm');
@@ -38,7 +38,7 @@ function runWithAuditSequence(responses: Array<{ report: unknown; exitCode: numb
     'utf8',
   );
   chmodSync(npm, 0o700);
-  return spawnSync(process.execPath, ['scripts/audit-root.mjs'], {
+  return spawnSync(process.execPath, [script], {
     cwd: process.cwd(),
     encoding: 'utf8',
     env: {
@@ -74,6 +74,20 @@ afterEach(() => {
 });
 
 describe('root audit report validation', () => {
+  it('rejects the former source-map-js exception if it recurs', () => {
+    const result = runWithAuditReport({
+      ...CLEAN_REPORT,
+      vulnerabilities: {
+        'source-map-js': {
+          severity: 'high', nodes: ['node_modules/source-map-js'],
+          via: [{ url: 'https://github.com/advisories/GHSA-68fv-2mgg-jv7q', severity: 'high' }],
+        },
+      },
+      metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 1, critical: 0, total: 1 } },
+    }, 1);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('GHSA-68fv-2mgg-jv7q');
+  });
   it('fails closed when npm returns a JSON error response', () => {
     const result = runWithAuditReport({ error: { code: 'EAI_AGAIN' } }, 1);
     expect(result.status).not.toBe(0);
@@ -125,6 +139,34 @@ describe('root audit report validation', () => {
     const result = runWithAuditReport({ error: { code: 'EAUDITNOLOCK', summary: 'x', detail: 'y' } }, 1);
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('npm audit returned an error report');
+  });
+});
+
+describe('DTC audit without expired exceptions', () => {
+  const script = 'packages/dtc-base/scripts/audit-toolchain.mjs';
+  it('accepts complete clean data', () => {
+    const result = runWithAuditSequence([{ report: CLEAN_REPORT, exitCode: 0 }], script);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('no exceptions');
+  });
+  it.each([ENDPOINT_FAILURE, {}, { ...CLEAN_REPORT, metadata: {} }])('rejects missing audit data', (report) => {
+    expect(runWithAuditSequence([{ report, exitCode: 1 }], script).status).not.toBe(0);
+  });
+  it.each(['high', 'critical'])('rejects a recurring advisory at %s', (severity) => {
+    const report = {
+      ...CLEAN_REPORT,
+      vulnerabilities: {
+        'http-cache-semantics': { severity, via: [{ severity, url: 'https://github.com/advisories/GHSA-ch52-4w7c-c8xp' }] },
+      },
+      metadata: { vulnerabilities: { ...CLEAN_REPORT.metadata.vulnerabilities, [severity]: 1, total: 1 } },
+    };
+    const result = runWithAuditSequence([{ report, exitCode: 1 }], script);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('http-cache-semantics');
+  });
+  it('rejects a false clean summary', () => {
+    const report = { ...CLEAN_REPORT, metadata: { vulnerabilities: { ...CLEAN_REPORT.metadata.vulnerabilities, high: 1, total: 1 } } };
+    expect(runWithAuditSequence([{ report, exitCode: 1 }], script).status).not.toBe(0);
   });
 });
 

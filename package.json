@@ -229,7 +229,7 @@
     "mammoth": "^1.13.0",
     "mcp-handler": "^2.2.0",
     "motion": "13.4.6",
-    "next": "^16.3.8",
+    "next": "^16.4.0",
     "node-app-attest": "1.0.1",
     "pdf-parse": "^2.4.5",
     "react": "^19.3.0",
@@ -255,6 +255,7 @@
     "proxy-addr": "2.0.8",
     "qs": "6.16.0",
     "sharp": "0.35.5",
+    "source-map-js": "1.2.2",
     "ws": "^8.21.0",
     "minimatch@3.1.5": {
       "brace-expansion": "2.1.7"
