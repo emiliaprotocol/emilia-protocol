@@ -36,6 +36,48 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const LEASE_SECONDS = 1;
 const staleWait = () => sleep(LEASE_SECONDS * 1000 + 300);
 
+async function bounded(promise, description, timeoutMs = 10_000) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(description)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function pausePoint() {
+  let signal;
+  let resume;
+  const entered = new Promise((resolve) => { signal = resolve; });
+  const held = new Promise((resolve) => { resume = resolve; });
+  return {
+    entered: (owner) => bounded(Promise.race([
+      entered,
+      owner.then((result) => {
+        throw new Error(`owner completed before reaching the expected pause: ${JSON.stringify(result)}`);
+      }),
+    ]), 'owner did not reach the expected pause within 10 seconds'),
+    resume,
+    wait: () => { signal(); return held; },
+  };
+}
+
+test('a pause reports an owner that finishes or rejects before reaching it', async () => {
+  await assert.rejects(pausePoint().entered(Promise.resolve({ reason: 'early_refusal' })),
+    /owner completed before reaching the expected pause.*early_refusal/);
+  const failure = new Error('owner rejected before provider entry');
+  await assert.rejects(pausePoint().entered(Promise.reject(failure)), (error) => error === failure);
+});
+
+test('a missing pause fails within a bound instead of hanging the suite', async () => {
+  await assert.rejects(bounded(new Promise(() => {}), 'missing pause', 10), /missing pause/);
+});
+
 function fakeStripe() {
   const refunds = [];
   const creates = [];
@@ -219,68 +261,93 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
       });
     });
 
-    await t.test('an owner that stalls inside Stripe is recovered without a second call and cannot commit late', async () => {
+    await t.test('an owner that stalls inside Stripe is recovered without a second call and cannot commit late', { timeout: 30_000 }, async () => {
       await reset();
       const stripe = fakeStripe();
-      let release;
-      stripe.hooks.afterAccept = () => new Promise((resolve) => { release = resolve; });
+      const accepted = pausePoint();
+      stripe.hooks.afterAccept = accepted.wait;
       const stalled = await makeExecutor(stripe);
+      // Simulate slow account resolution before the attempt is reserved. The
+      // lease starts later than guard(), then renews just before Stripe entry.
+      stripe.hooks.retrieve = async () => {
+        delete stripe.hooks.retrieve;
+        await sleep(LEASE_SECONDS * 1000);
+        return { id: ACCOUNT };
+      };
       const inflight = stalled.guard();
-      await staleWait();
-      delete stripe.hooks.afterAccept;
-      const recoverer = await makeExecutor(stripe);
-      assert.deepEqual(await recoverer.reconcile(), { ok: true, state: 'COMMITTED', refund_id: 're_live_1' });
-      release();
-      assert.equal((await inflight).reason, 'attempt_freeze_failed');
+      let lateOwner;
+      try {
+        // Start the expiry wait after the final owner heartbeat, not guard().
+        await accepted.entered(inflight);
+        await staleWait();
+        delete stripe.hooks.afterAccept;
+        const recoverer = await makeExecutor(stripe);
+        assert.deepEqual(await recoverer.reconcile(), { ok: true, state: 'COMMITTED', refund_id: 're_live_1' });
+      } finally {
+        accepted.resume();
+        lateOwner = await bounded(inflight, 'resumed owner did not finish');
+      }
+      assert.equal(lateOwner.reason, 'attempt_freeze_failed');
       assert.equal(stripe.creates.length, 1);
     });
 
-    await t.test('an owner lost before provider entry recovers as indeterminate, never as retryable', async () => {
+    await t.test('an owner lost before provider entry recovers as indeterminate, never as retryable', { timeout: 30_000 }, async () => {
       await reset();
       const stripe = fakeStripe();
       let probes = 0;
-      let release;
+      const probing = pausePoint();
       stripe.hooks.retrieve = async () => {
         probes += 1;
         // Probe 3 is the in-callback probe after the row is INVOKING. It
         // stalls past the lease, then answers the same account, so only the
         // lost lease can keep the owner out of Stripe.
-        if (probes === 3) await new Promise((resolve) => { release = resolve; });
+        if (probes === 3) await probing.wait();
         return { id: ACCOUNT };
       };
       const lost = await makeExecutor(stripe);
       const inflight = lost.guard();
-      await staleWait();
-      const recoverer = await makeExecutor(stripe);
-      assert.deepEqual(await recoverer.reconcile(),
-        { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
-      assert.equal((await recoverer.guard()).reason, 'operation_already_reserved');
-      release();
-      const lateOwner = await inflight;
+      let lateOwner;
+      try {
+        await probing.entered(inflight);
+        await staleWait();
+        const recoverer = await makeExecutor(stripe);
+        assert.deepEqual(await recoverer.reconcile(),
+          { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
+        assert.equal((await recoverer.guard()).reason, 'operation_already_reserved');
+      } finally {
+        probing.resume();
+        lateOwner = await bounded(inflight, 'resumed owner did not finish');
+      }
       assert.equal(stripe.creates.length, 0);
       assert.deepEqual(lateOwner, { ok: false, state: 'INDETERMINATE', reason: 'attempt_ownership_lost' });
       assert.deepEqual((await rows()).attempts, [{ state: 'INDETERMINATE', generation: 1, has_evidence: false }]);
     });
 
-    await t.test('an owner that stalls in the pre-create lookup past its lease never creates after recovery reported unproven', async () => {
+    await t.test('an owner that stalls in the pre-create lookup past its lease never creates after recovery reported unproven', { timeout: 30_000 }, async () => {
       await reset();
       const stripe = fakeStripe();
       let lists = 0;
-      let release;
+      const lookup = pausePoint();
       stripe.hooks.list = async () => {
         lists += 1;
         // List 1 is the owner's pre-create lookup; it returns only after
         // recovery has taken the attempt over and reported it unproven.
-        if (lists === 1) await new Promise((resolve) => { release = resolve; });
+        if (lists === 1) await lookup.wait();
       };
       const owner = await makeExecutor(stripe);
       const inflight = owner.guard();
-      await staleWait();
-      const recoverer = await makeExecutor(stripe);
-      assert.deepEqual(await recoverer.reconcile(),
-        { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
-      release();
-      const lateOwner = await inflight;
+      let recoverer;
+      let lateOwner;
+      try {
+        await lookup.entered(inflight);
+        await staleWait();
+        recoverer = await makeExecutor(stripe);
+        assert.deepEqual(await recoverer.reconcile(),
+          { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
+      } finally {
+        lookup.resume();
+        lateOwner = await bounded(inflight, 'resumed owner did not finish');
+      }
       assert.equal(stripe.creates.length, 0);
       assert.deepEqual(lateOwner, { ok: false, state: 'INDETERMINATE', reason: 'attempt_ownership_lost' });
       await staleWait();
