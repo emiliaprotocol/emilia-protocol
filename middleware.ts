@@ -395,6 +395,17 @@ const ROUTE_POLICIES = {
   // Internal reviewer API. Authentication and named reviewer binding are
   // performed by the host-only signed session in-route.
   'POST /api/trust-desk/review/*':      { rateCategory: 'submit', useAuth: false },
+
+  // OrcaRouter Cyber Inference provider settings. Off unless the operator
+  // opts in (ORCAROUTER_PROVIDER_ADMIN); mutations additionally require a
+  // same-origin request in-route. Mutations can replace the deployment's LLM
+  // credential, so they are classified explicitly at submit tier.
+  'POST /api/orcarouter/credential':      { rateCategory: 'submit', useAuth: false },
+  'DELETE /api/orcarouter/credential':    { rateCategory: 'submit', useAuth: false },
+  'POST /api/orcarouter/connect/start':   { rateCategory: 'submit', useAuth: false },
+  'POST /api/orcarouter/connect/complete':{ rateCategory: 'submit', useAuth: false },
+  'POST /api/orcarouter/connect/cancel':  { rateCategory: 'submit', useAuth: false },
+  'POST /api/orcarouter/preferences':     { rateCategory: 'submit', useAuth: false },
 };
 
 // =============================================================================

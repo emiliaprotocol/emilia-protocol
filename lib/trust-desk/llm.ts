@@ -3,12 +3,16 @@
  *
  * @license Apache-2.0
  *
- * Provider order: Anthropic (ANTHROPIC_API_KEY) → OpenAI (OPENAI_API_KEY).
- * No SDK dependency — both are called over `fetch` so the pipeline adds zero
- * packages. When neither key is present, `llmAvailable()` is false and the
- * pipeline routes every non-deterministic question to the reviewer queue
- * instead of guessing. That is the whole safety story: no key → no
- * hallucination, just escalation.
+ * Provider order: Anthropic (ANTHROPIC_API_KEY) → OpenAI (OPENAI_API_KEY) →
+ * OrcaRouter Cyber Inference. An OrcaRouter credential saved through the
+ * provider settings surface or the PKCE connect flow is an explicit operator
+ * choice and takes precedence over those environment keys; an
+ * ORCAROUTER_API_KEY deployment secret is used after them unless
+ * TRUST_DESK_PROVIDER names a provider. No SDK dependency — every provider is
+ * called over `fetch` so the pipeline adds zero packages. When no credential
+ * is present, `llmAvailable()` is false and the pipeline routes every
+ * non-deterministic question to the reviewer queue instead of guessing. That
+ * is the whole safety story: no key → no hallucination, just escalation.
  *
  * Every call returns structured JSON validated against a caller-supplied
  * predicate. Malformed output → { ok:false } so callers fail closed.
@@ -16,12 +20,25 @@
 
 import { logger } from '../logger.js';
 import type { TrustDeskLlmBudget } from './resource-budget.js';
+import {
+  ORCAROUTER_PROVIDER_ID,
+  orcaRouterChatCompletion,
+  resolveOrcaRouterOrigins,
+} from '../providers/orcarouter.js';
+import {
+  getOrcaRouterModel,
+  hasOrcaRouterCredential,
+  hasStoredOrcaRouterCredential,
+  markOrcaRouterNeedsReauth,
+  resolveOrcaRouterCredential,
+} from '../providers/orcarouter-credentials.js';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
 // Defaults are current (verified against the live /v1/models list). Override
-// per-deploy with TRUST_DESK_ANTHROPIC_MODEL / TRUST_DESK_OPENAI_MODEL.
+// per-deploy with TRUST_DESK_ANTHROPIC_MODEL / TRUST_DESK_OPENAI_MODEL /
+// TRUST_DESK_ORCAROUTER_MODEL (or the provider settings surface).
 const ANTHROPIC_MODEL = process.env.TRUST_DESK_ANTHROPIC_MODEL || 'claude-sonnet-4-6';
 const OPENAI_MODEL = process.env.TRUST_DESK_OPENAI_MODEL || 'gpt-4o';
 
@@ -39,13 +56,21 @@ class LlmOwnedTimeoutError extends Error {
 
 /** @returns {boolean} whether any provider key is configured. */
 export function llmAvailable() {
-  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
+  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY) || hasOrcaRouterCredential();
 }
 
-/** @returns {'anthropic'|'openai'|null} the active provider. */
-export function activeProvider() {
+/** @returns {'anthropic'|'openai'|'orcarouter'|null} the active provider. */
+export function activeProvider(): 'anthropic' | 'openai' | 'orcarouter' | null {
+  // A credential saved through the OrcaRouter settings surface or PKCE is an
+  // explicit operator choice, so it wins over ambient environment keys.
+  const explicit = String(process.env.TRUST_DESK_PROVIDER || '').trim().toLowerCase();
+  if (explicit === ORCAROUTER_PROVIDER_ID && hasOrcaRouterCredential()) return 'orcarouter';
+  if (explicit === 'anthropic' && process.env.ANTHROPIC_API_KEY) return 'anthropic';
+  if (explicit === 'openai' && process.env.OPENAI_API_KEY) return 'openai';
+  if (hasStoredOrcaRouterCredential()) return 'orcarouter';
   if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
   if (process.env.OPENAI_API_KEY) return 'openai';
+  if (hasOrcaRouterCredential()) return 'orcarouter';
   return null;
 }
 
@@ -100,10 +125,16 @@ export async function llmJSON({
   try {
     if (provider === 'anthropic') {
       ({ raw, usage } = await callAnthropic({ system, user, maxTokens, temperature, timeout: callTimeout }));
+    } else if (provider === 'orcarouter') {
+      ({ raw, usage } = await callOrcaRouter({ system, user, maxTokens, temperature, timeout: callTimeout }));
     } else {
       ({ raw, usage } = await callOpenAI({ system, user, maxTokens, temperature, timeout: callTimeout }));
     }
   } catch (err) {
+    if (err?.code === 'needs_reauth') {
+      logger.warn('trust-desk llm: OrcaRouter credential needs reauthentication', { provider });
+      return { ok: false, reason: 'needs_reauth', provider };
+    }
     logger.warn('trust-desk llm: provider call failed', { provider, error: err.message });
     if (err instanceof LlmOwnedTimeoutError) {
       if (!err.enforcesBudgetDeadline) {
@@ -184,6 +215,45 @@ async function callOpenAI({ system, user, maxTokens, temperature, timeout }) {
     const json = await res.json();
     const raw = json.choices?.[0]?.message?.content ?? '';
     return { raw, usage: json.usage };
+  });
+}
+
+/**
+ * OrcaRouter Cyber Inference. The credential may come from the environment,
+ * the API-key settings path, or a PKCE approval; this path does not care
+ * which. A relay 401 is terminal for exactly the stored generation that made
+ * the request: mark it, do not retry, and never attempt a refresh grant.
+ */
+async function callOrcaRouter({ system, user, maxTokens, temperature, timeout }) {
+  const credential = await resolveOrcaRouterCredential();
+  if (!credential.ok) {
+    const error: any = new Error(credential.reason);
+    error.code = credential.reason;
+    throw error;
+  }
+  const origins = resolveOrcaRouterOrigins();
+  const model = await getOrcaRouterModel();
+  return withAbortTimeout(timeout, async (signal) => {
+    try {
+      return await orcaRouterChatCompletion({
+        apiKey: credential.key,
+        origins,
+        model,
+        system,
+        user,
+        maxTokens,
+        temperature,
+        signal,
+      });
+    } catch (err) {
+      if (err?.status === 401) {
+        await markOrcaRouterNeedsReauth(credential.generation);
+        const needsReauth: any = new Error('needs_reauth');
+        needsReauth.code = 'needs_reauth';
+        throw needsReauth;
+      }
+      throw err;
+    }
   });
 }
 
