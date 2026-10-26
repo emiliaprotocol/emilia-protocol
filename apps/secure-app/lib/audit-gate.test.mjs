@@ -356,10 +356,10 @@ test('the committed exception file satisfies the enforced schema', () => {
   const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
   assert.deepEqual(
     exceptions.map((exception) => exception.advisory),
-    [NODE_FORGE, BRACES, SOURCE_MAP],
+    [NODE_FORGE],
     'only the reviewed tooling advisories may be accepted',
   );
-  const [nodeForge, braces, sourceMap] = exceptions;
+  const [nodeForge] = exceptions;
   assert.equal(nodeForge.package, 'node-forge');
   assert.equal(nodeForge.severity, 'high');
   assert.deepEqual(
@@ -368,16 +368,6 @@ test('the committed exception file satisfies the enforced schema', () => {
   );
   assert.equal(nodeForge.acceptedOnText, '2026-10-02');
   assert.equal(nodeForge.expiresOnText, '2026-10-30');
-  assert.equal(braces.package, 'braces');
-  assert.equal(braces.severity, 'high');
-  assert.deepEqual([...braces.affectedPackages].sort(), BRACES_AFFECTED);
-  assert.equal(braces.acceptedOnText, '2026-10-04');
-  assert.equal(braces.expiresOnText, '2026-12-01');
-  assert.equal(sourceMap.package, 'source-map-js');
-  assert.equal(sourceMap.severity, 'high');
-  assert.deepEqual([...sourceMap.affectedPackages], ['source-map-js']);
-  assert.equal(sourceMap.acceptedOnText, '2026-10-06');
-  assert.equal(sourceMap.expiresOnText, '2026-10-08');
   for (const exception of exceptions) {
     assert.ok(exception.expiresOn > exception.acceptedOn);
     assert.ok(exception.affectedPackages.size > 0);
@@ -404,7 +394,8 @@ test('the node-forge acceptance still matches the app it was argued against', ()
   }
 });
 
-test('the braces acceptance still matches the tree it was argued against', () => {
+test('the former braces tooling path remains isolated without an acceptance', () => {
+  assert.ok(!loadExceptions(join(SECURE_APP, 'audit-exceptions.json')).some((entry) => entry.advisory === BRACES));
   // The exception says braces is reached only through Metro's file watchers,
   // which expand globs built from local configuration. Fail here, before
   // expiry, if a second copy appears, if a new package starts importing
@@ -421,7 +412,7 @@ test('the braces acceptance still matches the tree it was argued against', () =>
     .filter(([, entry]) => entry.dependencies?.micromatch !== undefined)
     .map(([path]) => path)
     .sort();
-  assert.deepEqual(micromatchDependents, ['node_modules/@expo/metro-file-map', 'node_modules/metro-file-map']);
+  assert.deepEqual(micromatchDependents, ['node_modules/metro-file-map']);
 
   const sources = ['App.tsx', 'index.ts', ...readdirSync(join(SECURE_APP, 'lib'))
     .filter((name) => /\.(?:ts|tsx|js|mjs)$/.test(name) && !name.endsWith('.test.mjs'))
@@ -432,16 +423,16 @@ test('the braces acceptance still matches the tree it was argued against', () =>
   }
 });
 
-test('the source-map acceptance stays pinned to the quarantined build-only copy', () => {
+test('source-map-js stays pinned to the patched build-only copy without an exception', () => {
   const lockfile = JSON.parse(readFileSync(join(SECURE_APP, 'package-lock.json'), 'utf8'));
   const copies = Object.keys(lockfile.packages)
     .filter((path) => /(?:^|\/)node_modules\/source-map-js$/.test(path));
   assert.deepEqual(copies, ['node_modules/source-map-js']);
-  assert.equal(lockfile.packages['node_modules/source-map-js'].version, '1.2.1');
-  assert.equal(
-    lockfile.packages['node_modules/source-map-js'].integrity,
-    'sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==',
-  );
+  assert.equal(lockfile.packages['node_modules/source-map-js'].version, '1.2.2');
+  const manifest = JSON.parse(readFileSync(join(SECURE_APP, 'package.json'), 'utf8'));
+  assert.equal(manifest.overrides['source-map-js'], '1.2.2');
+  assert.ok(!loadExceptions(join(SECURE_APP, 'audit-exceptions.json'))
+    .some((exception) => exception.advisory === SOURCE_MAP));
   const dependents = Object.entries(lockfile.packages)
     .filter(([, entry]) => entry.dependencies?.['source-map-js'] !== undefined)
     .map(([path]) => path)
@@ -481,11 +472,12 @@ test('the gate passes against the real dependency tree', () => {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   assert.match(stdout, /AUDIT GATE PASS/);
-  assert.match(stdout, /3 accepted advisory\(ies\)/);
-  for (const advisory of [NODE_FORGE, BRACES, SOURCE_MAP]) {
+  assert.match(stdout, /1 accepted advisory\(ies\)/);
+  for (const advisory of [NODE_FORGE]) {
     assert.ok(
       stdout.split(/\r?\n/).some((line) => line.trim() === advisory),
       `${advisory} must appear as an exact output line`,
     );
   }
+  assert.doesNotMatch(stdout, /GHSA-68fv-2mgg-jv7q/);
 });

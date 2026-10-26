@@ -229,7 +229,7 @@
     "mammoth": "^1.13.0",
     "mcp-handler": "^2.3.0",
     "motion": "13.4.6",
-    "next": "^16.3.8",
+    "next": "16.4.2",
     "node-app-attest": "1.0.1",
     "pdf-parse": "^2.4.5",
     "react": "^19.3.0",
@@ -246,8 +246,8 @@
     "body-parser": "2.3.0",
     "brace-expansion@5": "$brace-expansion",
     "fast-uri": "3.1.8",
-    "hono": "4.13.7",
-    "ip-address": "10.7.2",
+    "hono": "4.13.11",
+    "ip-address": "10.7.4",
     "js-yaml": "4.3.2",
     "nanoid": "3.3.18",
     "rollup": "^4.22.5",
@@ -255,6 +255,7 @@
     "proxy-addr": "2.0.8",
     "qs": "6.16.0",
     "sharp": "0.35.5",
+    "source-map-js": "1.2.2",
     "ws": "^8.21.0",
     "minimatch@3.1.5": {
       "brace-expansion": "2.1.7"
@@ -271,7 +272,8 @@
     },
     "xml-encryption": {
       "@xmldom/xmldom": "0.8.15"
-    }
+    },
+    "@modelcontextprotocol/server": "2.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -282,7 +284,7 @@
     "@vitest/coverage-v8": "^5.0.5",
     "brace-expansion": "5.0.12",
     "eslint": "9.39.5",
-    "eslint-config-next": "^16.3.8",
+    "eslint-config-next": "16.4.2",
     "fast-check": "^4.10.2",
     "google-auth-library": "^11.3.1",
     "husky": "^9.0.0",
