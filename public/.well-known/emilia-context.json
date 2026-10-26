@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-10-06T20:59:22.317Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "0c3b130fac2e2f7482fd189f7921c001aa7b082e33ac8a909843d02069978722",
+    "input_digest_sha256": "7d8f4230b8029bfa45a302970206bd4f3fcca1901f4051b66be8233c6d46173d",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "1a0bac0a1f7776358d1ceaa24c9de0e1ab8c490f742ef5660744b3e5dc116db3",
+        "sha256": "b57cb6e10a154e7b8750fd8ed7a2e0d3b69999c67ca587304ab5b34e52060d0a",
         "bytes": 4299
       },
       {
@@ -32,12 +32,12 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "848d1af1c056b13a81a900ed43e0919eeb565db0a32e46e49df79fee039cec57",
+        "sha256": "3f822db970d493344e50fea2702bf421497dcd20be9ad8ab5b2b30d293115b53",
         "bytes": 254274
       },
       {
         "path": "security/security-case.json",
-        "sha256": "8d0429aba1681b4469f23245157c1512122d9501689d101f2b496e85cde3f599",
+        "sha256": "c2b7cfaad0544ef0de48b9653f60db38e69996aa3e1ad28646f9341b44bc4b75",
         "bytes": 391520
       },
       {
@@ -350,7 +350,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "f5d2a6670c0d84192d134ba56db09ecf67562ac56cbdb9173f4f6fdfc6268362",
+        "evidenceSha256": "1584f8279ee6567377b25eed3666836f74a3ee3d0e9fd0923165a1de0ee73b48",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -420,7 +420,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "0f4cb06dfd8e0c237477002e5ecf1be485b55fef13cfed91d4fd5ef9b910e30a"
+      "evidence_bundle_sha256": "f560fbb6e127a05fb5ae516a69c6423ac9feaaea871f9fc00cd179139c11e2bb"
     },
     "caid": {
       "core_vectors": 616,
