@@ -6,7 +6,7 @@
  * with commit SHA pins across all .github/workflows/*.yml files.
  *
  * Baseline SHA pins verified against upstream tags on 2026-08-31; Node,
- * artifact upload and CodeQL pins reverified on 2026-10-19. Keep this map
+ * Java, artifact upload and CodeQL pins reverified on 2026-10-26. Keep this map
  * aligned when Dependabot updates the governed workflow SHAs.
  */
 
@@ -31,17 +31,17 @@ const PINS: { [key: string]: string } = {
   'actions/upload-artifact@v7':
     'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2',
   'actions/setup-java@v6':
-    'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1',
+    'actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad  # v6.1.0',
   'actions/attest@v4':
     'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2',
 
   // ── CodeQL ───────────────────────────────────────────────────────────────
   'github/codeql-action/init@v4':
-    'github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d  # v4.38.3',
+    'github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee  # v4.39.0',
   'github/codeql-action/analyze@v4':
-    'github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d  # v4.38.3',
+    'github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee  # v4.39.0',
   'github/codeql-action/autobuild@v4':
-    'github/codeql-action/autobuild@24c54180a607b1449ed407dd24f251e4e9147c8d  # v4.38.3',
+    'github/codeql-action/autobuild@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee  # v4.39.0',
 
   // ── Security / compliance ─────────────────────────────────────────────────
   'gitleaks/gitleaks-action@v2':
