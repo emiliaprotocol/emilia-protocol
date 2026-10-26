@@ -47,7 +47,7 @@ jobs:
         run: sh ./run-composed.sh | tee composed-output.txt
       - name: Upload complete prover output
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: tamarin-composed-output
           path: |
@@ -74,7 +74,7 @@ jobs:
         run: sh ./run-receipt-core.sh | tee receipt-output.txt
       - name: Upload complete prover output
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: tamarin-receipt-core-output
           path: |
@@ -101,7 +101,7 @@ jobs:
         run: sh ./run-quorum.sh | tee quorum-output.txt
       - name: Upload complete prover output
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: tamarin-quorum-core-output
           path: |
