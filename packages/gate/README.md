@@ -1153,6 +1153,39 @@ credentials stay in the caller's process. See
 `docs/protocol/GATE-ALLOWANCES-v1.md` and the runnable
 `examples/gate-allowance/` demonstration.
 
+On the experimental provider-replay-key branch, the typed Stripe allowance
+wrapper permits only the stable `attemptGroup` value `'1'` (also the default).
+Other values refuse with `provider_replay_epoch_rotation_unsupported` before
+provider entry or allowance consumption. This intentionally removes caller
+rotation; existing default callers and v1 derived keys retain their behavior.
+The wrapper has no authenticated durable epoch transition or rollback detector.
+The v1 account-only Stripe connector does not establish live/test scope.
+These remain deployment/integration gaps; this restriction is not a complete
+resolution of issue #908. The standalone v1 derivation remains a recomputable
+adapter feature and accepts caller-provided groups without authenticating them.
+This restriction covers only `guardStripeAllowanceMutation`; generic receipt-based
+`guardStripeMutation`, MCP helpers and the standalone primitive are not hardened
+by this change.
+
+Before upgrading a deployment that used non-default groups, inventory those
+attempts and retain their original authorization, group, provider domain and
+provider key with the operation history. Do not retry them by omitting the group
+or substituting `'1'`: that derives a different provider key and can create a
+second effect, especially if local consumption history was lost or restored.
+Keep those operations closed to dispatch while reconciling their original keys
+against authenticated provider records and trusted local history. If that history
+is missing or ambiguous, stop for operator recovery; this wrapper cannot prove
+non-entry or authorize migration. Switching groups is not a recovery procedure.
+
+An explicit `createStripeAllowanceConnectorV2({ stripe, stripeAccount })` path
+adds a trusted provider account/Balance-mode probe, fixed Connect request context,
+signed-allowance-bound stable epoch selection, pinned immutable carriage contract
+and unbiased deterministic rejection encoding. It does not add a durable epoch
+registry or restore detection. See
+[`PROVIDER-REPLAY-KEY-v2.md`](../../docs/protocol/PROVIDER-REPLAY-KEY-v2.md)
+for trust assumptions, exclusions, reconciliation and upgrade requirements.
+
+
 ### Cross-rail authority admission
 
 `@emilia-protocol/gate/cross-rail-authority` adds the missing join between a

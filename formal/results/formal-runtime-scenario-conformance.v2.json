@@ -547,7 +547,7 @@
     },
     {
       "path": "packages/gate/dist/action-escrow.js",
-      "sha256": "f109f68329f8ff6fe82a86127ea657dac945f6b0d19871a345a6ca706ecc7e5c"
+      "sha256": "f383552980e0405342c3aff61846f23fc4a567113123cc72e7f2dcd348d46bb4"
     },
     {
       "path": "packages/gate/dist/action-packs.js",
@@ -683,7 +683,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "9ceebc554c0bc7935ec630b8678817562ef2d95a3e756abd874169aa95b4b422"
+      "sha256": "22211a64e21e9ce9396dfadd8532c5d483d88160539a5cfa7394f3a4b9ac682e"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -740,6 +740,10 @@
     {
       "path": "packages/gate/dist/provider-entry.js",
       "sha256": "d9e273b3833239d375477a43cd23986dcb8de27afd4af243f6f229608c719b73"
+    },
+    {
+      "path": "packages/gate/dist/provider-replay-key.js",
+      "sha256": "860a45dbd7ef9d9c595cd13f42757ec56348951cbae3b7b867efbe871b1590b6"
     },
     {
       "path": "packages/gate/dist/receipt-census.js",
@@ -855,7 +859,7 @@
     },
     {
       "path": "packages/gate/src/action-escrow.ts",
-      "sha256": "eda961054e155bd9df0478258d4970c5b6b0cb94ce8696005c4d5b0299328b86"
+      "sha256": "5bd75c2d0add093ed6eac1ff4933c6981752febca91d0849bbe539a174e89f50"
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
@@ -891,7 +895,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "a07c9b6889fe0a58437fc8b518f2a4cd30694b1fa1d4437f99c316857bfbe599"
+      "sha256": "e35baed8ee14fca9d6de6334bb9c29d4a1cf6984a437081e9b8354330bbccec5"
     },
     {
       "path": "packages/gate/src/network-witness.ts",

@@ -84,7 +84,7 @@ npm run demo --prefix packages/dtc-base
 
 `verify` checks the non-publishable/Base-Sepolia-only policy, strict TypeScript, Solidity compilation, separately named
 functional/hostile/integration suites, Solidity lint, a zero-vulnerability production audit, a time-bounded exact
-allow-list for otherwise-unresolved Hardhat development-tool advisories, and the
+allow-list for otherwise-unresolved development-tool advisories, and the
 checked-in evidence. Formal verification downloads checksum-pinned TLC and Alloy releases, regenerates deterministic
 summaries in a temporary directory, and fails if they differ from `formal/results/`. The artifact manifest is regenerated
 from the current package files and fails on any stale hash. Maintainers intentionally refreshing those checked-in files

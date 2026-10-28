@@ -71,6 +71,19 @@ export declare function createStripeAllowanceConnector({ stripe, }?: {
     stripe?: any;
 }): Promise<Readonly<{}>>;
 /**
+ * Opt-in v2 setup. The client, credentials and endpoint must be controlled by
+ * trusted deployment code and remain fixed for this connector's lifetime.
+ * A caller-provided fake SDK is not provider authentication. Connect account
+ * context is fixed here and reused on account/mode probes and every payout.
+ * These read-only probes do not prove retention or durable replay history.
+ */
+export declare function createStripeAllowanceConnectorV2({ stripe, stripeAccount }: {
+    stripe: any;
+    stripeAccount: string;
+}): Promise<Readonly<{}>>;
+/** Public setup metadata only, not evidence of authority or provider effect. */
+export declare function stripeAllowanceConnectorIdentity(connector: object): string | null;
+/**
  * Execute a typed Stripe payout under a signed Gate allowance.
  *
  * The Stripe client and credentials remain in the caller's process. This
@@ -79,10 +92,10 @@ export declare function createStripeAllowanceConnector({ stripe, }?: {
  */
 export declare function guardStripeAllowanceMutation({ connector, params, operationId, attemptGroup, ...allowanceOptions }: {
     [x: string]: any;
-    connector: any;
-    params: any;
-    operationId: any;
     attemptGroup?: string | undefined;
+    connector: any;
+    operationId: any;
+    params: any;
 }): Promise<import("../reliance-risk-crypto.js").RiskRecord> | Promise<{
     ok: boolean;
     reason: string;
@@ -138,6 +151,8 @@ declare const _default: {
     createStripeManifest: typeof createStripeManifest;
     guardStripeMutation: typeof guardStripeMutation;
     createStripeAllowanceConnector: typeof createStripeAllowanceConnector;
+    createStripeAllowanceConnectorV2: typeof createStripeAllowanceConnectorV2;
+    stripeAllowanceConnectorIdentity: typeof stripeAllowanceConnectorIdentity;
     guardStripeAllowanceMutation: typeof guardStripeAllowanceMutation;
 };
 export default _default;

@@ -166,7 +166,7 @@ test('typed Stripe payout allowance keeps the client local and executes in-envel
     initializeAllowanceStatus(store, issued);
     const stripe = fakeStripe();
     const connector = await stripeConnector(stripe);
-    const result = await guardStripeAllowanceMutation({
+    const options = {
         connector,
         params: { amount: 4_000, currency: 'USD', destination: 'acct_known' },
         operationId: 'stripe:payout:01',
@@ -191,7 +191,31 @@ test('typed Stripe payout allowance keeps the client local and executes in-envel
             authorizer_id: 'customer:security',
         },
         now: Date.parse('2026-07-30T18:00:00.000Z'),
+    };
+
+    const ledgerSnapshot = () => structuredClone({
+      capability: store.getState(issued.allowance.capability_id),
+      allowanceStatus: store.getAllowanceStatus(`${issued.allowance.tenant_id}/${issued.allowance.allowance_id}`),
+      operation: store.getOperation(options.operationId),
     });
+    const beforeRefusals = ledgerSnapshot();
+    assert.equal(beforeRefusals.capability.consumed_amount, 0);
+    assert.equal(beforeRefusals.capability.reserved_amount, 0);
+    assert.equal(beforeRefusals.capability.budget_amount, 50_000);
+    assert.equal(beforeRefusals.operation, null);
+
+    // A valid signed allowance is not authority for a caller to rotate the
+    // provider fence. Refusal happens without provider entry or consuming budget.
+    for (const attemptGroup of ['2', '', null, 1, { epoch: '2' }]) {
+      const refused = await guardStripeAllowanceMutation({ ...options, attemptGroup });
+      assert.deepEqual(refused, {
+        ok: false, reason: 'provider_replay_epoch_rotation_unsupported',
+      });
+      assert.deepEqual(stripe.calls, []);
+      assert.deepEqual(ledgerSnapshot(), beforeRefusals);
+    }
+
+    const result = await guardStripeAllowanceMutation(options);
     assert.equal(result.ok, true);
     assert.equal(result.result.id, 'po_1');
     const derivedKey = expectedStripeReplayKey(issued.allowance, { amount: 4_000, currency: 'USD', destination: 'acct_known' }, 'stripe:acct_authorized');

@@ -31,6 +31,7 @@
  * provider.
  */
 import crypto from 'node:crypto';
+import { types as nodeTypes } from 'node:util';
 import { canonicalize } from './execution-binding.js';
 /** Versioned derivation string. Changing any input rule changes this label. */
 export const PROVIDER_REPLAY_KEY_VERSION = 'EP-PROVIDER-REPLAY-KEY-v1';
@@ -261,6 +262,187 @@ export function deriveProviderReplayKey(first, caidArg, providerEnvArg, attemptG
             slot_id: spec.slot_id,
         },
     };
+}
+/** V2 is opt-in. V1 preimages and historical keys are deliberately unchanged. */
+export const PROVIDER_REPLAY_KEY_V2_VERSION = 'EP-PROVIDER-REPLAY-KEY-v2';
+export const PROVIDER_CARRIAGE_V2_VERSION = 'EP-PROVIDER-REPLAY-CARRIAGE-v2';
+const V2_SLOT_FIELDS = new Set(['slot_id', 'charset', 'encoded_length', 'max_length',
+    'prefix', 'charset_applies_to_prefix', 'min_entropy_bits', 'forbid_leading',
+    'forbid_trailing', 'forbid_substrings']);
+const V2_INPUT_FIELDS = new Set(['authorization_digest', 'caid', 'provider_env',
+    'retry_epoch_digest', 'slot_spec', 'carriage_contract_digest']);
+// Never execute input accessors or proxy traps. Copy each accepted data value
+// once; normalized fields below must all describe this one immutable snapshot.
+function plainDataSnapshot(value, fields) {
+    if (nodeTypes.isProxy(value) || !isPlainObject(value))
+        return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const copy = Object.create(null);
+    for (const key of Reflect.ownKeys(descriptors)) {
+        if (typeof key !== 'string' || !fields.has(key))
+            return null;
+        const descriptor = descriptors[key];
+        if (!Object.hasOwn(descriptor, 'value') || !descriptor.enumerable)
+            return null;
+        copy[key] = descriptor.value;
+    }
+    return Object.freeze(copy);
+}
+function snapshotSlotV2(value) {
+    const record = plainDataSnapshot(value, V2_SLOT_FIELDS);
+    if (!record)
+        return null;
+    const copy = { ...record };
+    for (const field of ['forbid_leading', 'forbid_trailing', 'forbid_substrings']) {
+        if (!Object.hasOwn(copy, field))
+            continue;
+        const list = copy[field];
+        if (nodeTypes.isProxy(list) || !Array.isArray(list))
+            return null;
+        const descriptors = Object.getOwnPropertyDescriptors(list);
+        const length = descriptors.length?.value;
+        if (!Number.isSafeInteger(length) || length < 0 || length > 32
+            || Reflect.ownKeys(descriptors).length !== length + 1)
+            return null;
+        const array = [];
+        for (let index = 0; index < length; index++) {
+            const descriptor = descriptors[String(index)];
+            if (!descriptor || !Object.hasOwn(descriptor, 'value')
+                || typeof descriptor.value !== 'string')
+                return null;
+            array.push(descriptor.value);
+        }
+        copy[field] = Object.freeze(array);
+    }
+    return Object.freeze(copy);
+}
+function carriageContract(spec) {
+    const row = spec.spec;
+    return {
+        '@version': PROVIDER_CARRIAGE_V2_VERSION,
+        slot_id: row.slot_id,
+        charset: row.charset,
+        encoded_length: row.encoded_length,
+        max_length: row.max_length,
+        prefix: row.prefix,
+        charset_applies_to_prefix: row.charsetAppliesToPrefix,
+        min_entropy_bits: row.minEntropyBits,
+        forbid_leading: [...row.forbidLeading],
+        forbid_trailing: [...row.forbidTrailing],
+        forbid_substrings: [...row.forbidSubstrings],
+    };
+}
+/** Content commitment only; this does not authorize a new contract or slot. */
+export function providerCarriageContractDigestV2(slotSpec) {
+    const snapshot = snapshotSlotV2(slotSpec);
+    if (!snapshot)
+        return refuse('slot_spec_invalid', 'v2 requires a closed plain-data slot contract');
+    const validated = validateSlotSpec(snapshot);
+    if (validated.ok !== true)
+        return validated;
+    return { ok: true, digest: `sha256:${crypto.createHash('sha256')
+            .update(canonicalize(carriageContract(validated))).digest('hex')}` };
+}
+/**
+ * Deterministic rejection sampling from a domain-separated HMAC stream.
+ * Distribution/entropy claims model the public domain-separated HMAC stream
+ * as uniform hash blocks, not secret-key unpredictability or random input. No modulo reduction is applied to a rejected
+ * block. Content constraints refuse rather than silently resampling a subset.
+ * This function verifies syntax and a pinned contract, not authority/history.
+ */
+export function deriveProviderReplayKeyV2(input) {
+    const data = plainDataSnapshot(input, V2_INPUT_FIELDS);
+    if (!data)
+        return { ok: false, reason: 'derivation_input_invalid' };
+    const { authorization_digest, caid, provider_env, retry_epoch_digest, carriage_contract_digest } = data;
+    if (typeof authorization_digest !== 'string' || !DIGEST_RE.test(authorization_digest)) {
+        return refuse('authorization_digest_invalid', 'authorization_digest must match sha256:<64 lowercase hex>');
+    }
+    if (!validCaid(caid))
+        return refuse('caid_invalid', 'invalid v2 action identifier');
+    if (typeof provider_env !== 'string' || !PROVIDER_ENV_RE.test(provider_env)) {
+        return refuse('provider_env_invalid', 'invalid v2 provider environment');
+    }
+    if (typeof retry_epoch_digest !== 'string' || !DIGEST_RE.test(retry_epoch_digest)) {
+        return { ok: false, reason: 'retry_epoch_digest_invalid' };
+    }
+    const snapshot = snapshotSlotV2(data.slot_spec);
+    if (!snapshot)
+        return refuse('slot_spec_invalid', 'v2 requires a closed plain-data slot contract');
+    const validated = validateSlotSpec(snapshot);
+    if (!validated.ok)
+        return validated;
+    const spec = validated.spec;
+    const entropyBits = carriedEntropyBits(spec.charset.length, spec.encoded_length);
+    if (entropyBits < spec.minEntropyBits) {
+        return refuse('slot_capacity_insufficient', 'v2 slot cannot carry the required entropy');
+    }
+    const digest = `sha256:${crypto.createHash('sha256')
+        .update(canonicalize(carriageContract(validated))).digest('hex')}`;
+    if (digest !== carriage_contract_digest) {
+        return { ok: false, reason: 'carriage_contract_mismatch' };
+    }
+    // Rules that remove possible outputs change conditional min-entropy. V2
+    // supports only rules proven unreachable in this fixed output language;
+    // future support for restrictive rules needs exact valid-space accounting.
+    const canOccur = (pattern, position) => {
+        if (position < 0 || position + pattern.length > spec.prefix.length + spec.encoded_length)
+            return false;
+        return [...pattern].every((character, offset) => {
+            const at = position + offset;
+            return at < spec.prefix.length ? spec.prefix[at] === character : spec.charset.includes(character);
+        });
+    };
+    const totalLength = spec.prefix.length + spec.encoded_length;
+    if (spec.forbidLeading.some((v) => canOccur(v, 0))
+        || spec.forbidTrailing.some((v) => canOccur(v, totalLength - v.length))
+        || spec.forbidSubstrings.some((v) => {
+            for (let at = 0; at <= totalLength - v.length; at++)
+                if (canOccur(v, at))
+                    return true;
+            return false;
+        })) {
+        return { ok: false, reason: 'slot_content_constraints_unsupported' };
+    }
+    const preimage = canonicalize({ '@version': PROVIDER_REPLAY_KEY_V2_VERSION,
+        carriage_contract_digest, authorization_digest, caid, provider_env, retry_epoch_digest });
+    const capacity = BigInt(spec.charset.length) ** BigInt(spec.encoded_length);
+    const sourceRange = 1n << 256n;
+    const limit = capacity < sourceRange ? sourceRange - sourceRange % capacity : sourceRange;
+    for (let counter = 0; counter < 128; counter++) {
+        const block = crypto.createHmac('sha256', PROVIDER_REPLAY_KEY_V2_VERSION)
+            .update(canonicalize({ preimage, counter })).digest('hex');
+        const integer = BigInt(`0x${block}`);
+        if (integer >= limit)
+            continue;
+        const key = `${spec.prefix}${encodeToCharset(block, spec.charset, spec.encoded_length)}`;
+        if (spec.forbidLeading.some((v) => key.startsWith(v))
+            || spec.forbidTrailing.some((v) => key.endsWith(v))
+            || spec.forbidSubstrings.some((v) => key.includes(v))) {
+            return { ok: false, reason: 'slot_content_rule_violation' };
+        }
+        return { ok: true, key,
+            entropy_bits: entropyBits,
+            derivation: { version: PROVIDER_REPLAY_KEY_V2_VERSION, carriage_contract_digest,
+                authorization_digest, caid, provider_env, retry_epoch_digest } };
+    }
+    return { ok: false, reason: 'rejection_sampling_exhausted' };
+}
+/** V2 verification is explicit; no v1-to-v2 fallback or key promotion. */
+export function matchesProviderReplayKeyV2(candidate, input) {
+    const data = plainDataSnapshot(candidate, new Set(['version', 'key']));
+    if (!data || data.version !== PROVIDER_REPLAY_KEY_V2_VERSION) {
+        return { ok: false, reason: 'replay_key_version_mismatch' };
+    }
+    const derived = deriveProviderReplayKeyV2(input);
+    if (!derived.ok)
+        return derived;
+    if (typeof data.key !== 'string')
+        return { ok: false, reason: 'replay_key_mismatch' };
+    const a = Buffer.from(data.key, 'utf8');
+    const b = Buffer.from(derived.key, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b)
+        ? { ok: true } : { ok: false, reason: 'replay_key_mismatch' };
 }
 /**
  * Recompute and compare. This is what a reconciler runs against a value it read
@@ -677,6 +859,11 @@ export const PROVIDER_KEY_RETENTION_MEASUREMENT = Object.freeze({
     verdict: 'MIXED, and adapter-feature on the money rail that matters most. One of five rows (ERC-3009) supports the consumption half for any authorization lifetime, because its state is permanent. Stripe supports it only inside 24 hours, which is shorter than a normal Gate allowance lifetime, so on Stripe the honest claim is: a second dispatch within 24 hours is refused by Stripe itself, and beyond 24 hours only the join half survives and the fence is ours alone. Two rows have no documented consumption engine at all. This satisfies kill condition (1) of the thesis for the Stripe rail as written: most authorizations outlive the provider retention, so on that rail this is an adapter feature and not a plate.',
 });
 export default {
+    PROVIDER_REPLAY_KEY_V2_VERSION,
+    PROVIDER_CARRIAGE_V2_VERSION,
+    providerCarriageContractDigestV2,
+    deriveProviderReplayKeyV2,
+    matchesProviderReplayKeyV2,
     PROVIDER_REPLAY_KEY_VERSION,
     PROVIDER_CARRIAGE_TABLE_VERSION,
     AUTHORIZATION_INSTANCE_VERSION,

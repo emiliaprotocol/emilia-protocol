@@ -35,10 +35,12 @@ are recorded in `formal/results/`. Dedicated CI regenerates both in a temporary 
 - Strict TypeScript typecheck and build: pass.
 - Hardhat functional/hostile/integration suite: pass.
 - Production dependency audit (`npm audit --omit=dev`): zero reported vulnerabilities.
-- Development-only toolchain audit: no critical advisory. Six high advisory roots remain in the pinned Hardhat 2
-  test/compile graph because no compatible upstream resolution exists. CI permits only those exact advisory URLs,
-  fails on any new high or critical advisory, and expires the exception on 2026-08-21. They are excluded from the
-  production-dependency zero-vulnerability statement.
+- Development-only toolchain audit: no critical advisory. One high advisory remains in the Hardhat 3 development
+  graph: GHSA-ch52-4w7c-c8xp in `http-cache-semantics` 4.2.0, reached only through solhint's own update check
+  (`solhint -> latest-version -> package-json -> got -> cacheable-request`), which never enables got's cache. The
+  upstream fix, 4.3.0, is still inside the seven-day release quarantine. CI permits only that exact advisory URL with
+  its reviewed lockfile copy and dependent, fails on any new high or critical advisory, and fails the exception on
+  2026-10-18. It is excluded from the production-dependency zero-vulnerability statement.
 - Solidity coverage: high statement/function coverage; branch coverage remains below a production release target.
 - TLC 2.19: complete bounded graph, eight invariants plus monotonic-revocation property, no error.
 - Alloy 6.2.0: five assertions held, three scenarios satisfiable.
@@ -74,10 +76,9 @@ These are accepted design uses, not suppressed detector output.
    source publication, RPC redundancy, and an independently operated reconciliation service.
 8. **Formal scope.** TLA+ and Alloy check bounded abstract state machines, not Solidity bytecode, compiler correctness,
    provider behavior, or the cross-store saga.
-9. **Development toolchain advisories.** The current Hardhat 2 toolchain carries six reviewed high transitive advisory
-   roots. It is not shipped
-   as a runtime dependency, but it still requires isolation and a separately tested migration before any production
-   release process can rely on it.
+9. **Development toolchain advisories.** The development toolchain carries one reviewed high transitive advisory
+   (`http-cache-semantics` under solhint) until its quarantined upstream fix can be locked. It is not shipped as a
+   runtime dependency, but the toolchain still requires isolation before any production release process can rely on it.
 
 ## Claim boundary
 

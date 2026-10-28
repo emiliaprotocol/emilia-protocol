@@ -81,6 +81,62 @@ export type ProviderReplayKeyOutcome = ProviderReplayKeyResult | ProviderReplayK
  */
 export declare function deriveProviderReplayKey(input: ProviderReplayKeyInput): ProviderReplayKeyOutcome;
 export declare function deriveProviderReplayKey(authorizationDigest: string, caid: string, providerEnv: string, attemptGroup: string, slotSpec: ProviderSlotSpec): ProviderReplayKeyOutcome;
+/** V2 is opt-in. V1 preimages and historical keys are deliberately unchanged. */
+export declare const PROVIDER_REPLAY_KEY_V2_VERSION = "EP-PROVIDER-REPLAY-KEY-v2";
+export declare const PROVIDER_CARRIAGE_V2_VERSION = "EP-PROVIDER-REPLAY-CARRIAGE-v2";
+export interface ProviderReplayKeyV2Input {
+    readonly authorization_digest: string;
+    readonly caid: string;
+    /** Must be established by the privileged adapter, not by an action caller. */
+    readonly provider_env: string;
+    /** Digest of separately verified epoch authority; this primitive does not authenticate it. */
+    readonly retry_epoch_digest: string;
+    readonly slot_spec: ProviderSlotSpec;
+    /** Pinned by the relying adapter; a supplied digest alone is not a trust anchor. */
+    readonly carriage_contract_digest: string;
+}
+/** Content commitment only; this does not authorize a new contract or slot. */
+export declare function providerCarriageContractDigestV2(slotSpec: ProviderSlotSpec): {
+    ok: true;
+    digest: string;
+} | ProviderReplayKeyRefusalResult;
+/**
+ * Deterministic rejection sampling from a domain-separated HMAC stream.
+ * Distribution/entropy claims model the public domain-separated HMAC stream
+ * as uniform hash blocks, not secret-key unpredictability or random input. No modulo reduction is applied to a rejected
+ * block. Content constraints refuse rather than silently resampling a subset.
+ * This function verifies syntax and a pinned contract, not authority/history.
+ */
+export declare function deriveProviderReplayKeyV2(input: ProviderReplayKeyV2Input): ProviderReplayKeyRefusalResult | {
+    ok: false;
+    reason: string;
+    key?: undefined;
+    entropy_bits?: undefined;
+    derivation?: undefined;
+} | {
+    reason?: undefined;
+    ok: true;
+    key: string;
+    entropy_bits: number;
+    derivation: {
+        version: string;
+        carriage_contract_digest: string;
+        authorization_digest: string;
+        caid: string;
+        provider_env: string;
+        retry_epoch_digest: string;
+    };
+};
+/** V2 verification is explicit; no v1-to-v2 fallback or key promotion. */
+export declare function matchesProviderReplayKeyV2(candidate: unknown, input: ProviderReplayKeyV2Input): ProviderReplayKeyRefusalResult | {
+    ok: false;
+    reason: string;
+    key?: undefined;
+    entropy_bits?: undefined;
+    derivation?: undefined;
+} | {
+    ok: true;
+};
 /**
  * Recompute and compare. This is what a reconciler runs against a value it read
  * out of a provider's own authenticated record: it establishes only that the
@@ -291,6 +347,11 @@ export declare const PROVIDER_KEY_RETENTION_MEASUREMENT: Readonly<{
     verdict: "MIXED, and adapter-feature on the money rail that matters most. One of five rows (ERC-3009) supports the consumption half for any authorization lifetime, because its state is permanent. Stripe supports it only inside 24 hours, which is shorter than a normal Gate allowance lifetime, so on Stripe the honest claim is: a second dispatch within 24 hours is refused by Stripe itself, and beyond 24 hours only the join half survives and the fence is ours alone. Two rows have no documented consumption engine at all. This satisfies kill condition (1) of the thesis for the Stripe rail as written: most authorizations outlive the provider retention, so on that rail this is an adapter feature and not a plate.";
 }>;
 declare const _default: {
+    PROVIDER_REPLAY_KEY_V2_VERSION: string;
+    PROVIDER_CARRIAGE_V2_VERSION: string;
+    providerCarriageContractDigestV2: typeof providerCarriageContractDigestV2;
+    deriveProviderReplayKeyV2: typeof deriveProviderReplayKeyV2;
+    matchesProviderReplayKeyV2: typeof matchesProviderReplayKeyV2;
     PROVIDER_REPLAY_KEY_VERSION: string;
     PROVIDER_CARRIAGE_TABLE_VERSION: string;
     AUTHORIZATION_INSTANCE_VERSION: string;
