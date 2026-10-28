@@ -62,3 +62,66 @@ from these surviving bytes. No same-database mirror, local boolean or hash fixes
 that information loss. Anchor freshness after the read likewise requires atomic
 head comparison by the live consumption authority; this wrapper does not reuse a
 recovery decision as a timeless admission token.
+
+## Concrete native provider-path integration plan
+
+Inspection at base c7408b6e7923095cd359ef976666ce21ba178177:
+
+- `packages/gate/src/consequence-boundary.ts` derives the native replay key from
+  the verified handoff, constructs the action/operation binding, durably reserves
+  an attempt, and reserves operation/native/action fences. It then revalidates
+  native status, confirms INVOKING custody, revalidates status again and invokes
+  the provider. The derived native identity is the integration input, not an
+  identity supplied separately by a presenter.
+- `packages/gate/src/aeb-consumption-store.ts` implements `reserve` with one
+  PostgreSQL transaction inserting the operation and all replay keys. This closes
+  concurrent local races, but its rows and local witness checkpoint can be restored
+  together. It is not the missing independent replay-history authority.
+
+The missing component is a relying-party-pinned, independently administered live
+replay authority, with durable exact-identity membership, atomic head comparison
+and consume, retained epoch history, authenticated latest-head reads, validated
+continuity, and receipt persistence. Its restore/deletion powers must be separate
+from those of Gate's operational PostgreSQL. Its monotonic state must survive the
+primary rollback scenario in an independently operated deployment test. An
+Ed25519 signature on a caller-supplied head or timestamp would not supply that
+property. No cryptographic reader is added without that service protocol.
+
+Implement integration only after that authority exists:
+
+1. Add an explicit optional strong-profile configuration to the native boundary;
+   preserve existing default semantics and scope their durability claim honestly.
+   Selecting the profile with missing/invalid adapters must refuse configuration,
+   never silently downgrade. Pin service identity, namespace/epoch and native
+   authority mapping at boundary construction.
+2. After verified handoff and exact local authorization, use the verified native
+   replay identity and exact action digest to request live atomic durable consume.
+   On backup recovery require full anchored reconstruction first. Compare the
+   recovered head atomically at the authority so a concurrently advanced frontier
+   cannot use stale ABSENT evidence. The service must fence the same identity
+   across concurrent Gate instances and scope aliases.
+3. Persist the service receipt in the durable attempt record before local fences
+   and provider entry. If local reservation fails after consume, retain the burn;
+   pre-entry cleanup may release local operational/action fences but cannot refund
+   the external native identity. Unknown service outcome refuses entry and requires
+   authenticated lookup/reconciliation, never blind repeat consume or dispatch.
+4. Preserve INVOKING ownership confirmation and final native-status refresh before
+   provider invocation. A long external service call may stale authorization; the
+   existing final refresh must still run after every potentially blocking step.
+5. Reconciliation and terminal FAILED handling retain the external burn. Compaction
+   may delete raw history only after verified independently anchored reconstruction
+   is complete; absence of checkpoint/continuity makes the strong profile uncertain.
+
+Focused integration acceptance must use the actual native-boundary provider spy:
+zero calls for uncertain/unavailable/malformed external state, stale authority,
+local failure after consume, lost service acknowledgement, primary rollback and
+namespace discontinuity; exactly one call across concurrent same-identity requests;
+no refund on FAILED; and a valid fresh identity still executes. Run these against
+an actual separate authority deployment as well as unit doubles. Simultaneous
+rollback of every independent anchor is an explicit unsupported durability failure,
+not an input corpus capable of proving detection from indistinguishable bytes.
+
+These steps are a concrete plan, not implemented wiring. A standalone generic
+consumption-store decorator is unsafe here: operation, action and native fences
+have different release lifecycles, and burning all of them as native authority
+would change existing semantics. The current prototype remains experimental.
