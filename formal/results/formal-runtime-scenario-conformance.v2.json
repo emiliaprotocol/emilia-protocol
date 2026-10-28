@@ -651,7 +651,7 @@
     },
     {
       "path": "packages/gate/dist/consequence-boundary.js",
-      "sha256": "742f36c47f22106f9af3f3264c46c01a5d5c29649b7f2a2706b839e963ffcfc6"
+      "sha256": "b8a783742f1b823bbaaebbf7f8266c5a123391680244883b8aaf754deb35270f"
     },
     {
       "path": "packages/gate/dist/coverage-reconciliation-attestation.js",
@@ -824,6 +824,10 @@
     {
       "path": "packages/gate/dist/remedy-program.js",
       "sha256": "47796ec40882e4f73066e698fd60ab9f1ed7b57da211e273c15c7e609994966e"
+    },
+    {
+      "path": "packages/gate/dist/replay-history-authority.js",
+      "sha256": "e8929f8cbd8ab4335ff7fc0c962e8b209c174ef61356de0e1968ba2a82cd048c"
     },
     {
       "path": "packages/gate/dist/reports/external-verification.js",
