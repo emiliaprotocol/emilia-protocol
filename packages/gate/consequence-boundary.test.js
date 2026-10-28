@@ -3,6 +3,7 @@
 /* eslint-disable */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { COMPACTING_REPLAY_HISTORY_DDL, COMPACTING_REPLAY_HISTORY_SQL, compactingReplayHistoryBootstrap, createPostgresCompactingReplayHistoryAuthority } from './dist/replay-history-compaction.js';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createFileReplayHistoryCheckpoint, provisionReplayHistoryCheckpoint } from './dist/replay-history-checkpoint.js';
@@ -5459,4 +5460,214 @@ test('replay history reserved fresh namespace cannot execute before profile acti
     assert.equal(result.invoked, false);
     assert.equal(invoked, 0);
     assert.equal(beforeActivation.aebStore.operations.size, 0);
+});
+// V2 compaction is a separate local follow-up implementation. Its source history
+// is this fresh-only authority's complete live log, never legacy operational rows.
+test('anchored compaction real PostgreSQL retains exact replay and recovery across boundary faults', {
+    skip: !process.env.EP_REPLAY_TEST_PGHOST,
+}, async (t) => {
+    const { Pool } = await import('pg');
+    const connection = { host: process.env.EP_REPLAY_TEST_PGHOST, port: Number(process.env.EP_REPLAY_TEST_PGPORT ?? 5432), database: 'postgres' };
+    const admin = new Pool(connection), schema = `compaction_${crypto.randomBytes(8).toString('hex')}`;
+    await admin.query(`CREATE SCHEMA ${schema}`);
+    const pool = new Pool({ ...connection, options: `-c search_path=${schema}`, max: 8 });
+    const directory = await mkdtemp(join(process.env.EP_REPLAY_TEST_PGHOST, 'compaction-'));
+    try {
+        await pool.query(COMPACTING_REPLAY_HISTORY_DDL);
+        let serial = 0;
+        async function fixture() {
+            const authorityId = `authority:compaction:${++serial}`, bootstrap = compactingReplayHistoryBootstrap(authorityId);
+            await pool.query(bootstrap.text, bootstrap.values);
+            const witnessDirectory = join(directory, `witness-${serial}`);
+            await provisionReplayHistoryCheckpoint(witnessDirectory, bootstrap.genesis);
+            const witness = createFileReplayHistoryCheckpoint(witnessDirectory);
+            const authority = createPostgresCompactingReplayHistoryAuthority({ pool, compaction_pool: pool, authority_id: authorityId, checkpoint: witness });
+            const request = (id) => ({ authority_id: authorityId, native_replay_identity: digestAeb({ native: id }),
+                native_authorization_id: `${bootstrap.fresh_authorization_prefix}${id}`, action_digest: digestAeb(ACTION) });
+            const first = await authority.consume(request('first'));
+            assert.ok(first);
+            const counts = async () => ({
+                raw: (await pool.query('SELECT count(*)::int AS n FROM ep_replay_v2_entries WHERE authority_id=$1', [authorityId])).rows[0].n,
+                snapshots: (await pool.query('SELECT count(*)::int AS n FROM ep_replay_v2_snapshots WHERE authority_id=$1', [authorityId])).rows[0].n,
+            });
+            return { authorityId, bootstrap, witness, authority, request, first: first, counts };
+        }
+        const wrap = (query) => ({ connect: async () => {
+                const client = await pool.connect();
+                return { release: () => client.release(), query: (sql, values) => query(client, sql, values) };
+            } });
+        await t.test('exact compact membership fences replay and authenticates the original full receipt', async () => {
+            const f = await fixture();
+            await f.authority.consume(f.request('second'));
+            const compacted = await f.authority.compact();
+            assert.equal(compacted.removed_raw_entries, 2);
+            assert.deepEqual(await f.counts(), { raw: 0, snapshots: 1 });
+            assert.equal(await f.authority.consume(f.request('first')), null);
+            await assert.rejects(f.authority.lookup(f.request('first')), /receipt_required/);
+            assert.deepEqual(await f.authority.lookup(f.request('first'), f.first), f.first);
+            // A structurally valid self-hashed receipt is not authenticated by its
+            // hash. Its exact digest must occur in the independently anchored set.
+            const forged = { ...f.first, previous_digest: digestAeb({ forged: true }) };
+            forged.checkpoint_digest = `sha256:${crypto.createHash('sha256').update(JSON.stringify([forged.version, forged.authority_id,
+                forged.native_replay_identity, forged.native_authorization_id, forged.action_digest, forged.sequence, forged.previous_digest])).digest('hex')}`;
+            await assert.rejects(f.authority.lookup(f.request('first'), forged), /mismatched/);
+            await assert.rejects(f.authority.lookup(f.request('first'), { ...f.first, action_digest: digestAeb({ substituted: true }) }), /mismatched/);
+            assert.ok(await f.authority.consume(f.request('third')));
+            const second = await f.authority.compact();
+            assert.equal(second.covered_through, 3);
+            assert.deepEqual(await f.counts(), { raw: 0, snapshots: 1 });
+            assert.deepEqual(await f.authority.lookup(f.request('first'), f.first), f.first);
+        });
+        await t.test('single-connection operator pool compacts without a nested lease or double release', async () => {
+            const f = await fixture();
+            const operator = new Pool({ ...connection, options: `-c search_path=${schema}`, max: 1, connectionTimeoutMillis: 500 });
+            try {
+                const single = createPostgresCompactingReplayHistoryAuthority({ pool, compaction_pool: operator,
+                    authority_id: f.authorityId, checkpoint: f.witness });
+                assert.equal((await single.compact()).removed_raw_entries, 1);
+                assert.equal(operator.totalCount, 1);
+                assert.equal(operator.idleCount, 1);
+                assert.equal(operator.waitingCount, 0);
+                assert.equal((await single.compact()).removed_raw_entries, 0);
+                assert.equal(operator.totalCount, 1);
+                assert.equal(operator.idleCount, 1);
+                assert.equal(operator.waitingCount, 0);
+                assert.deepEqual(await f.authority.lookup(f.request('first'), f.first), f.first);
+                assert.equal(await f.authority.consume(f.request('first')), null);
+            }
+            finally {
+                await operator.end();
+            }
+        });
+        await t.test('actual native Gate provider path refuses compacted replay and recovers the exact original receipt', async () => {
+            const state = await fixture(), f = nativeFixture();
+            let calls = 0;
+            f.handoffInput.native_authorization.authorization_id = `${state.bootstrap.fresh_authorization_prefix}gate`;
+            f.handoff = issueNative(f, {});
+            f.status = nativeStatusFor(f, f.handoff);
+            const invoke = async () => { calls++; return { state: 'EXECUTED', evidence: executedEvidence(), result: {} }; };
+            const b = makeNativeBoundary({ f, replayHistory: state.authority, invoke });
+            const accepted = await b.boundary.run(nativeInput(f, 'operation:compacted-gate'));
+            assert.equal(accepted.state, 'EXECUTED');
+            assert.equal(calls, 1);
+            await state.authority.compact();
+            const replay = makeNativeBoundary({ f, replayHistory: state.authority, invoke });
+            assert.equal((await replay.boundary.run(nativeInput(f, 'operation:compacted-replay'))).invoked, false);
+            assert.equal(calls, 1);
+            assert.equal((await b.boundary.reconcile(nativeRecovery(f, 'operation:compacted-gate', accepted.attempt, { state: 'EXECUTED', evidence: executedEvidence(), result: {} }, 'recovery:approved', 'terminal'))).state, 'EXECUTED');
+            assert.equal(calls, 1);
+        });
+        await t.test('concurrent compaction and replay never add a provider invocation', async () => {
+            const state = await fixture(), f = nativeFixture();
+            let calls = 0;
+            f.handoffInput.native_authorization.authorization_id = `${state.bootstrap.fresh_authorization_prefix}concurrent`;
+            f.handoff = issueNative(f, {});
+            f.status = nativeStatusFor(f, f.handoff);
+            const invoke = async () => { calls++; return { state: 'EXECUTED', evidence: executedEvidence(), result: {} }; };
+            assert.equal((await makeNativeBoundary({ f, replayHistory: state.authority, invoke }).boundary.run(nativeInput(f, 'operation:before-compaction'))).state, 'EXECUTED');
+            let release, inserted, queried;
+            const held = new Promise(r => { release = r; }), installed = new Promise(r => { inserted = r; }), queued = new Promise(r => { queried = r; });
+            const operator = wrap(async (client, sql, values) => {
+                const result = await client.query(sql, values);
+                if (sql === COMPACTING_REPLAY_HISTORY_SQL.snapshotInsert) {
+                    inserted();
+                    await held;
+                }
+                return result;
+            });
+            const runtime = wrap(async (client, sql, values) => { if (sql === COMPACTING_REPLAY_HISTORY_SQL.head)
+                queried(); return client.query(sql, values); });
+            const compacting = createPostgresCompactingReplayHistoryAuthority({ pool, compaction_pool: operator, authority_id: state.authorityId, checkpoint: state.witness });
+            const replaying = createPostgresCompactingReplayHistoryAuthority({ pool: runtime, authority_id: state.authorityId, checkpoint: state.witness });
+            const compact = compacting.compact();
+            await installed;
+            const replay = makeNativeBoundary({ f, replayHistory: replaying, invoke }).boundary.run(nativeInput(f, 'operation:during-compaction'));
+            await queued;
+            release();
+            const results = await Promise.allSettled([compact, replay]);
+            assert.equal(results[1].status, 'fulfilled');
+            assert.equal(results[1].value.invoked, false);
+            assert.equal(calls, 1);
+            assert.equal((await state.counts()).raw, results[0].status === 'fulfilled' ? 0 : 2);
+        });
+        for (const fault of ['snapshot-before-commit', 'commit-lost-ack', 'anchor-before-write', 'anchor-lost-ack', 'anchor-read-before-prune', 'prune-before-commit', 'prune-commit-lost-ack']) {
+            await t.test(`crash boundary ${fault} never treats lost history as unused`, async () => {
+                const f = await fixture();
+                let injected = false, reads = 0;
+                const checkpoint = { read: async () => { if (fault === 'anchor-read-before-prune' && ++reads === 2)
+                        throw Error('injected'); return f.witness.read(); },
+                    advance: async (a, b) => { if (fault === 'anchor-before-write')
+                        throw Error('injected'); const r = await f.witness.advance(a, b); if (fault === 'anchor-lost-ack')
+                        throw Error('injected'); return r; } };
+                const operator = wrap(async (client, sql, values) => {
+                    const result = await client.query(sql, values);
+                    if (!injected && ((fault === 'snapshot-before-commit' && sql === COMPACTING_REPLAY_HISTORY_SQL.snapshotInsert)
+                        || (fault === 'commit-lost-ack' && sql === 'COMMIT') || (fault === 'prune-before-commit' && sql === COMPACTING_REPLAY_HISTORY_SQL.prune))) {
+                        injected = true;
+                        throw Error('injected');
+                    }
+                    if (fault === 'prune-commit-lost-ack' && sql === 'COMMIT' && !injected) {
+                        // First COMMIT installs the snapshot, second COMMIT is reclamation.
+                        reads++;
+                        if (reads === 2) {
+                            injected = true;
+                            throw Error('injected');
+                        }
+                    }
+                    return result;
+                });
+                const failing = createPostgresCompactingReplayHistoryAuthority({ pool, compaction_pool: operator, authority_id: f.authorityId, checkpoint });
+                await assert.rejects(failing.compact(), /injected/);
+                const count = await f.counts();
+                if (fault !== 'prune-commit-lost-ack')
+                    assert.equal(count.raw, 1);
+                if (fault === 'snapshot-before-commit') {
+                    assert.equal(count.snapshots, 0);
+                    assert.equal(await f.authority.consume(f.request('first')), null);
+                }
+                else if (fault === 'commit-lost-ack' || fault === 'anchor-before-write') {
+                    await assert.rejects(f.authority.consume(f.request('first')), /rollback_or_gap/);
+                    await assert.rejects(f.authority.consume(f.request('new')), /rollback_or_gap/);
+                }
+                else {
+                    // When the witness persisted the snapshot, repeating compact only
+                    // reclaims already-anchored raw rows; it does not reconstruct authority.
+                    await f.authority.compact();
+                    assert.equal(await f.authority.consume(f.request('first')), null);
+                    assert.deepEqual(await f.authority.lookup(f.request('first'), f.first), f.first);
+                }
+            });
+        }
+        await t.test('unavailable witness cannot make any raw history eligible for reclamation', async () => {
+            const f = await fixture();
+            const unavailable = createPostgresCompactingReplayHistoryAuthority({ pool, compaction_pool: pool, authority_id: f.authorityId,
+                checkpoint: { read: async () => { throw Error('offline'); }, advance: f.witness.advance } });
+            await assert.rejects(unavailable.compact(), /offline/);
+            assert.deepEqual(await f.counts(), { raw: 1, snapshots: 0 });
+        });
+        await t.test('ordinary SQL cannot erase current snapshot, raw history or forge pruning authority', async () => {
+            const f = await fixture();
+            await f.authority.compact();
+            await assert.rejects(pool.query('DELETE FROM ep_replay_v2_snapshots WHERE authority_id=$1', [f.authorityId]), /immutable/);
+            await assert.rejects(pool.query('TRUNCATE ep_replay_v2_snapshots'), /immutable/);
+            await assert.rejects(pool.query('SELECT ep_replay_v2_prune($1,$2)', [f.authorityId, digestAeb({ wrong: true })]), /no current/);
+            assert.equal(await f.authority.consume(f.request('first')), null);
+        });
+        await t.test('snapshot loss after pruning refuses instead of creating unused authority', async () => {
+            const f = await fixture();
+            await f.authority.compact();
+            // Explicit privileged-admin loss simulation, not an ordinary writer path.
+            await pool.query('ALTER TABLE ep_replay_v2_snapshots DISABLE TRIGGER USER');
+            await pool.query('DELETE FROM ep_replay_v2_snapshots WHERE authority_id=$1', [f.authorityId]);
+            await pool.query('ALTER TABLE ep_replay_v2_snapshots ENABLE TRIGGER USER');
+            await assert.rejects(f.authority.consume(f.request('first')), /snapshot_missing/);
+            await assert.rejects(f.authority.consume(f.request('new')), /snapshot_missing/);
+        });
+    }
+    finally {
+        await pool.end();
+        await admin.query(`DROP SCHEMA ${schema} CASCADE`);
+        await admin.end();
+        await rm(directory, { recursive: true, force: true });
+    }
 });
