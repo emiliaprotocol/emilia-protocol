@@ -651,7 +651,7 @@
     },
     {
       "path": "packages/gate/dist/consequence-boundary.js",
-      "sha256": "b8a783742f1b823bbaaebbf7f8266c5a123391680244883b8aaf754deb35270f"
+      "sha256": "47820b95454e1f9d03dbd23fb9615b481de1518f7dcc9363f8c3c829f700c2c1"
     },
     {
       "path": "packages/gate/dist/coverage-reconciliation-attestation.js",
