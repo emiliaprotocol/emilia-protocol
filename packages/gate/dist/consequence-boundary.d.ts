@@ -32,6 +32,7 @@
  * record not-entered for its attempt. A start that no read confirms is held
  * (INDETERMINATE attempt_start_unconfirmed) with no not-entered write.
  */
+import { type ReplayHistoryAuthority, type ReplayHistoryReceipt } from './replay-history-authority.js';
 import { type AebAdapter, type AebConsumptionState, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig, type AebStatusInput } from '@emilia-protocol/verify/aeb-adapter-contract';
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
 import { type AebNativeAuthorizationDigest, type AebNativeAuthorizationHandoff, type AebNativeAuthorizationHandoffVerification, type AebNativeAuthorizationPins, type AebNativeAuthorizationStatus } from '@emilia-protocol/verify/aeb';
@@ -384,6 +385,8 @@ export interface NativeConsequenceBoundaryLocalDecision {
     decision_digest: AebDigest;
 }
 export interface NativeConsequenceBoundaryAttemptBinding extends ConsequenceBoundaryAttemptBinding {
+    /** Optional independently durable native consumption receipt, never refundable. */
+    replay_history_receipt?: ReplayHistoryReceipt;
     operation_id: string;
     action_digest: AebNativeAuthorizationDigest;
     handoff_digest: AebNativeAuthorizationDigest;
@@ -441,6 +444,13 @@ export interface NativeConsequenceBoundaryOptions<TResult> {
     boundary_id: string;
     provider: ConsequenceBoundaryProvider;
     native_authorization: {
+        /**
+         * Opt-in independently durable profile. This trusted service MUST use a
+         * separately administered store outside the operational DB restore/deletion
+         * authority. Gate cannot infer independence from a callback or pool label.
+         * Native consumption is burned before local reservation; never refunded.
+         */
+        replay_history?: ReplayHistoryAuthority;
         /** `pins.relying_party_id` must also satisfy the Gate identifier grammar. */
         pins: AebNativeAuthorizationPins;
         /** Stable operator identifier for the exact accepted pins below. */

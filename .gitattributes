@@ -692,6 +692,7 @@ packages/gate/remedy-program-receipt-fips.test.js linguist-generated=true
 packages/gate/remedy-program-receipt-v2.test.js linguist-generated=true
 packages/gate/remedy-program-receipt.test.js linguist-generated=true
 packages/gate/remedy-program.test.js linguist-generated=true
+packages/gate/replay-history-checkpoint.test.js linguist-generated=true
 packages/gate/reports/art14.test.js linguist-generated=true
 packages/gate/reports/auditor-workpaper.test.js linguist-generated=true
 packages/gate/reports/external-verification-v2.test.js linguist-generated=true

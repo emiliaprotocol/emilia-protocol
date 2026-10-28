@@ -494,6 +494,14 @@
     "./state-domain-migration": {
       "types": "./dist/state-domain-migration.d.ts",
       "import": "./state-domain-migration.js"
+    },
+    "./replay-history-authority": {
+      "types": "./dist/replay-history-authority.d.ts",
+      "import": "./replay-history-authority.js"
+    },
+    "./replay-history-checkpoint": {
+      "types": "./dist/replay-history-checkpoint.d.ts",
+      "import": "./replay-history-checkpoint.js"
     }
   },
   "files": [
@@ -654,7 +662,9 @@
     "deploy/sql/capability-action-fence-preflight.sql",
     "reports/auditor-workpaper.js",
     "reports/reperform.js",
-    "reports/external-verification.js"
+    "reports/external-verification.js",
+    "replay-history-authority.js",
+    "replay-history-checkpoint.js"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
