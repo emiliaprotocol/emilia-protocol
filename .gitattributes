@@ -674,6 +674,7 @@ packages/gate/recovery-admission-postgres.test.js linguist-generated=true
 packages/gate/recovery-admission-remedy.test.js linguist-generated=true
 packages/gate/recovery-admission-v2.test.js linguist-generated=true
 packages/gate/recovery-admission.test.js linguist-generated=true
+packages/gate/replay-history-checkpoint.test.js linguist-generated=true
 packages/gate/redteam.test.js linguist-generated=true
 packages/gate/referee.test.js linguist-generated=true
 packages/gate/reliance-kernel.test.js linguist-generated=true

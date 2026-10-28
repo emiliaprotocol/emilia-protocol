@@ -1,5 +1,11 @@
 # Replay-history recovery boundary (experimental)
 
+Follow-on implementation: the opt-in native provider path, durable authority and
+separate checkpoint witness are documented in
+`docs/protocol/replay-history-durability-profile-v1.md`. The files in THIS
+experimental directory remain standalone; the historical integration plan below
+is superseded by that document where it describes completed implementation.
+
 A bounded executable implementation step for issues #902 and #905. This module
 is not exported by Gate and is not connected to a provider path. Neither issue
 is resolved by this component. Run the focused corpus with:

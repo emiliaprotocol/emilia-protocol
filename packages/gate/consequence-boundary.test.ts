@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createFileReplayHistoryCheckpoint, provisionReplayHistoryCheckpoint } from './src/replay-history-checkpoint.js';
+import { replayHistoryGenesis, createPostgresReplayHistoryAuthority, REPLAY_HISTORY_DDL, REPLAY_HISTORY_SQL, replayHistoryBootstrap } from './src/replay-history-authority.js';
 import test from 'node:test';
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 import {
@@ -1012,6 +1016,7 @@ function makeNativeBoundary({
   attemptPrefix = '',
   createId = undefined as undefined | (() => string | Promise<string>),
   boundaryId = NATIVE_BOUNDARY_ID,
+  replayHistory = undefined as any,
 } = {}) {
   let attemptCounter = 0;
   const configuration = {
@@ -1021,6 +1026,7 @@ function makeNativeBoundary({
     native_authorization: {
       pins: f.pins,
       trust_snapshot_id: trustSnapshotId,
+      replay_history: replayHistory,
       store: aebStore,
       resolve_status: resolveStatus,
       resolve_historical_pins: resolveHistoricalPins,
@@ -5717,4 +5723,224 @@ test('T1 CX5 composed: an unconfirmed start is held with no not-entered write, w
     assert.equal((await h.boundary.run(input(composedFresh(f, `cx5-${noState}`)))).reason, 'native_action_in_flight');
     assert.equal(calls, 0);
   }
+});
+
+// These tests exercise the actual native-boundary provider entry path. Local
+// custody uses the suite's existing deterministic doubles. The optional real
+// PostgreSQL authority test uses its own disposable schema, never a production DB.
+test('replay history unavailable or malformed never reaches provider or local reservation', async () => {
+  for (const consume of [async () => { throw Error('offline'); }, async () => true, async () => null]) {
+    let invoked = 0;
+    const f = nativeFixture();
+    const b = makeNativeBoundary({ f, replayHistory: { authority_id: 'authority:external', consume, lookup: async () => null },
+      invoke: async () => { invoked++; return { state: 'INDETERMINATE' }; } });
+    const result = await b.boundary.run(nativeInput(f));
+    assert.equal(result.invoked, false); assert.equal(invoked, 0);
+    assert.equal(b.aebStore.operations.size, 0); assert.equal(b.attempts.rows.size, 0);
+  }
+});
+test('replay history profile rejects missing consume configuration instead of downgrading', () => {
+  assert.throws(() => makeNativeBoundary({ replayHistory: { authority_id: 'authority:external' } }), /configuration_invalid/);
+});
+test('replay history is never called after invalid authority or local denial', async () => {
+  let calls = 0;
+  const f = nativeFixture();
+  const authority = { authority_id: 'authority:external', consume: async () => { calls++; return null; }, lookup: async () => null };
+  const b = makeNativeBoundary({ f, replayHistory: authority, localAuthorize: () => false });
+  await b.boundary.run(nativeInput(f));
+  const invalid = makeNativeBoundary({ f, replayHistory: authority });
+  await invalid.boundary.run(nativeInput(f, 'operation:bad', { action: { ...ACTION, amount: '900' } }));
+  assert.equal(calls, 0);
+});
+
+test('replay history real PostgreSQL fences concurrent dispatch and survives lost operational history', {
+  skip: !process.env.EP_REPLAY_TEST_PGHOST,
+}, async () => {
+  const { Pool } = await import('pg');
+  const admin = new Pool({ host: process.env.EP_REPLAY_TEST_PGHOST, port: Number(process.env.EP_REPLAY_TEST_PGPORT ?? 5432), database: 'postgres' });
+  const schema = `replay_${crypto.randomBytes(8).toString('hex')}`;
+  await admin.query(`CREATE SCHEMA ${schema}`);
+  const pool = new Pool({ host: process.env.EP_REPLAY_TEST_PGHOST, port: Number(process.env.EP_REPLAY_TEST_PGPORT ?? 5432), database: 'postgres', options: `-c search_path=${schema}`, max: 8 });
+  try {
+    await pool.query(REPLAY_HISTORY_DDL);
+    const legacy = nativeFixture(); let legacyInvoked = 0;
+    const preProfile = makeNativeBoundary({ f: legacy, invoke: async () => {
+      legacyInvoked++; return { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+    } });
+    assert.equal((await preProfile.boundary.run(nativeInput(legacy))).state, 'EXECUTED');
+    const bootstrap = replayHistoryBootstrap('authority:external');
+    await pool.query(bootstrap.text, bootstrap.values);
+    const witnessDirectory = await mkdtemp(join(process.env.EP_REPLAY_TEST_PGHOST!, 'witness-'));
+    const witness = join(witnessDirectory, 'checkpoints');
+    await provisionReplayHistoryCheckpoint(witness, bootstrap.genesis);
+    const authority = createPostgresReplayHistoryAuthority({ pool, authority_id: 'authority:external', checkpoint: createFileReplayHistoryCheckpoint(witness) });
+    const postLoss = makeNativeBoundary({ f: legacy, replayHistory: authority, invoke: async () => {
+      legacyInvoked++; return { state: 'INDETERMINATE' };
+    } });
+    assert.equal((await postLoss.boundary.run(nativeInput(legacy, 'operation:legacy-after-loss'))).invoked, false);
+    assert.equal(legacyInvoked, 1);
+    const f = nativeFixture();
+    f.handoffInput.native_authorization.authorization_id = `${bootstrap.fresh_authorization_prefix}initial`;
+    f.handoff = issueNative(f, {}); f.status = nativeStatusFor(f, f.handoff);
+    const fresh = (suffix: string) => freshAuthorization(f, suffix, { native_authorization: {
+      ...f.handoffInput.native_authorization, authorization_id: `${bootstrap.fresh_authorization_prefix}${suffix}`,
+    } });
+    let invoked = 0;
+    const invoke = async () => { invoked++; return { state: 'EXECUTED' as const, evidence: executedEvidence(), result: {} }; };
+    const one = makeNativeBoundary({ f, replayHistory: authority, invoke, attemptPrefix: 'one-' });
+    const two = makeNativeBoundary({ f, replayHistory: authority, invoke, attemptPrefix: 'two-' });
+    const results = await Promise.all([one.boundary.run(nativeInput(f, 'operation:first')), two.boundary.run(nativeInput(f, 'operation:second'))]);
+    assert.equal(results.filter(r => r.state === 'EXECUTED').length, 1); assert.equal(invoked, 1);
+    const accepted = results.find(r => r.state === 'EXECUTED') as any;
+    assert.equal(accepted.attempt.replay_history_receipt.sequence, 1);
+    // A synchronized ordinary SQL writer cannot mutate retained membership
+    // after the authoritative history read and before the transaction completes.
+    let mutationAttempted = false;
+    const interleaved = createPostgresReplayHistoryAuthority({ authority_id: authority.authority_id,
+      checkpoint: createFileReplayHistoryCheckpoint(witness), pool: { connect: async () => {
+        const client = await pool.connect();
+        return { release: () => client.release(), query: async (sql: string, values?: any[]) => {
+          const result = await client.query(sql, values);
+          if (sql === REPLAY_HISTORY_SQL.history && !mutationAttempted) {
+            mutationAttempted = true;
+            await assert.rejects(admin.query(`DELETE FROM ${schema}.ep_external_replay_entries WHERE sequence = 1`), /immutable/);
+          }
+          return result;
+        } };
+      } } });
+    const requestForAccepted = { authority_id: authority.authority_id,
+      native_replay_identity: accepted.attempt.native_replay_unit,
+      native_authorization_id: f.handoff.native_authorization.authorization_id,
+      action_digest: accepted.attempt.action_digest };
+    assert.equal((await interleaved.lookup(requestForAccepted))?.checkpoint_digest, accepted.attempt.replay_history_receipt.checkpoint_digest);
+    assert.equal(mutationAttempted, true); assert.equal(invoked, 1);
+    // Authenticated recovery validates the stored receipt against the live
+    // pinned authority; unauthenticated inputs never scan external history.
+    const winner = results[0] === accepted ? one : two;
+    const operation = results[0] === accepted ? 'operation:first' : 'operation:second';
+    const reconcileOutcome = { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+    const recoveredResult = await winner.boundary.reconcile(nativeRecovery(f, operation, accepted.attempt, reconcileOutcome, 'recovery:approved', 'terminal'));
+    assert.equal(recoveredResult.state, 'EXECUTED'); assert.equal(invoked, 1);
+    const missingReceipt = structuredClone(accepted.attempt); delete missingReceipt.replay_history_receipt;
+    const storedRow = winner.attempts.rows.get(accepted.attempt.attempt_id)!;
+    const originalBinding = storedRow.binding;
+    storedRow.binding = missingReceipt;
+    assert.equal((await winner.boundary.reconcile(nativeRecovery(f, operation, missingReceipt, reconcileOutcome, 'recovery:approved', 'terminal'))).state, 'REFUSED');
+    storedRow.binding = originalBinding;
+    assert.equal(invoked, 1);
+    // A new local custody database/attempt store models complete primary loss.
+    const restored = makeNativeBoundary({ f, replayHistory: authority, invoke });
+    assert.equal((await restored.boundary.run(nativeInput(f, 'operation:after-loss'))).invoked, false);
+    assert.equal(invoked, 1);
+    // A local reservation failure after external consume must retain the burn.
+    const next = fresh('external-local-failure');
+    const failLocal = durableAebStore(); failLocal.reserve = async () => { throw Error('local unavailable'); };
+    const failed = makeNativeBoundary({ f, replayHistory: authority, aebStore: failLocal, invoke, resolveStatus: () => nativeStatusFor(f, next) });
+    assert.equal((await failed.boundary.run(nativeInput(f, 'operation:local-failed', { handoff: next }))).invoked, false);
+    const retry = makeNativeBoundary({ f, replayHistory: authority, invoke, resolveStatus: () => nativeStatusFor(f, next) });
+    assert.equal((await retry.boundary.run(nativeInput(f, 'operation:local-retry', { handoff: next }))).invoked, false);
+    assert.equal(invoked, 1);
+    assert.equal((await pool.query('SELECT count(*)::int AS count FROM ep_external_replay_entries')).rows[0].count, 2);
+    // Lost acknowledgement after BOTH stores commit burns authority and never invokes.
+    const lost = fresh('external-lost-ack');
+    const lostAuthority = { authority_id: authority.authority_id, lookup: authority.lookup, consume: async (request: any) => {
+      await authority.consume(request); throw Error('response lost after commit');
+    } };
+    const lostBoundary = makeNativeBoundary({ f, replayHistory: lostAuthority, invoke, resolveStatus: () => nativeStatusFor(f, lost) });
+    assert.equal((await lostBoundary.boundary.run(nativeInput(f, 'operation:lost', { handoff: lost }))).invoked, false);
+    const lostRetry = makeNativeBoundary({ f, replayHistory: authority, invoke, resolveStatus: () => nativeStatusFor(f, lost) });
+    assert.equal((await lostRetry.boundary.run(nativeInput(f, 'operation:lost-retry', { handoff: lost }))).invoked, false);
+    assert.equal(invoked, 1);
+    // Authority can become revoked during the external consume; final native
+    // status evaluation must still refuse the provider and retain the burn.
+    const stale = fresh('external-stale'); let revoked = false;
+    const delayed = { authority_id: authority.authority_id, lookup: authority.lookup, consume: async (request: any) => {
+      const receipt = await authority.consume(request); revoked = true; return receipt;
+    } };
+    const staleBoundary = makeNativeBoundary({ f, replayHistory: delayed, invoke,
+      resolveStatus: () => ({ ...nativeStatusFor(f, stale), revoked }) });
+    assert.equal((await staleBoundary.boundary.run(nativeInput(f, 'operation:stale', { handoff: stale }))).invoked, false);
+    assert.equal(invoked, 1);
+    // FAILED terminal provider outcome is not a refund of native authority.
+    const failedGrant = fresh('external-provider-failed');
+    const providerFailed = makeNativeBoundary({ f, replayHistory: authority,
+      resolveStatus: () => nativeStatusFor(f, failedGrant),
+      invoke: async () => { invoked++; return { state: 'FAILED', reason: 'provider_not_committed', evidence: executedEvidence() }; } });
+    assert.equal((await providerFailed.boundary.run(nativeInput(f, 'operation:provider-failed', { handoff: failedGrant }))).state, 'FAILED');
+    const failedRetry = makeNativeBoundary({ f, replayHistory: authority, invoke, resolveStatus: () => nativeStatusFor(f, failedGrant) });
+    assert.equal((await failedRetry.boundary.run(nativeInput(f, 'operation:provider-failed-retry', { handoff: failedGrant }))).invoked, false);
+    assert.equal(invoked, 2);
+    // Destroy a middle membership fact while head + witness remain current.
+    await assert.rejects(pool.query('DELETE FROM ep_external_replay_entries WHERE sequence = 2'), /immutable/);
+    await assert.rejects(pool.query('UPDATE ep_external_replay_entries SET action_digest = action_digest WHERE sequence = 2'), /immutable/);
+    await assert.rejects(pool.query('TRUNCATE ep_external_replay_entries'), /immutable/);
+    await pool.query('ALTER TABLE ep_external_replay_entries DISABLE TRIGGER USER');
+    const entry = (await pool.query('SELECT * FROM ep_external_replay_entries WHERE authority_id = $1 AND sequence = 2', [authority.authority_id])).rows[0];
+    await pool.query('DELETE FROM ep_external_replay_entries WHERE authority_id = $1 AND sequence = 2', [authority.authority_id]);
+    const gap = makeNativeBoundary({ f, replayHistory: authority, invoke, resolveStatus: () => nativeStatusFor(f, lost) });
+    assert.equal((await gap.boundary.run(nativeInput(f, 'operation:history-gap', { handoff: lost }))).invoked, false);
+    assert.equal(invoked, 2);
+    await pool.query('INSERT INTO ep_external_replay_entries VALUES ($1,$2,$3,$4,$5,$6,$7)', [entry.authority_id, entry.sequence, entry.native_replay_identity, entry.native_authorization_id, entry.action_digest, entry.previous_digest, entry.checkpoint_digest]);
+    // Tamper content without changing row count. Hash-chain validation refuses.
+    await pool.query('UPDATE ep_external_replay_entries SET action_digest = $1 WHERE authority_id = $2 AND sequence = 2', [digestAeb({ tampered: true }), authority.authority_id]);
+    assert.equal((await gap.boundary.run(nativeInput(f, 'operation:history-root', { handoff: lost }))).invoked, false);
+    assert.equal(invoked, 2);
+    await pool.query('UPDATE ep_external_replay_entries SET action_digest = $1 WHERE authority_id = $2 AND sequence = 2', [entry.action_digest, authority.authority_id]);
+    // Restore authority DB to an older COMPLETE prefix while retaining the
+    // separate checkpoint witness. It must fail closed, not read ABSENT.
+    await pool.query('ALTER TABLE ep_external_replay_heads DISABLE TRIGGER USER');
+    await pool.query('DELETE FROM ep_external_replay_entries WHERE sequence > 1');
+    await pool.query('UPDATE ep_external_replay_heads SET sequence = 1, checkpoint_digest = (SELECT checkpoint_digest FROM ep_external_replay_entries WHERE sequence = 1)');
+    const rolledBack = makeNativeBoundary({ f, replayHistory: authority, invoke, resolveStatus: () => nativeStatusFor(f, lost) });
+    assert.equal((await rolledBack.boundary.run(nativeInput(f, 'operation:authority-rollback', { handoff: lost }))).invoked, false);
+    assert.equal(invoked, 2);
+    // Cross-store crash window: authority COMMIT succeeds, witness advance is
+    // unavailable. The durable consume remains burned and no receipt authorizes
+    // dispatch. A later read sees the gap and continues to refuse.
+    const secondId = 'authority:checkpoint-failure';
+    const secondBootstrap = replayHistoryBootstrap(secondId);
+    await pool.query(secondBootstrap.text, secondBootstrap.values);
+    const secondDirectory = join(witnessDirectory, 'second-checkpoints');
+    await provisionReplayHistoryCheckpoint(secondDirectory, secondBootstrap.genesis);
+    const secondCheckpoint = createFileReplayHistoryCheckpoint(secondDirectory);
+    const broken = createPostgresReplayHistoryAuthority({ pool, authority_id: secondId,
+      checkpoint: { read: secondCheckpoint.read, advance: async () => { throw Error('witness unavailable'); } } });
+    const secondF = nativeFixture();
+    secondF.handoffInput.native_authorization.authorization_id = `${secondBootstrap.fresh_authorization_prefix}initial`;
+    secondF.handoff = issueNative(secondF, {}); secondF.status = nativeStatusFor(secondF, secondF.handoff);
+    const blocked = makeNativeBoundary({ f: secondF, replayHistory: broken, invoke });
+    assert.equal((await blocked.boundary.run(nativeInput(secondF, 'operation:witness-failure'))).invoked, false);
+    assert.equal((await blocked.boundary.run(nativeInput(secondF, 'operation:witness-gap'))).invoked, false);
+    assert.equal(invoked, 2);
+    assert.equal((await pool.query('SELECT count(*)::int AS count FROM ep_external_replay_entries WHERE authority_id = $1', [secondId])).rows[0].count, 1);
+    // Capacity stops new consumption, not lookup/recovery of accepted burns.
+    const boundedId = 'authority:bounded'; const boundedBootstrap = replayHistoryBootstrap(boundedId);
+    await pool.query(boundedBootstrap.text, boundedBootstrap.values);
+    const boundedDirectory = join(witnessDirectory, 'bounded-checkpoints');
+    await provisionReplayHistoryCheckpoint(boundedDirectory, boundedBootstrap.genesis);
+    const bounded = createPostgresReplayHistoryAuthority({ pool, authority_id: boundedId, max_entries: 1,
+      checkpoint: createFileReplayHistoryCheckpoint(boundedDirectory) });
+    const boundedRequest = { authority_id: boundedId, native_replay_identity: digestAeb({ native: 'bounded' }),
+      native_authorization_id: `${boundedBootstrap.fresh_authorization_prefix}one`, action_digest: digestAeb(ACTION) };
+    const boundedReceipt = await bounded.consume(boundedRequest);
+    assert.deepEqual(await bounded.lookup(boundedRequest), boundedReceipt);
+    assert.equal(await bounded.consume(boundedRequest), null);
+    await assert.rejects(bounded.consume({ ...boundedRequest, native_replay_identity: digestAeb({ native: 'bounded-two' }),
+      native_authorization_id: `${boundedBootstrap.fresh_authorization_prefix}two` }), /capacity/);
+
+
+  } finally { await pool.end(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); }
+});
+
+
+test('replay history reserved fresh namespace cannot execute before profile activation', async () => {
+  const f = nativeFixture(); let invoked = 0;
+  const prefix = replayHistoryBootstrap('authority:cutover').fresh_authorization_prefix;
+  f.handoffInput.native_authorization.authorization_id = `${prefix}new-grant`;
+  f.handoff = issueNative(f, {}); f.status = nativeStatusFor(f, f.handoff);
+  const beforeActivation = makeNativeBoundary({ f, invoke: async () => { invoked++; return { state: 'INDETERMINATE' }; } });
+  const result = await beforeActivation.boundary.run(nativeInput(f));
+  assert.equal(result.state, 'REFUSED'); assert.equal(result.reason, 'native_replay_history_profile_required');
+  assert.equal(result.invoked, false); assert.equal(invoked, 0);
+  assert.equal(beforeActivation.aebStore.operations.size, 0);
 });

@@ -35,6 +35,7 @@
  */
 
 import crypto from 'node:crypto';
+import { validReplayHistoryReceipt, validReplayHistoryReceiptShape, type ReplayHistoryAuthority, type ReplayHistoryReceipt } from './replay-history-authority.js';
 import { types as nodeTypes } from 'node:util';
 import {
   aebReservationKey,
@@ -483,6 +484,8 @@ export interface NativeConsequenceBoundaryLocalDecision {
 
 export interface NativeConsequenceBoundaryAttemptBinding
   extends ConsequenceBoundaryAttemptBinding {
+  /** Optional independently durable native consumption receipt, never refundable. */
+  replay_history_receipt?: ReplayHistoryReceipt;
   operation_id: string;
   action_digest: AebNativeAuthorizationDigest;
   handoff_digest: AebNativeAuthorizationDigest;
@@ -544,6 +547,13 @@ export interface NativeConsequenceBoundaryOptions<TResult> {
   boundary_id: string;
   provider: ConsequenceBoundaryProvider;
   native_authorization: {
+    /**
+     * Opt-in independently durable profile. This trusted service MUST use a
+     * separately administered store outside the operational DB restore/deletion
+     * authority. Gate cannot infer independence from a callback or pool label.
+     * Native consumption is burned before local reservation; never refunded.
+     */
+    replay_history?: ReplayHistoryAuthority;
     /** `pins.relying_party_id` must also satisfy the Gate identifier grammar. */
     pins: AebNativeAuthorizationPins;
     /** Stable operator identifier for the exact accepted pins below. */
@@ -974,7 +984,9 @@ function validNativeAttemptBinding(
 ): value is NativeConsequenceBoundaryAttemptBinding {
   const record = dataRecord(value);
   return record !== null
-    && exactKeys(record, NATIVE_ATTEMPT_BINDING_KEYS)
+    && exactKeys(record, record.replay_history_receipt === undefined
+      ? NATIVE_ATTEMPT_BINDING_KEYS : [...NATIVE_ATTEMPT_BINDING_KEYS, 'replay_history_receipt'])
+    && (record.replay_history_receipt === undefined || validReplayHistoryReceiptShape(record.replay_history_receipt))
     && identifier(record.tenant_id)
     && identifier(record.provider_id)
     && identifier(record.provider_account_id)
@@ -999,7 +1011,7 @@ function validNativeAttemptReference(
   value: unknown,
 ): value is NativeConsequenceBoundaryAttemptReference {
   const record = dataRecord(value);
-  if (!record || !exactKeys(record, [...NATIVE_ATTEMPT_BINDING_KEYS, 'owner'])
+  if (!record || !exactKeys(record, [...NATIVE_ATTEMPT_BINDING_KEYS, ...(record.replay_history_receipt === undefined ? [] : ['replay_history_receipt']), 'owner'])
       || !opaqueOwner(record.owner)) return false;
   const { owner: _owner, ...binding } = record;
   return validNativeAttemptBinding(binding);
@@ -2874,6 +2886,11 @@ export function createNativeConsequenceBoundary<TResult>(
       && isObject(options.native_authorization)
       && identifier(options.native_authorization.trust_snapshot_id)
       && secureNativeConsumptionStore(options.native_authorization.store)
+      && (options.native_authorization.replay_history === undefined
+        || (isObject(options.native_authorization.replay_history)
+          && identifier(options.native_authorization.replay_history.authority_id)
+          && typeof options.native_authorization.replay_history.consume === 'function'
+          && typeof options.native_authorization.replay_history.lookup === 'function'))
       && typeof options.native_authorization.resolve_status === 'function'
       && typeof options.native_authorization.resolve_historical_pins === 'function'
       && pins.executor_id === options.executor_id
@@ -2922,6 +2939,11 @@ export function createNativeConsequenceBoundary<TResult>(
     .bind(options.native_authorization);
   const resolveHistoricalPins = options.native_authorization.resolve_historical_pins
     .bind(options.native_authorization);
+  const replayHistoryAuthorityId = options.native_authorization.replay_history?.authority_id;
+  const consumeReplayHistory = options.native_authorization.replay_history?.consume
+    .bind(options.native_authorization.replay_history);
+  const lookupReplayHistory = options.native_authorization.replay_history?.lookup
+    .bind(options.native_authorization.replay_history);
   const recoverAttempt = options.attempts.recover.bind(options.attempts);
   const localAuthorize = options.local_authorize.bind(options);
   const invoke = options.invoke.bind(options);
@@ -2938,6 +2960,7 @@ export function createNativeConsequenceBoundary<TResult>(
     options.provider_outcomes.verification_program_digest;
   const authorizationProgramDigest = digestAeb({
     domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:AUTHORIZATION-PROGRAM`,
+    ...(replayHistoryAuthorityId ? { replay_history_authority_id: replayHistoryAuthorityId } : {}),
     executor_id: executorId,
     provider,
     trust_snapshot_id: trustSnapshotId,
@@ -2955,6 +2978,7 @@ export function createNativeConsequenceBoundary<TResult>(
   }): AebDigest {
     return digestAeb({
       domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:AUTHORIZATION-PROGRAM`,
+      ...(replayHistoryAuthorityId ? { replay_history_authority_id: replayHistoryAuthorityId } : {}),
       executor_id: executorId,
       provider,
       ...input,
@@ -3288,6 +3312,12 @@ export function createNativeConsequenceBoundary<TResult>(
       return refused('native_consequence_binding_invalid');
     }
 
+    // The fresh-only namespace cannot execute through a default boundary
+    // during profile activation or after an accidental profile downgrade.
+    if (!consumeReplayHistory && /^ep-fresh-[a-f0-9]{64}:/.test(
+      verification.handoff.native_authorization.authorization_id,
+    )) return refused('native_replay_history_profile_required');
+
     let localAuthorization = false;
     try {
       localAuthorization = await localAuthorize(cloneFrozen({
@@ -3333,6 +3363,27 @@ export function createNativeConsequenceBoundary<TResult>(
       provider_idempotency_key: providerIdempotencyKey,
     });
 
+    // Acknowledged external durable consume is the strong-profile linearization
+    // point. Any later local failure leaves this native identity burned.
+    let replayHistoryReceipt: ReplayHistoryReceipt | undefined;
+    if (consumeReplayHistory && replayHistoryAuthorityId) {
+      const request = cloneFrozen({ authority_id: replayHistoryAuthorityId,
+        native_replay_identity: verification.native_replay_identity,
+        native_authorization_id: verification.handoff.native_authorization.authorization_id,
+        action_digest: verification.action_digest });
+      try {
+        const rawReceipt = await consumeReplayHistory(request);
+        const receipt = rawReceipt === null ? null : cloneFrozen(rawReceipt);
+        if (receipt === null) return refused('native_replay_history_consumed');
+        if (!validReplayHistoryReceipt(receipt, request)) {
+          return refused('native_replay_history_uncertain');
+        }
+        replayHistoryReceipt = cloneFrozen(receipt);
+      } catch {
+        return refused('native_replay_history_uncertain');
+      }
+    }
+
     let attemptId: string;
     try {
       attemptId = await createAttemptId({
@@ -3355,6 +3406,7 @@ export function createNativeConsequenceBoundary<TResult>(
     const keys: NativeConsumptionKeys = derivedKeys;
     const attemptBinding: NativeConsequenceBoundaryAttemptBinding = cloneFrozen({
       ...provider,
+      ...(replayHistoryReceipt ? { replay_history_receipt: replayHistoryReceipt } : {}),
       attempt_id: attemptId,
       request_digest: requestDigest,
       provider_idempotency_key: providerIdempotencyKey,
@@ -3828,6 +3880,23 @@ export function createNativeConsequenceBoundary<TResult>(
         || attemptBinding.request_digest !== expectedRequestDigest) {
       return refused('reconciliation_binding_mismatch');
     }
+    try {
+      if (lookupReplayHistory && replayHistoryAuthorityId) {
+        const receipt = attemptBinding.replay_history_receipt;
+        if (!receipt || receipt.authority_id !== replayHistoryAuthorityId
+            || receipt.native_replay_identity !== attemptBinding.native_replay_unit
+            || receipt.action_digest !== attemptBinding.action_digest
+            || receipt.native_authorization_id !== verification.handoff.native_authorization.authorization_id) return refused('native_replay_history_receipt_required');
+        const current = await lookupReplayHistory(cloneFrozen({ authority_id: replayHistoryAuthorityId,
+          native_replay_identity: attemptBinding.native_replay_unit,
+          native_authorization_id: receipt.native_authorization_id, action_digest: attemptBinding.action_digest }));
+        if (!current || !validReplayHistoryReceipt(current, receipt)
+            || current.checkpoint_digest !== receipt.checkpoint_digest) return refused('native_replay_history_uncertain');
+      } else if (attemptBinding.replay_history_receipt !== undefined) {
+        // Never downgrade strong-profile recovery to an unconfigured authority.
+        return refused('native_replay_history_authority_required');
+      }
+    } catch { return refused('native_replay_history_uncertain'); }
     const outcome = normalizeEffectOutcome<TResult>(rawOutcome, true);
     const recoveredState = await attemptState(recoveredReference);
     if (recoveredState === null) {
