@@ -81,6 +81,11 @@ unavailable witness before pruning, failure after DELETE but before pruning COMM
 and lost pruning COMMIT acknowledgement. Every pre-anchor failure leaves raw rows
 intact. Missing current snapshot after reclamation refuses both previously consumed
 and genuinely new identities. Ordinary mutation and wrong-root pruning refuse.
+A dedicated max=1 operator-pool regression compacts and reclaims twice, checks one
+idle connection and zero waiting leases after each call, and verifies that replay
+and original-receipt recovery still work. The source transaction and post-anchor
+pruning transaction reuse the same operator client, released exactly once.
+
 Tests use real PostgreSQL plus real fsync filesystem persistence but privileged local
 setup accounts; they do not establish production role/administrator separation.
 

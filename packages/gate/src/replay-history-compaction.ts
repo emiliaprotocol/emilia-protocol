@@ -207,7 +207,11 @@ export function createPostgresCompactingReplayHistoryAuthority({ pool, compactio
     // Re-read live witness before reclamation; uncertainty never deletes.
     const latest=structuredClone(await readCheckpoint());
     if (latest.sequence!==newWitness || latest.checkpoint_digest!==root) throw Error('compaction_anchor_changed_before_prune');
-    const pruning=await operatorConnect!();
+    // This call already owns an operator client, and its source transaction
+    // ended before anchoring. Reuse it for the new locked pruning transaction:
+    // acquiring another lease here deadlocks a correctly configured max=1 pool.
+    // The outer finally owns the sole release on every path.
+    const pruning=client;
     try {
      await pruning.query('BEGIN'); await pruning.query('SET LOCAL synchronous_commit=on');
      const removed=await pruning.query(COMPACTING_REPLAY_HISTORY_SQL.prune,[authority_id,root]);
@@ -216,7 +220,7 @@ export function createPostgresCompactingReplayHistoryAuthority({ pool, compactio
      await pruning.query('COMMIT');
      return Object.freeze({status:'ANCHORED_AND_PRUNED',covered_through:sequence,witness_sequence:newWitness,
       checkpoint_digest:root,membership_root:currentMembershipRoot,removed_raw_entries:count});
-    } catch(error) { try{await pruning.query('ROLLBACK');}catch{} throw error; } finally { pruning.release(); }
+    } catch(error) { try{await pruning.query('ROLLBACK');}catch{} throw error; }
    }
    if (sequence===max_entries) throw Error('replay_history_capacity_exhausted');
    const body={version:'EP-REPLAY-HISTORY-CONSUME-v1' as const,...request!,sequence:sequence+1,previous_digest:previous};

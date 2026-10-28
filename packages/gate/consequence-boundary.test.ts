@@ -5998,6 +5998,20 @@ test('anchored compaction real PostgreSQL retains exact replay and recovery acro
       assert.deepEqual(await f.counts(),{raw:0,snapshots:1});
       assert.deepEqual(await f.authority.lookup(f.request('first'),f.first),f.first);
     });
+    await t.test('single-connection operator pool compacts without a nested lease or double release',async()=>{
+      const f=await fixture();
+      const operator=new Pool({...connection,options:`-c search_path=${schema}`,max:1,connectionTimeoutMillis:500});
+      try{
+        const single=createPostgresCompactingReplayHistoryAuthority({pool,compaction_pool:operator,
+          authority_id:f.authorityId,checkpoint:f.witness});
+        assert.equal((await single.compact()).removed_raw_entries,1);
+        assert.equal(operator.totalCount,1);assert.equal(operator.idleCount,1);assert.equal(operator.waitingCount,0);
+        assert.equal((await single.compact()).removed_raw_entries,0);
+        assert.equal(operator.totalCount,1);assert.equal(operator.idleCount,1);assert.equal(operator.waitingCount,0);
+        assert.deepEqual(await f.authority.lookup(f.request('first'),f.first),f.first);
+        assert.equal(await f.authority.consume(f.request('first')),null);
+      }finally{await operator.end();}
+    });
     await t.test('actual native Gate provider path refuses compacted replay and recovers the exact original receipt',async()=>{
       const state=await fixture(), f=nativeFixture(); let calls=0;
       f.handoffInput.native_authorization.authorization_id=`${state.bootstrap.fresh_authorization_prefix}gate`;

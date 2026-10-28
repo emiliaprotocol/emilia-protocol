@@ -231,7 +231,11 @@ export function createPostgresCompactingReplayHistoryAuthority({ pool, compactio
                 const latest = structuredClone(await readCheckpoint());
                 if (latest.sequence !== newWitness || latest.checkpoint_digest !== root)
                     throw Error('compaction_anchor_changed_before_prune');
-                const pruning = await operatorConnect();
+                // This call already owns an operator client, and its source transaction
+                // ended before anchoring. Reuse it for the new locked pruning transaction:
+                // acquiring another lease here deadlocks a correctly configured max=1 pool.
+                // The outer finally owns the sole release on every path.
+                const pruning = client;
                 try {
                     await pruning.query('BEGIN');
                     await pruning.query('SET LOCAL synchronous_commit=on');
@@ -249,9 +253,6 @@ export function createPostgresCompactingReplayHistoryAuthority({ pool, compactio
                     }
                     catch { }
                     throw error;
-                }
-                finally {
-                    pruning.release();
                 }
             }
             if (sequence === max_entries)
