@@ -307,6 +307,12 @@ const SAFE_HOSTS = new Set([
     "search.google.com",
     "www.bing.com",
 ]);
+// Public service origins intentionally documented in one integration guide.
+// Match exact files and exact hosts only; do not exempt a provider suffix
+// globally or skip credential scanning on these lines.
+const PUBLIC_REFERENCE_HOSTS_BY_FILE = {
+    "docs/operations/ORCAROUTER.md": new Set(["www.orcarouter.ai", "api.orcarouter.ai"]),
+};
 // Hostname placeholder patterns (case-insensitive). When a flagged hostname
 // matches any of these, it's treated as a documentation placeholder and not
 // reported. Covers the conventional "fill-in-your-host-here" forms.
@@ -379,6 +385,7 @@ for (const dir of SCAN_DIRS) {
     for (const filePath of files) {
         const content = fs.readFileSync(filePath, "utf8");
         const lines = content.split("\n");
+        const referenceHosts = PUBLIC_REFERENCE_HOSTS_BY_FILE[path.relative(ROOT, filePath).split(path.sep).join("/")];
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             const lineNum = i + 1;
@@ -406,6 +413,12 @@ for (const dir of SCAN_DIRS) {
                 const host = hm[1].toLowerCase();
                 // Strip trailing dots
                 const cleanHost = host.replace(/\.$/, "");
+                // The public-reference exception ends at a URL delimiter. Do not
+                // accept a partial hostname from a userinfo or port-prefixed URL.
+                const nextCharacter = line[hm.index + hm[0].length] || "";
+                if (referenceHosts?.has(cleanHost) &&
+                    (nextCharacter === "" || /^[/?#\s)\x60"'>]$/.test(nextCharacter)))
+                    continue;
                 // Check if it is a safe/known host
                 if (SAFE_HOSTS.has(cleanHost))
                     continue;

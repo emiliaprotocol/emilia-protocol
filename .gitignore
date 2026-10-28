@@ -8,6 +8,9 @@ node_modules
 .env*.local
 .stripe-vars.json
 .emilia/
+# Generated UI evidence is produced by verification inside the checkout and
+# must never be committed (verification rejects a patch that contains it).
+orca-evidence/
 *.log
 .DS_Store
 .claude/

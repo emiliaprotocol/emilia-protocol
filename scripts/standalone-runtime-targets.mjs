@@ -28,6 +28,13 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'lib/canonical-writer.ts',
   'lib/crypto.ts',
   'lib/crypto/profile.ts',
+  // The OrcaRouter provider modules are executed by the Node-20 standalone
+  // Trust Desk runner (lib/trust-desk/llm.ts companion), so they and the
+  // secret box they import need real .js twins as well.
+  'lib/crypto/secret-box.ts',
+  'lib/providers/orcarouter.ts',
+  'lib/providers/orcarouter-credentials.ts',
+  'lib/providers/orcarouter-pkce.ts',
   'lib/demo-receipt.ts',
   'lib/env.ts',
   'lib/envelope/descriptors.ts',

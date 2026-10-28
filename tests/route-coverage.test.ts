@@ -246,6 +246,16 @@ const OPENAPI_EXEMPTIONS = [
   '/api/trust-desk/status/[engagementId]',
   '/api/trust-desk/verify/[slug]',
   '/api/cron/trust-desk-monitor',
+  // OrcaRouter provider settings — signed Trust Desk session required.
+  // Internal product configuration, not the public protocol API; documented
+  // in docs/operations/ORCAROUTER.md. Keep exact routes, not a prefix bypass.
+  '/api/orcarouter/status',
+  '/api/orcarouter/models',
+  '/api/orcarouter/credential',
+  '/api/orcarouter/preferences',
+  '/api/orcarouter/connect/start',
+  '/api/orcarouter/connect/complete',
+  '/api/orcarouter/connect/cancel',
   // Stripe checkout session creation — EMILIA Gate Cloud billing surface. Uses the
   // Stripe SDK server-side; not part of the EP protocol API. Documented in
   // docs/STRIPE_SETUP.md; degrades to 503 when env is unconfigured.

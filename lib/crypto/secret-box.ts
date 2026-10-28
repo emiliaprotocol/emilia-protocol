@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Secret box — AES-256-GCM encryption-at-rest for stored credentials.
  *
@@ -21,7 +22,7 @@
  */
 
 import crypto from 'node:crypto';
-import { getSecretBoxKey } from '@/lib/env';
+import { getSecretBoxKey } from '../env.js';
 
 const PREFIX = 'epenc:v1:';
 const IV_LEN = 12;

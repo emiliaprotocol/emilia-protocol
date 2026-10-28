@@ -24,6 +24,9 @@ const e2eBaseUrl = `http://localhost:${e2ePort}`;
 
 export default defineConfig({
   testDir: './e2e',
+  // Live provider evidence has its own auth fixtures/configuration and requires
+  // an explicitly supplied provider key. Keep it runnable via that config.
+  testIgnore: ['**/orca-evidence.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

@@ -1427,7 +1427,7 @@
     },
     {
       "path": "scripts/standalone-runtime-targets.mjs",
-      "sha256": "4f2863b3370d2a616aa4e628269147f4e6c031cfba574d1f4b95867689556e8b"
+      "sha256": "5ff20ebb56b6a249ac930dc98915d2d6574c7c1783abd3405e527f1041485f2b"
     }
   ],
   "limitations": [
