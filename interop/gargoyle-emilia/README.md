@@ -110,3 +110,41 @@ recompute those two digests or bind them to a real executor input. Using an
 execution timestamp as `committed_at` records the producer's assertion; it
 does not demonstrate an atomic consume-before-effect fence. Those are separate
 integration questions, beyond the portable verification result preserved here.
+
+## Reverse direction: EMILIA vectors under Gargoyle's verifier
+
+The forward result above runs a Gargoyle receipt through EMILIA's verifiers.
+`reverse.mjs` runs EMILIA's published vectors through Gargoyle's own verifier,
+`python -m gargoyle.emilia_runner` in the upstream repository, and compares
+every result row with this repository's `conformance/result-contract.mjs`.
+Gargoyle implements two of the 21 live suites:
+
+| Suite | Vectors | Gargoyle (Python) |
+| --- | --- | --- |
+| EP-RECEIPT-v1 (`receipts.v1.json`) | 14 | All match the published expectations |
+| EP-CANONICALIZATION-v1 (`canonicalization.v1.json`) | 35 | All match the published expectations |
+| `signoffs.v1.json` (not implemented) | 13 | Refused with exit status 2 and no rows |
+
+The runner is Gargoyle's code on Gargoyle's RFC 8785 serializer, not an
+`@emilia-protocol` or `emilia-verify` package re-run. It was written with
+EMILIA's public vectors and reference source available, so this is external
+interoperability evidence for two suites, not a clean-room construction result.
+It does not change the registered implementation count, the clean-room
+manifest, or any generated public claim.
+
+`reverse-source.json` pins the Gargoyle commit, the SHA-256 of the three
+upstream modules that produce the verdicts, and the SHA-256 of the two suite
+files as recorded. The command refuses a checkout at another commit, a dirty
+package tree, changed module bytes, or changed vectors; a later vector revision
+is a new run, not an upgrade of this one. It also requires the uncovered suite
+to be refused outright, so a missing capability cannot read as rejections.
+
+```sh
+git clone https://github.com/Elyon-Sol/Gargoyle /tmp/gargoyle
+git -C /tmp/gargoyle checkout <upstream_commit from reverse-source.json>
+python3 -m pip install -e /tmp/gargoyle   # installs cryptography
+GARGOYLE_CHECKOUT=/tmp/gargoyle node interop/gargoyle-emilia/reverse.mjs
+```
+
+[recorded-reverse-result.json](recorded-reverse-result.json) preserves the
+observed result at the pinned commits.
