@@ -2841,7 +2841,7 @@ export function createNativeConsequenceBoundary(options) {
                     return refused('native_replay_history_receipt_required');
                 const current = await lookupReplayHistory(cloneFrozen({ authority_id: replayHistoryAuthorityId,
                     native_replay_identity: attemptBinding.native_replay_unit,
-                    native_authorization_id: receipt.native_authorization_id, action_digest: attemptBinding.action_digest }));
+                    native_authorization_id: receipt.native_authorization_id, action_digest: attemptBinding.action_digest }), receipt);
                 if (!current || !validReplayHistoryReceipt(current, receipt)
                     || current.checkpoint_digest !== receipt.checkpoint_digest)
                     return refused('native_replay_history_uncertain');

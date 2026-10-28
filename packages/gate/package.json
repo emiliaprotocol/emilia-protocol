@@ -502,6 +502,10 @@
     "./replay-history-checkpoint": {
       "types": "./dist/replay-history-checkpoint.d.ts",
       "import": "./replay-history-checkpoint.js"
+    },
+    "./replay-history-compaction": {
+      "types": "./dist/replay-history-compaction.d.ts",
+      "import": "./replay-history-compaction.js"
     }
   },
   "files": [
@@ -664,7 +668,8 @@
     "reports/reperform.js",
     "reports/external-verification.js",
     "replay-history-authority.js",
-    "replay-history-checkpoint.js"
+    "replay-history-checkpoint.js",
+    "replay-history-compaction.js"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",

@@ -150,6 +150,7 @@
     "src/protection-plan.ts",
     "src/protection-activation.ts",
     "src/adapter-manifest.ts",
-    "src/state-domain-migration.ts"
+    "src/state-domain-migration.ts",
+    "src/replay-history-compaction.ts"
   ]
 }

@@ -1,0 +1,39 @@
+import { type ReplayHistoryAuthority, type ReplayHistoryPool } from './replay-history-authority.js';
+import type { ReplayHistoryCheckpointStore } from './replay-history-checkpoint.js';
+export declare const COMPACTING_REPLAY_HISTORY_DDL = "\nCREATE TABLE ep_replay_v2_heads (\n authority_id text PRIMARY KEY, fresh_authorization_prefix text NOT NULL,\n sequence bigint NOT NULL CHECK(sequence >= 0), witness_sequence bigint NOT NULL DEFAULT 0,\n checkpoint_digest text NOT NULL, compacted_through bigint NOT NULL DEFAULT 0,\n compaction_digest text\n);\nCREATE TABLE ep_replay_v2_entries (\n authority_id text NOT NULL REFERENCES ep_replay_v2_heads(authority_id), sequence bigint NOT NULL CHECK(sequence > 0),\n native_replay_identity text NOT NULL, native_authorization_id text NOT NULL, action_digest text NOT NULL,\n previous_digest text NOT NULL, checkpoint_digest text NOT NULL,\n PRIMARY KEY(authority_id,sequence), UNIQUE(authority_id,native_replay_identity)\n);\nCREATE TABLE ep_replay_v2_snapshots (\n authority_id text NOT NULL REFERENCES ep_replay_v2_heads(authority_id), base_sequence bigint NOT NULL CHECK(base_sequence > 0),\n witness_sequence bigint NOT NULL, previous_digest text NOT NULL, membership_root text NOT NULL,\n checkpoint_digest text NOT NULL, members jsonb NOT NULL, PRIMARY KEY(authority_id,base_sequence)\n);\nCREATE FUNCTION ep_replay_v2_reject_statement() RETURNS trigger LANGUAGE plpgsql AS $$\nBEGIN RAISE EXCEPTION 'replay history is immutable'; END $$;\nCREATE FUNCTION ep_replay_v2_retain() RETURNS trigger LANGUAGE plpgsql AS $$\nDECLARE h ep_replay_v2_heads%ROWTYPE; owner_name text;\nBEGIN\n SELECT pg_get_userbyid(relowner) INTO owner_name FROM pg_class WHERE oid = TG_RELID;\n IF TG_OP = 'DELETE' AND current_user = owner_name THEN\n  SELECT * INTO h FROM ep_replay_v2_heads WHERE authority_id = OLD.authority_id;\n  IF h.compaction_digest IS NOT NULL AND current_setting('ep.replay.prune_root',true) = h.compaction_digest THEN\n   IF (TG_TABLE_NAME = 'ep_replay_v2_entries' AND (to_jsonb(OLD)->>'sequence')::bigint <= h.compacted_through)\n      OR (TG_TABLE_NAME = 'ep_replay_v2_snapshots' AND (to_jsonb(OLD)->>'base_sequence')::bigint < h.compacted_through)\n   THEN RETURN OLD; END IF;\n  END IF;\n END IF;\n RAISE EXCEPTION 'replay history is immutable';\nEND $$;\nCREATE TRIGGER ep_replay_v2_entries_retained BEFORE UPDATE OR DELETE ON ep_replay_v2_entries\n FOR EACH ROW EXECUTE FUNCTION ep_replay_v2_retain();\nCREATE TRIGGER ep_replay_v2_snapshots_retained BEFORE UPDATE OR DELETE ON ep_replay_v2_snapshots\n FOR EACH ROW EXECUTE FUNCTION ep_replay_v2_retain();\nCREATE TRIGGER ep_replay_v2_entries_no_truncate BEFORE TRUNCATE ON ep_replay_v2_entries\n FOR EACH STATEMENT EXECUTE FUNCTION ep_replay_v2_reject_statement();\nCREATE TRIGGER ep_replay_v2_snapshots_no_truncate BEFORE TRUNCATE ON ep_replay_v2_snapshots\n FOR EACH STATEMENT EXECUTE FUNCTION ep_replay_v2_reject_statement();\nCREATE TRIGGER ep_replay_v2_heads_retained BEFORE DELETE OR TRUNCATE ON ep_replay_v2_heads\n FOR EACH STATEMENT EXECUTE FUNCTION ep_replay_v2_reject_statement();\nCREATE FUNCTION ep_replay_v2_advance_only() RETURNS trigger LANGUAGE plpgsql AS $$\nBEGIN\n IF NEW.authority_id <> OLD.authority_id OR NEW.fresh_authorization_prefix <> OLD.fresh_authorization_prefix\n  OR NEW.witness_sequence <> OLD.witness_sequence + 1 THEN RAISE EXCEPTION 'invalid replay head advance'; END IF;\n IF NEW.sequence = OLD.sequence + 1 AND NEW.compacted_through = OLD.compacted_through\n  AND NEW.compaction_digest IS NOT DISTINCT FROM OLD.compaction_digest AND EXISTS (\n   SELECT 1 FROM ep_replay_v2_entries WHERE authority_id=OLD.authority_id AND sequence=NEW.sequence\n    AND previous_digest=OLD.checkpoint_digest AND checkpoint_digest=NEW.checkpoint_digest\n  ) THEN RETURN NEW; END IF;\n IF NEW.sequence = OLD.sequence AND NEW.compacted_through = OLD.sequence AND NEW.compacted_through > OLD.compacted_through\n  AND NEW.compaction_digest = NEW.checkpoint_digest AND EXISTS (\n   SELECT 1 FROM ep_replay_v2_snapshots WHERE authority_id=OLD.authority_id AND base_sequence=NEW.sequence\n    AND witness_sequence=NEW.witness_sequence AND previous_digest=OLD.checkpoint_digest AND checkpoint_digest=NEW.checkpoint_digest\n  ) THEN RETURN NEW; END IF;\n RAISE EXCEPTION 'invalid replay head advance';\nEND $$;\nCREATE TRIGGER ep_replay_v2_heads_monotone BEFORE UPDATE ON ep_replay_v2_heads\n FOR EACH ROW EXECUTE FUNCTION ep_replay_v2_advance_only();\nCREATE FUNCTION ep_replay_v2_prune(a text, root text) RETURNS bigint\n LANGUAGE plpgsql SECURITY DEFINER SET search_path FROM CURRENT AS $$\nDECLARE h ep_replay_v2_heads%ROWTYPE; removed bigint;\nBEGIN\n SELECT * INTO h FROM ep_replay_v2_heads WHERE authority_id=a FOR UPDATE;\n IF NOT FOUND OR h.compaction_digest IS NULL OR h.compaction_digest <> root OR NOT EXISTS (\n  SELECT 1 FROM ep_replay_v2_snapshots WHERE authority_id=a AND base_sequence=h.compacted_through AND checkpoint_digest=root\n ) THEN RAISE EXCEPTION 'no current installed compaction'; END IF;\n PERFORM set_config('ep.replay.prune_root',root,true);\n DELETE FROM ep_replay_v2_entries WHERE authority_id=a AND sequence <= h.compacted_through;\n GET DIAGNOSTICS removed = ROW_COUNT;\n DELETE FROM ep_replay_v2_snapshots WHERE authority_id=a AND base_sequence < h.compacted_through;\n RETURN removed;\nEND $$;\nREVOKE ALL ON ep_replay_v2_heads,ep_replay_v2_entries,ep_replay_v2_snapshots FROM PUBLIC;\nREVOKE ALL ON FUNCTION ep_replay_v2_prune(text,text) FROM PUBLIC;";
+export declare const COMPACTING_REPLAY_HISTORY_SQL: Readonly<{
+    head: "SELECT authority_id,fresh_authorization_prefix,sequence::text,witness_sequence::text,checkpoint_digest,compacted_through::text,compaction_digest FROM ep_replay_v2_heads WHERE authority_id=$1 FOR UPDATE";
+    snapshot: "SELECT base_sequence::text,witness_sequence::text,previous_digest,membership_root,checkpoint_digest,members FROM ep_replay_v2_snapshots WHERE authority_id=$1 AND base_sequence=$2";
+    entries: "SELECT sequence::text,native_replay_identity,native_authorization_id,action_digest,previous_digest,checkpoint_digest FROM ep_replay_v2_entries WHERE authority_id=$1 AND sequence>$2 ORDER BY sequence LIMIT $3";
+    append: "INSERT INTO ep_replay_v2_entries VALUES ($1,$2,$3,$4,$5,$6,$7)";
+    consumeHead: "UPDATE ep_replay_v2_heads SET sequence=$2,witness_sequence=$3,checkpoint_digest=$4 WHERE authority_id=$1";
+    snapshotInsert: "INSERT INTO ep_replay_v2_snapshots VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)";
+    compactHead: "UPDATE ep_replay_v2_heads SET witness_sequence=$2,checkpoint_digest=$3,compacted_through=sequence,compaction_digest=$3 WHERE authority_id=$1";
+    prune: "SELECT ep_replay_v2_prune($1,$2)::text AS removed";
+}>;
+export declare function compactingReplayHistoryBootstrap(authorityId: string): {
+    text: string;
+    fresh_authorization_prefix: string;
+    genesis: string;
+    values: string[];
+};
+export interface ReplayHistoryCompactionResult {
+    status: 'ANCHORED_AND_PRUNED';
+    covered_through: number;
+    witness_sequence: number;
+    checkpoint_digest: string;
+    membership_root: string;
+    removed_raw_entries: number;
+}
+export interface CompactingReplayHistoryAuthority extends ReplayHistoryAuthority {
+    /** Requires separately provisioned operator/compactor credentials. */
+    compact(): Promise<ReplayHistoryCompactionResult>;
+}
+export declare function createPostgresCompactingReplayHistoryAuthority({ pool, compaction_pool, authority_id, checkpoint, max_entries }: {
+    pool: ReplayHistoryPool;
+    compaction_pool?: ReplayHistoryPool;
+    authority_id: string;
+    checkpoint: ReplayHistoryCheckpointStore;
+    max_entries?: number;
+}): CompactingReplayHistoryAuthority;
+//# sourceMappingURL=replay-history-compaction.d.ts.map

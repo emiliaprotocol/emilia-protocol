@@ -14,7 +14,7 @@ export interface ReplayHistoryReceipt extends ReplayHistoryRequest {
 export interface ReplayHistoryAuthority {
     authority_id: string;
     consume(request: Readonly<ReplayHistoryRequest>): Promise<ReplayHistoryReceipt | null>;
-    lookup(request: Readonly<ReplayHistoryRequest>): Promise<ReplayHistoryReceipt | null>;
+    lookup(request: Readonly<ReplayHistoryRequest>, original_receipt?: Readonly<ReplayHistoryReceipt>): Promise<ReplayHistoryReceipt | null>;
 }
 export declare const replayHistoryGenesis: (authorityId: string, prefix: string) => string;
 /** Structural integrity only; authenticity requires the trusted live authority. */

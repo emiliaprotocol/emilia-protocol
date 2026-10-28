@@ -24,7 +24,7 @@ export interface ReplayHistoryReceipt extends ReplayHistoryRequest {
 export interface ReplayHistoryAuthority {
   authority_id: string;
   consume(request: Readonly<ReplayHistoryRequest>): Promise<ReplayHistoryReceipt | null>;
-  lookup(request: Readonly<ReplayHistoryRequest>): Promise<ReplayHistoryReceipt | null>;
+  lookup(request: Readonly<ReplayHistoryRequest>, original_receipt?: Readonly<ReplayHistoryReceipt>): Promise<ReplayHistoryReceipt | null>;
 }
 const hash = (v: unknown): v is string => typeof v === 'string' && /^sha256:[a-f0-9]{64}$/.test(v);
 const id = (v: unknown): v is string => typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/.test(v);
