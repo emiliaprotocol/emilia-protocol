@@ -14,7 +14,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^6.0.0",
+    "@emilia-protocol/verify": "^8.0.0",
     "@grpc/grpc-js": "^1.14.0",
     "protobufjs": "^8.0.0"
   },
