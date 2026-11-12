@@ -29,8 +29,8 @@
 
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
 const config = {
-  testRunner: 'vitest',
-  plugins: ['@stryker-mutator/vitest-runner'],
+  testRunner: 'vitest-5',
+  plugins: ['./scripts/ci/stryker-vitest5-runner.mjs'],
   vitest: {
     configFile: 'vitest.config.js',
   },

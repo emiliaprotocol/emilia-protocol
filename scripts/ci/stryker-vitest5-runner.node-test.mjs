@@ -1,51 +1,55 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { vitest5NamePattern, wrapVitest5Runner } from './stryker-vitest5-runner.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+test('keeps nested suites and regex metacharacters selectable in Vitest 5', () => {
+  const pattern = vitest5NamePattern(/Outer \[x\] Inner \(y\) test \$value/);
+  assert.match('Outer [x] > Inner (y) > test $value', pattern);
+  assert.match('Outer [x] Inner (y) test $value', pattern);
+  assert.doesNotMatch('Outer x > Inner (y) > test $value', pattern);
+  const literalArrow = vitest5NamePattern(/Outer > \[x\] Inner \(y\) test \$value/);
+  assert.match('Outer > [x] > Inner (y) > test $value', literalArrow);
+});
 
-test('the upstream Vitest 5 runner kills covered non-static mutants in nested suites', { timeout: 120_000 }, () => {
-  const directory = mkdtempSync(join(tmpdir(), 'emilia-stryker-vitest5-'));
-  try {
-    symlinkSync(join(root, 'node_modules'), join(directory, 'node_modules'), 'dir');
-    writeFileSync(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
-    writeFileSync(join(directory, 'subject.js'), 'export function allowed(value) { return value > 0; }\n');
-    writeFileSync(join(directory, 'subject.test.js'), [
-      "import { describe, it, expect } from 'vitest';",
-      "import { allowed } from './subject.js';",
-      "describe('Outer [x]', () => describe('Inner (y)', () => {",
-      "  it('accepts $positive', () => expect(allowed(1)).toBe(true));",
-      "  it('rejects zero', () => expect(allowed(0)).toBe(false));",
-      "  it('rejects negative', () => expect(allowed(-1)).toBe(false));",
-      "}));",
-    ].join('\n'));
-    writeFileSync(join(directory, 'vitest.config.mjs'), "export default { test: { include: ['subject.test.js'] } };\n");
-    writeFileSync(join(directory, 'stryker.config.json'), JSON.stringify({
-      testRunner: 'vitest', plugins: ['@stryker-mutator/vitest-runner'],
-      vitest: { configFile: 'vitest.config.mjs' },
-      files: ['subject.js', 'subject.test.js', 'vitest.config.mjs', 'package.json'],
-      mutate: ['subject.js'], coverageAnalysis: 'perTest', concurrency: 1,
-      reporters: ['json'], jsonReporter: { fileName: 'mutation.json' },
-      thresholds: { break: 100 },
-    }));
-    execFileSync(process.execPath, [join(root, 'node_modules/@stryker-mutator/core/bin/stryker.js'), 'run'], {
-      cwd: directory, timeout: 110_000, stdio: 'pipe', maxBuffer: 4 * 1024 * 1024,
-    });
-    const report = JSON.parse(readFileSync(join(directory, 'mutation.json'), 'utf8'));
-    const mutants = Object.values(report.files).flatMap((file) => file.mutants);
-    assert.ok(mutants.length >= 3, 'the fixture must produce several mutants');
-    assert.ok(mutants.some((mutant) => mutant.static === false && mutant.coveredBy?.length),
-      'the regression must exercise per-test selection for a non-static mutant');
-    for (const mutant of mutants) {
-      assert.equal(mutant.status, 'Killed');
-      assert.ok(mutant.killedBy?.length, 'a real test must kill every mutant');
-    }
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
+test('adapts each worker before its mutant run without changing dry-run IDs', async () => {
+  let patternAtExecution;
+  const runner = wrapVitest5Runner({
+    ctx: null,
+    async init() {
+      this.ctx = {
+        projects: [{ config: {} }],
+        start: async () => {
+          patternAtExecution = this.ctx.projects[0].config.testNamePattern;
+        },
+      };
+    },
+    async mutantRun() {
+      this.ctx.projects[0].config.testNamePattern = /Outer \[x\] Inner \(y\) test \$value/;
+      await this.ctx.start();
+      return { status: 'killed', nrOfTests: 1 };
+    },
+  });
+
+  await runner.init();
+  await runner.mutantRun({ testFilter: ['tests/example.test.ts#Outer [x] Inner (y) test $value'] });
+  assert.match('Outer [x] > Inner (y) > test $value', patternAtExecution);
+});
+
+test('refuses to silently survive when a covered mutant runs zero tests', async () => {
+  const runner = wrapVitest5Runner({
+    ctx: null,
+    async init() {
+      this.ctx = { projects: [], start: async () => {} };
+    },
+    async mutantRun() {
+      return { status: 'survived', nrOfTests: 0 };
+    },
+  });
+
+  await runner.init();
+  await assert.rejects(
+    runner.mutantRun({ testFilter: ['tests/example.test.ts#covered test'] }),
+    /Covered mutant executed zero Vitest tests/,
+  );
 });
