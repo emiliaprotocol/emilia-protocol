@@ -2,8 +2,8 @@
 // Focused mutation campaign for AEC acceptance, execution, and fleet logging.
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
 const config = {
-  testRunner: 'vitest-5',
-  plugins: ['./scripts/ci/stryker-vitest5-runner.mjs'],
+  testRunner: 'vitest',
+  plugins: ['@stryker-mutator/vitest-runner'],
   vitest: { configFile: 'vitest.config.js', related: false },
   ignorePatterns: [
     'sdks/swift-mobile/.build/**',
