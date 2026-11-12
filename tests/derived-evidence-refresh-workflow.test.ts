@@ -50,7 +50,7 @@ describe('derived-evidence refresh workflow', () => {
     expect(uses).toEqual(expect.arrayContaining([
       'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1',
       'actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad',
-      'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97',
+      'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0',
       'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e',
     ]));
     expect(source).toContain("node-version: '24'");

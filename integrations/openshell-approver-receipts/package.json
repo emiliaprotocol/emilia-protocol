@@ -14,12 +14,12 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^6.0.0",
-    "@grpc/grpc-js": "^1.14.0",
-    "protobufjs": "^8.0.0"
+    "@emilia-protocol/verify": "^8.0.0",
+    "@grpc/grpc-js": "^1.14.6",
+    "protobufjs": "^8.8.1"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.5",
     "typescript": "7.0.2"
   },
   "engines": {

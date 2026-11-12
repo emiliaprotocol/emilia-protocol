@@ -20,7 +20,7 @@ env:
 # advisory (where the risk of NOT merging outweighs the review cost).
 #
 # Uses pull_request_target (not pull_request) so the GITHUB_TOKEN has the
-# write permissions needed to approve and merge. This is the GitHub-
+# write permissions needed to request a merge. This is the GitHub-
 # recommended pattern for Dependabot auto-merge — see
 # https://github.blog/news-insights/the-library/automating-dependabot-with-github-actions/
 # It's safe here because the workflow only reads metadata and calls
@@ -31,14 +31,15 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  auto-merge:
+  classify:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: repository-administration-approval
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
+      pull-requests: read
+    outputs:
+      eligible: ${{ steps.decide.outputs.eligible }}
     steps:
       - name: Fetch Dependabot metadata
         id: meta
@@ -99,6 +100,16 @@ jobs:
           echo "- **eligible**: $ELIGIBLE"         >> "$GITHUB_STEP_SUMMARY"
           echo "- **reason**: $REASON"             >> "$GITHUB_STEP_SUMMARY"
 
+  auto-merge:
+    needs: classify
+    if: needs.classify.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: repository-administration-approval
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
       # NOTE: An "Approve PR" step is intentionally absent. Organization
       # policy does not allow GitHub Actions to approve pull requests. The
       # repository-administration-approval environment requires an explicit
@@ -106,7 +117,6 @@ jobs:
       # then keeps the merge queued until every branch-protection check passes.
 
       - name: Enable auto-merge after owner-gated repository administration
-        if: steps.decide.outputs.eligible == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}

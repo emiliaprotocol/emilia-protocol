@@ -21,17 +21,18 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^6.0.0"
+    "@emilia-protocol/verify": "^8.0.0"
   },
   "overrides": {
-    "@hono/node-server": "2.0.10",
-    "body-parser": "2.3.0",
-    "fast-uri": "3.1.8",
-    "hono": "4.13.7",
-    "qs": "6.16.0"
+    "@hono/node-server": "2.1.7",
+    "body-parser": "2.4.0",
+    "fast-uri": "3.1.9",
+    "hono": "4.13.13",
+    "qs": "6.17.0",
+    "ip-address": "10.7.4"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "1.32.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "esbuild": "^0.28.1",
     "vitest": "^5.0.1"
   },

@@ -1255,10 +1255,11 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertLess(cleanup, source_manifest)
         self.assertNotIn("git clean -fdx --", builder)
 
-    def test_runtime_images_pin_fixed_openssl_and_actuator_carries_exact_caid(self) -> None:
-        patched_openssl = (
+    def test_runtime_images_pin_fixed_libraries_and_actuator_carries_exact_caid(self) -> None:
+        patched_libraries = (
             "apk add --no-cache --upgrade "
-            "libcrypto3=3.5.9-r0 libssl3=3.5.9-r0"
+            "libcrypto3=3.5.9-r0 libssl3=3.5.9-r0 "
+            "musl=1.2.6-r3 musl-utils=1.2.6-r3 zlib=1.4-r0"
         )
         for relative_path in (
             "Dockerfile",
@@ -1269,9 +1270,9 @@ class WorkflowTrustContractTests(unittest.TestCase):
             "witness/Dockerfile",
         ):
             self.assertIn(
-                patched_openssl,
+                patched_libraries,
                 (ROOT / relative_path).read_text(),
-                f"{relative_path} must install the fixed Alpine OpenSSL libraries",
+                f"{relative_path} must install the fixed Alpine runtime libraries",
             )
 
         for relative_path in ("Dockerfile", "witness/Dockerfile"):

@@ -1,0 +1,21 @@
+{
+  "format": "emilia-gargoyle-reverse-source-v1",
+  "upstream_repository": "https://github.com/Elyon-Sol/Gargoyle",
+  "upstream_commit": "17fbb83ae24bfa20faa5ababeec64db7e208c9c0",
+  "upstream_runner": "python -m gargoyle.emilia_runner",
+  "upstream_files": {
+    "gargoyle/emilia_runner.py": "ee51346702ac9b77a808bb3686225cbe9474e9fe56fe541eebb5f8fce8176dcf",
+    "gargoyle/emilia.py": "6ec7bc6d228eed2bf89ee729a11e35cdac94fe001076b3a54aa270d5bddf41c0",
+    "gargoyle/envelope.py": "ba5f14578a9a38f20a0cfccd4c6107365196b971c4070f82161d59b181eb41c0"
+  },
+  "license": "Apache-2.0",
+  "upstream_notice": "Copyright 2026 Justin LaPorte",
+  "suites": {
+    "receipts.v1.json": "e27b31759c9c901f5cd6e2986758a249175ea14dbc818e401d42fb71280aa83b",
+    "canonicalization.v1.json": "d72a1de506def5b5dcc20f60301987654ef5b5bb6ea476af926054f300c2eee2"
+  },
+  "uncovered_suite": "signoffs.v1.json",
+  "source_issue": "https://github.com/emiliaprotocol/emilia-protocol/issues/924",
+  "relationship": "externally_authored_not_clean_room",
+  "scope": "EMILIA's published EP-RECEIPT-v1 (14 vectors) and EP-CANONICALIZATION-v1 (35 vectors) suites run through Gargoyle's own Python verifier and RFC 8785 serializer, compared with this repository's result contract. Two of the 21 live suites, Python only. Gargoyle's verifier was written with EMILIA's public vectors and reference source available, so this is external interoperability evidence, not a clean-room construction result, and it does not change the registered implementation count."
+}

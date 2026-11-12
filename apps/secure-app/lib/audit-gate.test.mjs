@@ -335,37 +335,12 @@ test('an unsupported severity floor is a usage failure, not a clean report', () 
   );
 });
 
-test('the committed exception file satisfies the enforced schema', () => {
-  const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
-  assert.deepEqual(
-    exceptions.map((exception) => exception.advisory),
-    [ZOD, DEEPMERGE],
-    'only the reviewed tooling advisories may be accepted',
-  );
-  const [zod, deepmerge] = exceptions;
-  assert.equal(zod.package, 'zod');
-  assert.equal(zod.severity, 'high');
-  assert.deepEqual([...zod.affectedPackages].sort(), ['@expo/cli', 'expo', 'zod']);
-  assert.equal(zod.acceptedOnText, '2026-10-26');
-  assert.equal(zod.expiresOnText, '2026-11-16');
-  assert.equal(deepmerge.package, 'deepmerge');
-  assert.equal(deepmerge.severity, 'low');
-  assert.deepEqual(
-    [...deepmerge.affectedPackages].sort(),
-    ['@expo/cli', '@expo/config', '@expo/local-build-cache-provider', '@expo/metro-config', '@expo/prebuild-config', 'deepmerge', 'expo'],
-  );
-  assert.equal(deepmerge.acceptedOnText, '2026-10-27');
-  assert.equal(deepmerge.expiresOnText, '2026-11-26');
-  for (const exception of exceptions) {
-    assert.ok(exception.expiresOn > exception.acceptedOn);
-    assert.ok(exception.affectedPackages.size > 0);
-  }
+test('the committed exception file accepts no advisories', () => {
+  assert.deepEqual(loadExceptions(join(SECURE_APP, 'audit-exceptions.json')), []);
 });
 
-test('the node-forge acceptance still matches the app it was argued against', () => {
-  // The exception says the vulnerable RSA verification is unreachable because
-  // the CLI's manifest signer is never configured and the app never imports
-  // node-forge. Fail here, before expiry, if either premise stops holding.
+test('developer signing tools stay outside the application runtime', () => {
+  // Keep build tooling out of approval handling and device code.
   const app = JSON.parse(readFileSync(join(SECURE_APP, 'app.json'), 'utf8')).expo;
   assert.equal(app.updates?.codeSigningCertificate, undefined);
   assert.equal(app.extra?.eas?.projectId, undefined);
@@ -382,42 +357,20 @@ test('the node-forge acceptance still matches the app it was argued against', ()
   }
 });
 
-test('the zod acceptance still matches the tree it was argued against', () => {
-  // The exception says zod is reached only through @expo/cli. Fail here,
-  // before expiry, if another package starts depending on it or app source
-  // imports it.
-  const lockfile = JSON.parse(readFileSync(join(SECURE_APP, 'package-lock.json'), 'utf8'));
-  const copies = Object.keys(lockfile.packages).filter((path) => /(?:^|\/)node_modules\/zod$/.test(path));
-  assert.deepEqual(copies, ['node_modules/zod']);
-  assert.equal(lockfile.packages['node_modules/zod'].version, '3.25.76');
-  const dependents = Object.entries(lockfile.packages)
-    .filter(([, entry]) => entry.dependencies?.zod !== undefined)
-    .map(([path]) => path)
-    .sort();
-  assert.deepEqual(dependents, ['node_modules/expo/node_modules/@expo/cli']);
-
-  const sources = ['App.tsx', 'index.ts', ...readdirSync(join(SECURE_APP, 'lib'))
-    .filter((name) => /\.(?:ts|tsx|js|mjs)$/.test(name) && !name.endsWith('.test.mjs'))
-    .map((name) => join('lib', name))];
-  for (const source of sources) {
-    assert.doesNotMatch(readFileSync(join(SECURE_APP, source), 'utf8'), /['"]zod['"]/, source);
-  }
-});
-
 test('source-map-js is pinned to the patched release', () => {
   const lockfile = JSON.parse(readFileSync(join(SECURE_APP, 'package-lock.json'), 'utf8'));
   assert.equal(lockfile.packages['node_modules/source-map-js'].version, '1.2.2');
 });
 
-test('the committed exceptions still fail on any other live advisory', () => {
+test('new and previously accepted advisories fail without an exception', () => {
   const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
-  const advisories = collectLiveAdvisories(bundlerChainReport({ url: OTHER }), 'low');
-  const { failures, accepted } = evaluate({ advisories, exceptions, now: NOW });
-  assert.equal(accepted.length, 0);
-  assert.ok(
-    failures.some((failure) => failure.reason === FAILURE.UNCOVERED_ADVISORY && failure.advisory === OTHER),
-    'an advisory outside the committed exceptions must fail as uncovered',
-  );
+  for (const url of [OTHER, ZOD, DEEPMERGE]) {
+    const advisories = collectLiveAdvisories(bundlerChainReport({ url }), 'low');
+    const { failures, accepted } = evaluate({ advisories, exceptions, now: NOW });
+    assert.equal(accepted.length, 0);
+    assert.ok(failures.some((failure) =>
+      failure.reason === FAILURE.UNCOVERED_ADVISORY && failure.advisory === url));
+  }
 });
 
 test('the committed Metro repair removes the vulnerable image-size edge', () => {
@@ -434,11 +387,5 @@ test('the gate passes against the real dependency tree', () => {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   assert.match(stdout, /AUDIT GATE PASS/);
-  assert.match(stdout, /2 accepted advisory\(ies\)/);
-  for (const advisory of [ZOD, DEEPMERGE]) {
-    assert.ok(
-      stdout.split(/\r?\n/).some((line) => line.trim() === advisory),
-      `${advisory} must appear as an exact output line`,
-    );
-  }
+  assert.match(stdout, /no advisories observed\./);
 });

@@ -1,0 +1,228 @@
+{
+  "format": "emilia-gargoyle-reverse-result-v1",
+  "upstream_repository": "https://github.com/Elyon-Sol/Gargoyle",
+  "upstream_commit": "17fbb83ae24bfa20faa5ababeec64db7e208c9c0",
+  "upstream_runner": "python -m gargoyle.emilia_runner",
+  "upstream_files": {
+    "gargoyle/emilia_runner.py": "ee51346702ac9b77a808bb3686225cbe9474e9fe56fe541eebb5f8fce8176dcf",
+    "gargoyle/emilia.py": "6ec7bc6d228eed2bf89ee729a11e35cdac94fe001076b3a54aa270d5bddf41c0",
+    "gargoyle/envelope.py": "ba5f14578a9a38f20a0cfccd4c6107365196b971c4070f82161d59b181eb41c0"
+  },
+  "gargoyle_version": "0.19.0.dev0",
+  "emilia_checkout_commit": "0fdd4ae2e58624a95cdac0d0171c71b2fcd43528",
+  "emilia_vectors_clean": true,
+  "python": "Python 3.14.4",
+  "node": "v22.23.4",
+  "suites": {
+    "receipts.v1.json": {
+      "suite": "EP-RECEIPT-v1",
+      "vectors": 14,
+      "rows": [
+        {
+          "id": "accept_minimal",
+          "valid": true
+        },
+        {
+          "id": "accept_nested_context",
+          "valid": true
+        },
+        {
+          "id": "accept_key_order_independent",
+          "valid": true
+        },
+        {
+          "id": "reject_legacy_v1_anchor_by_default",
+          "valid": false
+        },
+        {
+          "id": "accept_with_merkle_anchor_v2",
+          "valid": true
+        },
+        {
+          "id": "reject_v2_unbound_leaf",
+          "valid": false
+        },
+        {
+          "id": "reject_v2_lifted_anchor_valid_path",
+          "valid": false
+        },
+        {
+          "id": "reject_unsupported_version",
+          "valid": false
+        },
+        {
+          "id": "reject_missing_signature",
+          "valid": false
+        },
+        {
+          "id": "reject_tampered_payload",
+          "valid": false
+        },
+        {
+          "id": "reject_tampered_nested_param",
+          "valid": false
+        },
+        {
+          "id": "reject_wrong_key",
+          "valid": false
+        },
+        {
+          "id": "reject_malformed_signature",
+          "valid": false
+        },
+        {
+          "id": "reject_tampered_anchor",
+          "valid": false
+        }
+      ]
+    },
+    "canonicalization.v1.json": {
+      "suite": "EP-CANONICALIZATION-v1",
+      "vectors": 35,
+      "rows": [
+        {
+          "id": "accept_nfc_composed",
+          "valid": true
+        },
+        {
+          "id": "accept_nfd_decomposed",
+          "valid": true
+        },
+        {
+          "id": "accept_escape_alias_of_nfc",
+          "valid": true
+        },
+        {
+          "id": "accept_angstrom_sign_not_normalized",
+          "valid": true
+        },
+        {
+          "id": "accept_latin_a_ring_distinct",
+          "valid": true
+        },
+        {
+          "id": "accept_bidi_rlo_override_raw",
+          "valid": true
+        },
+        {
+          "id": "accept_control_chars_escaped",
+          "valid": true
+        },
+        {
+          "id": "accept_shorthand_escapes",
+          "valid": true
+        },
+        {
+          "id": "accept_long_escape_alias_of_shorthand",
+          "valid": true
+        },
+        {
+          "id": "accept_format_chars_raw",
+          "valid": true
+        },
+        {
+          "id": "reject_duplicate_key_literal",
+          "valid": false
+        },
+        {
+          "id": "reject_duplicate_key_escape_alias",
+          "valid": false
+        },
+        {
+          "id": "reject_duplicate_key_nested",
+          "valid": false
+        },
+        {
+          "id": "reject_duplicate_key_non_bmp_alias",
+          "valid": false
+        },
+        {
+          "id": "reject_lone_high_surrogate",
+          "valid": false
+        },
+        {
+          "id": "reject_lone_low_surrogate",
+          "valid": false
+        },
+        {
+          "id": "reject_reversed_surrogate_pair",
+          "valid": false
+        },
+        {
+          "id": "reject_high_surrogate_then_bmp_escape",
+          "valid": false
+        },
+        {
+          "id": "reject_lone_surrogate_in_member_name",
+          "valid": false
+        },
+        {
+          "id": "accept_non_bmp_escaped_pair",
+          "valid": true
+        },
+        {
+          "id": "accept_non_bmp_literal_alias",
+          "valid": true
+        },
+        {
+          "id": "accept_astral_key_utf16_sort_order",
+          "valid": true
+        },
+        {
+          "id": "accept_integer_one",
+          "valid": true
+        },
+        {
+          "id": "accept_number_alias_one_point_zero",
+          "valid": true
+        },
+        {
+          "id": "accept_number_alias_exponent",
+          "valid": true
+        },
+        {
+          "id": "accept_negative_zero_integer",
+          "valid": true
+        },
+        {
+          "id": "accept_negative_zero_real_alias",
+          "valid": true
+        },
+        {
+          "id": "accept_max_safe_integer",
+          "valid": true
+        },
+        {
+          "id": "reject_unsafe_integer_2_53",
+          "valid": false
+        },
+        {
+          "id": "reject_unsafe_large_exponent",
+          "valid": false
+        },
+        {
+          "id": "reject_non_integer_real",
+          "valid": false
+        },
+        {
+          "id": "accept_key_order_whitespace_alias",
+          "valid": true
+        },
+        {
+          "id": "accept_key_order_canonical_twin",
+          "valid": true
+        },
+        {
+          "id": "accept_nested_depth_at_limit",
+          "valid": true
+        },
+        {
+          "id": "reject_nested_depth_over_limit",
+          "valid": false
+        }
+      ]
+    }
+  },
+  "uncovered_suite_refused": "signoffs.v1.json",
+  "scope": "EMILIA's published EP-RECEIPT-v1 (14 vectors) and EP-CANONICALIZATION-v1 (35 vectors) suites run through Gargoyle's own Python verifier and RFC 8785 serializer, compared with this repository's result contract. Two of the 21 live suites, Python only. Gargoyle's verifier was written with EMILIA's public vectors and reference source available, so this is external interoperability evidence, not a clean-room construction result, and it does not change the registered implementation count."
+}
